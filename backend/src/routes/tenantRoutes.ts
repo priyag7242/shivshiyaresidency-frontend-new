@@ -28,6 +28,9 @@ interface TenantData {
 // Mock data storage (in production, this would be MongoDB)
 let tenants: TenantData[] = [];
 
+// Export tenants array for use in other modules
+export { tenants };
+
 // Validation middleware
 const validateTenant = [
   body('name').notEmpty().withMessage('Name is required'),
@@ -111,6 +114,45 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// GET /api/tenants/room/:roomNumber - Get tenant by room number
+router.get('/room/:roomNumber', async (req, res) => {
+  try {
+    const roomNumber = req.params.roomNumber;
+    const tenant = tenants.find(t => 
+      t.room_number === roomNumber && t.status === 'active'
+    );
+    
+    if (!tenant) {
+      return res.status(404).json({ 
+        error: 'No active tenant found in this room',
+        message: `Room ${roomNumber} is either empty or tenant is not active`
+      });
+    }
+    
+    // Return tenant data optimized for payment processing
+    const tenantData = {
+      id: tenant.id,
+      name: tenant.name,
+      mobile: tenant.mobile,
+      room_number: tenant.room_number,
+      monthly_rent: tenant.monthly_rent,
+      security_deposit: tenant.security_deposit,
+      joining_date: tenant.joining_date,
+      status: tenant.status,
+      last_electricity_reading: tenant.last_electricity_reading,
+      electricity_joining_reading: tenant.electricity_joining_reading
+    };
+    
+    res.json({
+      success: true,
+      tenant: tenantData,
+      message: `Found tenant: ${tenant.name} in Room ${roomNumber}`
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch tenant by room number' });
+  }
+});
+
 // GET /api/tenants/:id - Get single tenant
 router.get('/:id', async (req, res) => {
   try {
@@ -118,7 +160,12 @@ router.get('/:id', async (req, res) => {
     if (!tenant) {
       return res.status(404).json({ error: 'Tenant not found' });
     }
-    res.json(tenant);
+    
+    res.json({
+      success: true,
+      tenant: tenant,
+      message: `Found tenant: ${tenant.name}`
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch tenant' });
   }
@@ -215,7 +262,8 @@ router.post('/import', async (req, res) => {
     }
 
     // Clear existing data and import new data
-    tenants = tenantsData;
+    tenants.length = 0; // Clear array properly
+    tenants.push(...tenantsData);
     
     res.json({ 
       message: 'Tenants imported successfully', 
@@ -223,6 +271,91 @@ router.post('/import', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to import tenants' });
+  }
+});
+
+// POST /api/tenants/import/complete - Import sample tenant data for testing
+router.post('/import/complete', async (req, res) => {
+  try {
+    // Clear existing data
+    tenants.length = 0;
+    
+    // Add sample tenants with proper electricity readings
+    const sampleTenants: TenantData[] = [
+      {
+        id: "pradyum-303",
+        name: "PRADYUM",
+        mobile: "9761019937",
+        room_number: "303",
+        joining_date: "2024-05-01",
+        monthly_rent: 8500,
+        security_deposit: 9500,
+        electricity_joining_reading: 900,
+        last_electricity_reading: 950,
+        status: 'active' as const,
+        created_date: "2025-07-19",
+        has_food: true,
+        category: 'existing' as const,
+        departure_date: null,
+        stay_duration: null,
+        notice_given: false,
+        notice_date: null,
+        security_adjustment: 0
+      },
+      {
+        id: "suman-108",
+        name: "SUMAN DAS",
+        mobile: "8448949159",
+        room_number: "108",
+        joining_date: "2022-11-12",
+        monthly_rent: 15900,
+        security_deposit: 0,
+        electricity_joining_reading: 2982,
+        last_electricity_reading: 3050,
+        status: 'active' as const,
+        created_date: "2025-07-19",
+        has_food: true,
+        category: 'existing' as const,
+        departure_date: null,
+        stay_duration: null,
+        notice_given: false,
+        notice_date: null,
+        security_adjustment: 0
+      },
+      {
+        id: "anish-114",
+        name: "ANISH KUMAR",
+        mobile: "9546257643",
+        room_number: "114",
+        joining_date: "2025-01-07",
+        monthly_rent: 16200,
+        security_deposit: 16200,
+        electricity_joining_reading: 2650,
+        last_electricity_reading: 2720,
+        status: 'active' as const,
+        created_date: "2025-07-19",
+        has_food: true,
+        category: 'existing' as const,
+        departure_date: null,
+        stay_duration: null,
+        notice_given: false,
+        notice_date: null,
+        security_adjustment: 0
+      }
+    ];
+
+    tenants.push(...sampleTenants);
+    
+    console.log(`🏠 Imported ${sampleTenants.length} sample tenants with electricity readings`);
+    
+    res.json({ 
+      message: 'Sample tenant data imported successfully', 
+      count: tenants.length,
+      rooms: [...new Set(sampleTenants.map(t => t.room_number))].length
+    });
+  } catch (error) {
+    console.error('Error importing sample data:', error);
+    res.status(500).json({ error: 'Failed to import sample tenant data' });
   }
 });
 

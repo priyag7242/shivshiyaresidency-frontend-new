@@ -52,12 +52,15 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
   });
 
   const [availableRooms, setAvailableRooms] = useState<any[]>([]);
+  const [originalRoomNumber, setOriginalRoomNumber] = useState<string>('');
+  const [roomChanged, setRoomChanged] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       fetchAvailableRooms();
       if (tenant) {
         // Populate form for editing
+        setOriginalRoomNumber(tenant.room_number);
         setFormData({
           name: tenant.name,
           mobile: tenant.mobile,
@@ -77,6 +80,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
         });
       } else {
         // Reset form for new tenant
+        setOriginalRoomNumber('');
         setFormData({
           name: '',
           mobile: '',
@@ -96,6 +100,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
         });
       }
       setActiveTab('basic');
+      setRoomChanged(false);
     }
   }, [isOpen, tenant]);
 
@@ -108,11 +113,82 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
     }
   };
 
+  const handleRoomChange = (newRoomNumber: string) => {
+    setFormData(prev => ({ ...prev, room_number: newRoomNumber }));
+    if (tenant && originalRoomNumber && newRoomNumber !== originalRoomNumber) {
+      setRoomChanged(true);
+      // When room changes, tenant needs to provide new electricity joining reading
+      alert('⚠️ Room change detected! Please update the electricity joining reading for the new room.');
+    } else {
+      setRoomChanged(false);
+    }
+  };
+
+  const deallocateFromOldRoom = async (oldRoomNumber: string, tenantId: string) => {
+    try {
+      // Find the old room
+      const roomsResponse = await axios.get('/api/rooms');
+      const oldRoom = roomsResponse.data.rooms?.find((room: any) => room.room_number === oldRoomNumber);
+      
+      if (oldRoom) {
+        // Deallocate tenant from old room
+        await axios.post(`/api/rooms/${oldRoom.id}/deallocate`, {
+          tenant_id: tenantId
+        });
+        console.log(`Deallocated tenant ${tenantId} from room ${oldRoomNumber}`);
+      }
+    } catch (error) {
+      console.error('Error deallocating from old room:', error);
+    }
+  };
+
+  const allocateToNewRoom = async (newRoomNumber: string, tenantId: string, tenantName: string) => {
+    try {
+      // Find the new room
+      const roomsResponse = await axios.get('/api/rooms');
+      const newRoom = roomsResponse.data.rooms?.find((room: any) => room.room_number === newRoomNumber);
+      
+      if (newRoom) {
+        // Check if room has capacity
+        if (newRoom.current_occupancy >= newRoom.capacity) {
+          throw new Error(`Room ${newRoomNumber} is at full capacity`);
+        }
+        
+        // Allocate tenant to new room
+        await axios.post(`/api/rooms/${newRoom.id}/allocate`, {
+          tenant_id: tenantId,
+          tenant_name: tenantName
+        });
+        console.log(`Allocated tenant ${tenantId} to room ${newRoomNumber}`);
+      }
+    } catch (error) {
+      console.error('Error allocating to new room:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Validation
+      if (!formData.name.trim()) {
+        throw new Error('Name is required');
+      }
+      if (!formData.mobile.trim()) {
+        throw new Error('Mobile number is required');
+      }
+      if (!formData.room_number.trim()) {
+        throw new Error('Room number is required');
+      }
+      if (!formData.monthly_rent || Number(formData.monthly_rent) <= 0) {
+        throw new Error('Valid monthly rent is required');
+      }
+      if (!formData.security_deposit || Number(formData.security_deposit) < 0) {
+        throw new Error('Valid security deposit is required');
+      }
+
       const submitData = {
         ...formData,
         monthly_rent: Number(formData.monthly_rent),
@@ -123,17 +199,47 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
 
       if (tenant) {
         // Update existing tenant
-        await axios.put(`/api/tenants/${tenant.id}`, submitData);
+        const updatedTenant = await axios.put(`/api/tenants/${tenant.id}`, submitData);
+        
+        // Handle room change if applicable
+        if (roomChanged && originalRoomNumber !== formData.room_number) {
+          try {
+            // Deallocate from old room
+            await deallocateFromOldRoom(originalRoomNumber, tenant.id);
+            
+            // Allocate to new room
+            await allocateToNewRoom(formData.room_number, tenant.id, formData.name);
+            
+            alert(`✅ Tenant updated successfully!\n🏠 Room changed from ${originalRoomNumber} to ${formData.room_number}`);
+          } catch (roomError: any) {
+            // If room allocation fails, revert the tenant update
+            await axios.put(`/api/tenants/${tenant.id}`, {
+              ...tenant,
+              room_number: originalRoomNumber
+            });
+            throw new Error(`Room change failed: ${roomError.message}`);
+          }
+        }
       } else {
         // Create new tenant
-        await axios.post('/api/tenants', submitData);
+        const newTenant = await axios.post('/api/tenants', submitData);
+        
+        // Allocate room to new tenant
+        try {
+          await allocateToNewRoom(formData.room_number, newTenant.data.id, formData.name);
+          alert('✅ New tenant created and room allocated successfully!');
+        } catch (roomError: any) {
+          // If room allocation fails, delete the tenant
+          await axios.delete(`/api/tenants/${newTenant.data.id}`);
+          throw new Error(`Room allocation failed: ${roomError.message}`);
+        }
       }
 
       onSubmit();
       onClose();
     } catch (error: any) {
       console.error('Error saving tenant:', error);
-      alert(error.response?.data?.error || 'Failed to save tenant');
+      alert(error.message || error.response?.data?.error || 'Failed to save tenant');
     } finally {
       setLoading(false);
     }
@@ -234,7 +340,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
                     <select
                       required
                       value={formData.room_number}
-                      onChange={(e) => setFormData({ ...formData, room_number: e.target.value })}
+                      onChange={(e) => handleRoomChange(e.target.value)}
                       className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500 focus:ring-1 focus:ring-golden-500"
                     >
                       <option value="">Select Room</option>
@@ -253,6 +359,22 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
                     <p className="text-golden-400/60 text-xs mt-1">
                       Available rooms are shown. Contact admin if room not listed.
                     </p>
+                    {/* Room Change Warning */}
+                    {roomChanged && (
+                      <div className="mt-2 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <div className="text-orange-400 mt-0.5">⚠️</div>
+                          <div>
+                            <h4 className="text-orange-400 font-medium text-sm">Room Change Detected</h4>
+                            <p className="text-orange-300 text-xs mt-1">
+                              Moving from Room {originalRoomNumber} to Room {formData.room_number}.
+                              <br />
+                              The tenant will be automatically deallocated from the old room and allocated to the new room.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -349,16 +471,30 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
 
                   <div>
                     <label className="block text-sm font-medium text-golden-300 mb-2">
-                      Electricity Joining Reading
+                      ⚡ Electricity Joining Reading *
+                      {roomChanged && (
+                        <span className="text-orange-400 ml-2">(Required for room change)</span>
+                      )}
                     </label>
                     <input
                       type="number"
                       min="0"
+                      required={roomChanged}
                       value={formData.electricity_joining_reading}
                       onChange={(e) => setFormData({ ...formData, electricity_joining_reading: e.target.value })}
-                      className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 placeholder-golden-400/50 focus:outline-none focus:border-golden-500 focus:ring-1 focus:ring-golden-500"
-                      placeholder="Enter electricity meter reading"
+                      className={`w-full px-3 py-2 bg-dark-800 border rounded-lg text-golden-100 placeholder-golden-400/50 focus:outline-none focus:ring-1 ${
+                        roomChanged 
+                          ? 'border-orange-500 focus:border-orange-400 focus:ring-orange-400' 
+                          : 'border-golden-600/30 focus:border-golden-500 focus:ring-golden-500'
+                      }`}
+                      placeholder="Enter current electricity meter reading"
                     />
+                    <p className="text-golden-400/60 text-xs mt-1">
+                      {roomChanged 
+                        ? '⚠️ Room changed! Enter the current meter reading for the new room to track electricity consumption.'
+                        : 'Initial electricity meter reading when tenant joins. Used for consumption calculation (₹12/unit, shared in room).'
+                      }
+                    </p>
                   </div>
 
                   <div>

@@ -129,7 +129,60 @@ const RoomForm = ({ isOpen, onClose, onSubmit, room, isLoading = false }: RoomFo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    // Validation
+    if (!formData.room_number?.trim()) {
+      alert('Room number is required');
+      return;
+    }
+    
+    if (formData.floor === undefined || formData.floor < 0 || formData.floor > 5) {
+      alert('Please select a valid floor (0-5)');
+      return;
+    }
+    
+    if (!formData.type) {
+      alert('Please select a room type');
+      return;
+    }
+    
+    if (!formData.monthly_rent || formData.monthly_rent <= 0) {
+      alert('Monthly rent must be a positive number');
+      return;
+    }
+    
+    if (formData.security_deposit === undefined || formData.security_deposit < 0) {
+      alert('Security deposit must be a non-negative number');
+      return;
+    }
+
+    // Auto-set capacity based on room type
+    const typeCapacity = {
+      single: 1,
+      double: 2,
+      triple: 3,
+      quad: 4
+    };
+
+    // Prepare the data with all required fields
+    const submitData = {
+      ...formData,
+      room_number: formData.room_number.trim(),
+      floor: Number(formData.floor) as 0 | 1 | 2 | 3 | 4 | 5,
+      type: formData.type,
+      capacity: typeCapacity[formData.type as keyof typeof typeCapacity],
+      current_occupancy: formData.current_occupancy || 0,
+      monthly_rent: Number(formData.monthly_rent),
+      security_deposit: Number(formData.security_deposit),
+      amenities: formData.amenities || [],
+      status: formData.status || 'available',
+      description: formData.description || '',
+      images: formData.images || [],
+      tenants: formData.tenants || [],
+      maintenance_status: formData.maintenance_status || 'none'
+    };
+
+    onSubmit(submitData);
   };
 
   if (!isOpen) return null;
