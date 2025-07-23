@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Search, Clock, UserCheck, AlertCircle, Users, Eye, CheckCircle, XCircle, LogIn, LogOut, Car } from 'lucide-react';
 import axios from 'axios';
 
+const apiUrl = import.meta.env.VITE_API_URL || '';
+
 // Utility functions for styling
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -112,7 +114,7 @@ const Visitors = () => {
       if (statusFilter) params.append('status', statusFilter);
       if (purposeFilter) params.append('purpose', purposeFilter);
       
-      const response = await axios.get(`/api/visitors?${params}`);
+      const response = await axios.get(`${apiUrl}/api/visitors?${params}`);
       setVisitors(response.data.visitors || []);
     } catch (error) {
       console.error('Error fetching visitors:', error);
@@ -121,7 +123,7 @@ const Visitors = () => {
 
   const fetchActiveVisitors = async () => {
     try {
-      const response = await axios.get('/api/visitors/active');
+      const response = await axios.get(`${apiUrl}/api/visitors/active`);
       setActiveVisitors(response.data || []);
     } catch (error) {
       console.error('Error fetching active visitors:', error);
@@ -130,7 +132,7 @@ const Visitors = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('/api/visitors/stats');
+      const response = await axios.get(`${apiUrl}/api/visitors/stats`);
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -139,7 +141,7 @@ const Visitors = () => {
 
   const checkOutVisitor = async (visitorId: string, notes?: string) => {
     try {
-      await axios.put(`/api/visitors/${visitorId}/checkout`, {
+      await axios.put(`${apiUrl}/api/visitors/${visitorId}/checkout`, {
         notes,
         performed_by: 'security'
       });
@@ -152,7 +154,7 @@ const Visitors = () => {
 
   const approveVisitor = async (visitorId: string, approved: boolean) => {
     try {
-      await axios.put(`/api/visitors/${visitorId}/approve`, {
+      await axios.put(`${apiUrl}/api/visitors/${visitorId}/approve`, {
         approval_status: approved ? 'approved' : 'rejected',
         approved_by: 'admin'
       });
@@ -568,7 +570,7 @@ const VisitorCheckinModal = ({ isOpen, onClose, onSubmit }: VisitorCheckinModalP
   const fetchTenants = async () => {
     try {
       setLoadingTenants(true);
-      const response = await axios.get('/api/tenants');
+      const response = await axios.get(`${apiUrl}/api/tenants`);
       setTenants(response.data.tenants || []);
     } catch (error) {
       console.error('Error fetching tenants:', error);
@@ -626,7 +628,7 @@ const VisitorCheckinModal = ({ isOpen, onClose, onSubmit }: VisitorCheckinModalP
 
     try {
       setLoading(true);
-      const response = await axios.post('/api/visitors/checkin', {
+      const response = await axios.post(`${apiUrl}/api/visitors/checkin`, {
         visitor_name: formData.visitor_name.trim(),
         visitor_phone: formData.visitor_phone.trim(),
         visitor_id_type: formData.visitor_id_type,

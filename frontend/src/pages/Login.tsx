@@ -39,7 +39,7 @@ const Login = () => {
     try {
       // Use the full API URL
       const response = await axios.post(
-        `/api/auth/login`,
+        `${apiUrl}/api/auth/login`,
         formData
       );
 

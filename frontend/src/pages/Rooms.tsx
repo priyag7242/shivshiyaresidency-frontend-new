@@ -5,6 +5,8 @@ import RoomForm from '../components/RoomForm';
 import RoomAllocationModal from '../components/RoomAllocationModal';
 import MaintenanceModal from '../components/MaintenanceModal';
 
+const apiUrl = import.meta.env.VITE_API_URL || '';
+
 interface Room {
   id: string;
   room_number: string;
@@ -104,7 +106,7 @@ const Rooms = () => {
       if (statusFilter) params.append('status', statusFilter);
       if (maintenanceFilter) params.append('maintenance_status', maintenanceFilter);
       
-      const response = await axios.get(`/api/rooms?${params}`);
+      const response = await axios.get(`${apiUrl}/api/rooms?${params}`);
       setRooms(response.data.rooms || []);
     } catch (error) {
       console.error('Error fetching rooms:', error);
@@ -115,7 +117,7 @@ const Rooms = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`/api/rooms/stats`);
+      const response = await axios.get(`${apiUrl}/api/rooms/stats`);
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -125,9 +127,9 @@ const Rooms = () => {
   const handleRoomSubmit = async (roomData: Partial<Room>) => {
     try {
       if (selectedRoom) {
-        await axios.put(`/api/rooms/${selectedRoom.id}`, roomData);
+        await axios.put(`${apiUrl}/api/rooms/${selectedRoom.id}`, roomData);
       } else {
-        await axios.post(`/api/rooms`, roomData);
+        await axios.post(`${apiUrl}/api/rooms`, roomData);
       }
       
       fetchRooms();
@@ -144,7 +146,7 @@ const Rooms = () => {
     if (!confirm('Are you sure you want to delete this room?')) return;
     
     try {
-      await axios.delete(`/api/rooms/${roomId}`);
+      await axios.delete(`${apiUrl}/api/rooms/${roomId}`);
       fetchRooms();
       fetchStats();
     } catch (error: any) {

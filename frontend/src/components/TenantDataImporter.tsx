@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Upload, CheckCircle, AlertCircle } from 'lucide-react';
-import { completeTenantsData } from '../utils/completeTenantsData';
+import { Upload, CheckCircle, XCircle } from 'lucide-react';
+import { completeTenantsData } from '../data/completeTenantsData';
+
+const apiUrl = import.meta.env.VITE_API_URL || '';
 
 interface TenantDataImporterProps {
   onImportComplete: () => void;
@@ -18,7 +20,7 @@ const TenantDataImporter = ({ onImportComplete }: TenantDataImporterProps) => {
     setImportStatus('idle');
 
     try {
-      const response = await fetch('/api/tenants/import', {
+      const response = await fetch(`${apiUrl}/api/tenants/import`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -62,7 +64,7 @@ const TenantDataImporter = ({ onImportComplete }: TenantDataImporterProps) => {
           
           {importStatus === 'error' && (
             <div className="flex items-center gap-2 text-red-400">
-              <AlertCircle className="h-5 w-5" />
+              <XCircle className="h-5 w-5" />
               <span className="text-sm">Import failed</span>
             </div>
           )}

@@ -23,6 +23,9 @@ import {
   Settings
 } from 'lucide-react';
 import axios from 'axios';
+import TenantDataImporter from '../components/TenantDataImporter';
+
+const apiUrl = import.meta.env.VITE_API_URL || '';
 
 interface DashboardData {
   total_tenants: number;
@@ -121,9 +124,9 @@ const Dashboard = () => {
     try {
       setLoading(true);
       const [overviewRes, activitiesRes, alertsRes] = await Promise.all([
-        axios.get(`/api/dashboard/overview`),
-        axios.get(`/api/dashboard/recent-activities`),
-        axios.get(`/api/dashboard/alerts`)
+        axios.get(`${apiUrl}/api/dashboard/overview`),
+        axios.get(`${apiUrl}/api/dashboard/recent-activities`),
+        axios.get(`${apiUrl}/api/dashboard/alerts`)
       ]);
 
       setDashboardData(overviewRes.data);
@@ -138,7 +141,7 @@ const Dashboard = () => {
 
   const fetchRecentActivities = async () => {
     try {
-      const response = await axios.get(`/api/dashboard/recent-activities`);
+      const response = await axios.get(`${apiUrl}/api/dashboard/recent-activities`);
       const data = response.data;
       setActivities(data);
     } catch (error) {
@@ -148,7 +151,7 @@ const Dashboard = () => {
 
   const fetchAlerts = async () => {
     try {
-      const response = await axios.get(`/api/dashboard/alerts`);
+      const response = await axios.get(`${apiUrl}/api/dashboard/alerts`);
       const data = response.data;
       setAlerts(data);
     } catch (error) {
