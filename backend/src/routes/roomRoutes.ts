@@ -127,11 +127,11 @@ router.get('/', async (req: Request, res: Response) => {
 
       console.log(`🎉 Successfully loaded ${formattedRooms.length} rooms from MongoDB Atlas`);
       
-      res.json({ 
+      res.json({
         rooms: paginatedRooms,
-        total: formattedRooms.length,
-        page: Number(page),
-        limit: Number(limit)
+        totalCount: formattedRooms.length,
+        totalPages: Math.ceil(formattedRooms.length / Number(limit)),
+        currentPage: Number(page)
       });
     } else {
       // Fallback to in-memory storage
@@ -166,11 +166,11 @@ router.get('/', async (req: Request, res: Response) => {
       const endIndex = startIndex + Number(limit);
       const paginatedRooms = filteredRooms.slice(startIndex, endIndex);
 
-      res.json({ 
+      res.json({
         rooms: paginatedRooms,
-        total: filteredRooms.length,
-        page: Number(page),
-        limit: Number(limit)
+        totalCount: filteredRooms.length,
+        totalPages: Math.ceil(filteredRooms.length / Number(limit)),
+        currentPage: Number(page)
       });
     }
   } catch (error) {
