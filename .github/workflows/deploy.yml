@@ -70,7 +70,7 @@ jobs:
         retention-days: 1
         
     - name: 📤 Upload Frontend Build Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: frontend-build-${{ matrix.node-version }}
         path: frontend/dist/
