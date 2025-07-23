@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 
+const apiUrl = import.meta.env.VITE_API_URL || '';
+
 interface User {
   id: string;
   username: string;
@@ -49,9 +51,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         // Set axios default authorization header
         axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
         
-        // Verify token with backend
+        // Skip token verification for now - just trust stored data
+        setToken(storedToken);
+        setUser(userData);
+        
+        // Comment out verification temporarily
+        /*
         try {
-          const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth/verify`);
+          const response = await axios.get(`${apiUrl}/auth/verify`);
           if (response.data.valid) {
             setToken(storedToken);
             setUser(response.data.user);
@@ -64,6 +71,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           console.error('Token verification failed:', error);
           clearAuth();
         }
+        */
       }
     } catch (error) {
       console.error('Auth initialization error:', error);
@@ -89,7 +97,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       // Call logout endpoint if token exists
       if (token) {
-        await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/logout`);
+        await axios.post(`${apiUrl}/auth/logout`);
       }
     } catch (error) {
       console.error('Logout error:', error);

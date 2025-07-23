@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
+import { body, validationResult } from "../utils/validation";
 
 const router = express.Router();
 

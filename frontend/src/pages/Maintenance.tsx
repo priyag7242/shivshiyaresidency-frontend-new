@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, AlertCircle, CheckCircle, Clock, Wrench, Trash2, Eye } from 'lucide-react';
+import { Search, Plus, Filter, MoreVertical, Edit, Trash2, AlertTriangle, Clock, CheckCircle, XCircle, Calendar, Wrench, IndianRupee, FileText } from 'lucide-react';
 import axios from 'axios';
+
+const apiUrl = import.meta.env.VITE_API_URL || '';
 
 // Utility functions for styling
 const getStatusColor = (status: string) => {
@@ -108,7 +110,7 @@ const Maintenance = () => {
       if (priorityFilter) params.append('priority', priorityFilter);
       if (typeFilter) params.append('request_type', typeFilter);
       
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/maintenance?${params}`);
+      const response = await axios.get(`${apiUrl}/maintenance?${params}`);
       setRequests(response.data.requests || []);
     } catch (error) {
       console.error('Error fetching maintenance requests:', error);
@@ -119,7 +121,7 @@ const Maintenance = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/maintenance/stats`);
+      const response = await axios.get(`${apiUrl}/maintenance/stats`);
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -128,7 +130,7 @@ const Maintenance = () => {
 
   const updateRequestStatus = async (requestId: string, status: string, data: any = {}) => {
     try {
-      await axios.put(`${import.meta.env.VITE_API_URL}/api/maintenance/${requestId}/status`, { status, ...data });
+      await axios.put(`${apiUrl}/maintenance/${requestId}/status`, { status, ...data });
       fetchRequests();
       fetchStats();
     } catch (error: any) {
@@ -141,7 +143,7 @@ const Maintenance = () => {
     if (!confirm('Are you sure you want to delete this maintenance request?')) return;
     
     try {
-      await axios.delete(`${import.meta.env.VITE_API_URL}/api/maintenance/${requestId}`);
+      await axios.delete(`${apiUrl}/maintenance/${requestId}`);
       fetchRequests();
       fetchStats();
     } catch (error: any) {
@@ -167,11 +169,11 @@ const Maintenance = () => {
       case 'in_progress':
         return <Clock className="h-4 w-4" />;
       case 'pending':
-        return <AlertCircle className="h-4 w-4" />;
+        return <AlertTriangle className="h-4 w-4" />;
       case 'cancelled':
         return <Wrench className="h-4 w-4" />;
       default:
-        return <AlertCircle className="h-4 w-4" />;
+        return <AlertTriangle className="h-4 w-4" />;
     }
   };
 
@@ -223,7 +225,7 @@ const Maintenance = () => {
               <p className="text-2xl font-bold text-orange-400">{stats.pending_requests}</p>
               <p className="text-red-400 text-sm">{stats.urgent_priority_pending} urgent</p>
             </div>
-            <AlertCircle className="h-8 w-8 text-orange-400" />
+            <AlertTriangle className="h-8 w-8 text-orange-400" />
           </div>
         </div>
 
@@ -269,7 +271,7 @@ const Maintenance = () => {
 
         <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
+            <AlertTriangle className="h-5 w-5" />
             Priority Breakdown
           </h3>
           <div className="space-y-3">
@@ -417,7 +419,7 @@ const Maintenance = () => {
                           className="p-1 text-golden-400 hover:text-golden-100 transition-colors"
                           title="View Details"
                         >
-                          <Eye className="h-4 w-4" />
+                          <FileText className="h-4 w-4" />
                         </button>
                         
                         {request.status === 'pending' && (
@@ -510,7 +512,7 @@ const MaintenanceRequestModal = ({ isOpen, onClose, onSubmit }: MaintenanceReque
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/maintenance`, formData);
+      await axios.post(`${apiUrl}/maintenance`, formData);
       onSubmit();
     } catch (error: any) {
       console.error('Error creating request:', error);

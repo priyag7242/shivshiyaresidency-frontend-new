@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Wrench, Calendar, IndianRupee, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { X, Wrench, Calendar, IndianRupee, Clock, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import axios from 'axios';
+
+const apiUrl = import.meta.env.VITE_API_URL || '';
 
 interface Room {
   id: string;
@@ -55,7 +57,7 @@ const MaintenanceModal = ({ isOpen, onClose, room, onMaintenanceUpdate }: Mainte
 
     try {
       setLoading(true);
-      await axios.put(`/api/rooms/${room.id}/maintenance`, formData);
+      await axios.put(`${apiUrl}/rooms/${room.id}/maintenance`, formData);
       onMaintenanceUpdate();
       onClose();
     } catch (error: any) {

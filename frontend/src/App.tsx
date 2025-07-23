@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider, ProtectedRoute, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
+import SafeDashboard from './components/SafeDashboard';
 import Tenants from './pages/Tenants';
 import Rooms from './pages/Rooms';
 import Payments from './pages/Payments';
@@ -11,10 +11,12 @@ import Login from './pages/Login';
 //
 // Protected App component that renders after authentication
 const ProtectedApp = () => {
+  console.log('ProtectedApp rendering');
+  
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<SafeDashboard />} />
         <Route 
           path="/tenants" 
           element={
@@ -92,10 +94,13 @@ const AppRouter = () => {
 
 // Main App component
 function App() {
+  console.log('API URL:', import.meta.env.VITE_API_URL);
+  console.log('All env vars:', import.meta.env);
+  
   return (
     <AuthProvider>
       <Router>
-        <div className="App">
+        <div className="App min-h-screen bg-gray-900">
           <AppRouter />
         </div>
       </Router>

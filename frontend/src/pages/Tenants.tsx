@@ -15,8 +15,11 @@ import {
   Clock,
   FileText
 } from 'lucide-react';
+import axios from 'axios';
 import TenantForm from '../components/TenantForm';
 import { completeTenantsData } from '../data/completeTenantsData';
+
+const apiUrl = import.meta.env.VITE_API_URL || '';
 
 interface Tenant {
   id: string;
@@ -70,8 +73,8 @@ const Tenants = () => {
     try {
       setLoading(true);
       // First, check if data already exists
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tenants`);
-      const data = await response.json();
+      const response = await axios.get(`${apiUrl}/tenants`);
+      const data = response.data;
       
       // If no tenants exist, automatically load the complete data
       if (!data.tenants || data.tenants.length === 0) {
@@ -89,15 +92,14 @@ const Tenants = () => {
   const autoImportData = async () => {
     try {
       // Try to import complete tenant database
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tenants/import/complete`, {
-        method: 'POST',
+      const response = await axios.post(`${apiUrl}/tenants/import/complete`, {}, {
         headers: {
           'Content-Type': 'application/json',
         }
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response.status === 200) {
+        const result = response.data;
         console.log('✅ Complete tenant database imported:', result);
         fetchTenants();
         fetchStats();
@@ -127,8 +129,8 @@ const Tenants = () => {
       if (statusFilter) queryParams.append('status', statusFilter);
       if (categoryFilter) queryParams.append('category', categoryFilter);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tenants?${queryParams}`);
-      const data = await response.json();
+      const response = await axios.get(`${apiUrl}/tenants?${queryParams.toString()}`);
+      const data = response.data;
       setTenants(data.tenants || []);
     } catch (error) {
       console.error('Failed to fetch tenants:', error);
@@ -139,8 +141,8 @@ const Tenants = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tenants/stats`);
-      const data = await response.json();
+      const response = await axios.get(`${apiUrl}/tenants/stats`);
+      const data = response.data;
       setStats(data);
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -153,11 +155,9 @@ const Tenants = () => {
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tenants/${tenantId}`, {
-        method: 'DELETE',
-      });
+      const response = await axios.delete(`${apiUrl}/tenants/${tenantId}`);
 
-      if (response.ok) {
+      if (response.status === 200) {
         fetchTenants();
         fetchStats();
       } else {

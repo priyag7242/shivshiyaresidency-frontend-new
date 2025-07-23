@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Eye, EyeOff, Lock, User, AlertCircle, CheckCircle, Building2 } from 'lucide-react';
 import axios from 'axios';
 
-const apiUrl = import.meta.env.VITE_API_URL || '';
+const apiUrl = import.meta.env.VITE_API_URL || 'https://shivshivaresidency-backend.onrender.com/api';
 
 interface LoginResponse {
   message: string;
@@ -37,7 +37,10 @@ const Login = () => {
     setSuccess('');
 
     try {
-      // Use the full API URL
+      console.log('API URL:', apiUrl);
+      console.log('Attempting login with URL:', `${apiUrl}/auth/login`);
+      console.log('Form data:', formData);
+      
       const response = await axios.post(
         `${apiUrl}/auth/login`,
         formData
@@ -54,7 +57,7 @@ const Login = () => {
     } catch (error: any) {
       console.error('Login error:', error);
       setError(
-        error.response?.data?.error || 'Login failed. Please try again.'
+        error.response?.data?.error || error.message || 'Login failed. Please try again.'
       );
     } finally {
       setLoading(false);

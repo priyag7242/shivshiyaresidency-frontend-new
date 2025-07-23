@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: shivshiya-backend
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        value: mongodb+srv://admin:rXJnIrXJ4xxIr8dO@cluster0.7umux.mongodb.net/shiv-shiva-residency?retryWrites=true&w=majority
+      - key: JWT_SECRET
+        value: your-super-secret-jwt-key-change-in-production
+      - key: FRONTEND_URL
+        value: https://shivshiyaresidency-frontend-new.vercel.app

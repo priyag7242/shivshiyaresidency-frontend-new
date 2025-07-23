@@ -23,6 +23,11 @@ import {
   Settings
 } from 'lucide-react';
 import axios from 'axios';
+import TenantDataImporter from '../components/TenantDataImporter';
+import { dashboardQueries } from '../lib/supabaseQueries';
+
+const apiUrl = import.meta.env.VITE_API_URL || '';
+const USE_SUPABASE = true; // Toggle to switch between backends
 
 interface DashboardData {
   total_tenants: number;
@@ -75,6 +80,8 @@ interface Activity {
 }
 
 const Dashboard = () => {
+  console.log('Dashboard component rendering');
+  
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     total_tenants: 0,
     active_tenants: 0,
@@ -120,17 +127,44 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [overviewRes, activitiesRes, alertsRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/overview`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/recent-activities`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/alerts`)
-      ]);
+      
+      if (USE_SUPABASE) {
+        // Use Supabase queries
+        const [overview, activities, alerts] = await Promise.all([
+          dashboardQueries.getOverview(),
+          dashboardQueries.getRecentActivities(),
+          dashboardQueries.getAlerts()
+        ]);
 
-      setDashboardData(overviewRes.data);
-      setActivities(activitiesRes.data);
-      setAlerts(alertsRes.data);
+        setDashboardData(overview);
+        setActivities(activities);
+        setAlerts(alerts);
+      } else {
+        // Use old backend
+        const [overviewRes, activitiesRes, alertsRes] = await Promise.all([
+          axios.get(`${apiUrl}/dashboard/overview`),
+          axios.get(`${apiUrl}/dashboard/recent-activities`),
+          axios.get(`${apiUrl}/dashboard/alerts`)
+        ]);
+
+        // Ensure arrays are arrays
+        const dashData = overviewRes.data;
+        setDashboardData({
+          ...dashData,
+          monthly_revenue_trend: Array.isArray(dashData.monthly_revenue_trend) ? dashData.monthly_revenue_trend : [],
+          occupancy_trend: Array.isArray(dashData.occupancy_trend) ? dashData.occupancy_trend : [],
+          recent_payments: Array.isArray(dashData.recent_payments) ? dashData.recent_payments : [],
+          payment_method_distribution: dashData.payment_method_distribution || {}
+        });
+        
+        setActivities(Array.isArray(activitiesRes.data) ? activitiesRes.data : []);
+        setAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      // Set default empty arrays to prevent map errors
+      setActivities([]);
+      setAlerts([]);
     } finally {
       setLoading(false);
     }
@@ -138,21 +172,23 @@ const Dashboard = () => {
 
   const fetchRecentActivities = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/recent-activities`);
+      const response = await axios.get(`${apiUrl}/dashboard/recent-activities`);
       const data = response.data;
-      setActivities(data);
+      setActivities(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch activities:', error);
+      setActivities([]);
     }
   };
 
   const fetchAlerts = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/alerts`);
+      const response = await axios.get(`${apiUrl}/dashboard/alerts`);
       const data = response.data;
-      setAlerts(data);
+      setAlerts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch alerts:', error);
+      setAlerts([]);
     }
   };
 
@@ -339,7 +375,7 @@ const Dashboard = () => {
             Revenue Trend (Last 6 Months)
           </h3>
           <div className="space-y-3">
-            {dashboardData.monthly_revenue_trend.slice(-6).map((data, index) => {
+            {dashboardData.monthly_revenue_trend && dashboardData.monthly_revenue_trend.length > 0 ? dashboardData.monthly_revenue_trend.slice(-6).map((data, index) => {
               const maxRevenue = Math.max(...dashboardData.monthly_revenue_trend.map(d => d.revenue));
               const percentage = (data.revenue / maxRevenue) * 100;
               
@@ -363,7 +399,7 @@ const Dashboard = () => {
                   </div>
                 </div>
               );
-            })}
+            }) : <div className="text-golden-400/60 text-center py-4">No revenue data available</div>}
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
+import { body, validationResult } from "../utils/validation";
 import { tenants } from './tenantRoutes'; // Import tenants array from tenant routes
 import SimpleRoom from '../models/SimpleRoom'; // Import SimpleRoom model
 
@@ -127,7 +127,12 @@ router.get('/', async (req: Request, res: Response) => {
 
       console.log(`🎉 Successfully loaded ${formattedRooms.length} rooms from MongoDB Atlas`);
       
-      res.json(paginatedRooms);
+      res.json({ 
+        rooms: paginatedRooms,
+        total: formattedRooms.length,
+        page: Number(page),
+        limit: Number(limit)
+      });
     } else {
       // Fallback to in-memory storage
       let filteredRooms = rooms;
@@ -161,7 +166,12 @@ router.get('/', async (req: Request, res: Response) => {
       const endIndex = startIndex + Number(limit);
       const paginatedRooms = filteredRooms.slice(startIndex, endIndex);
 
-      res.json(paginatedRooms);
+      res.json({ 
+        rooms: paginatedRooms,
+        total: filteredRooms.length,
+        page: Number(page),
+        limit: Number(limit)
+      });
     }
   } catch (error) {
     console.error('❌ Error fetching rooms from MongoDB:', error);
