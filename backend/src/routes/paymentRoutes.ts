@@ -110,9 +110,7 @@ router.get('/', async (req: Request, res: Response) => {
       payments: paginatedPayments,
       totalCount: filteredPayments.length,
       totalPages: Math.ceil(filteredPayments.length / Number(limit)),
-      currentPage: Number(page),
-      hasNextPage: endIndex < filteredPayments.length,
-      hasPrevPage: startIndex > 0
+      currentPage: Number(page)
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch payments' });
