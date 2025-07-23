@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider, ProtectedRoute, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
+import SafeDashboard from './components/SafeDashboard';
 import Tenants from './pages/Tenants';
 import Rooms from './pages/Rooms';
 import Payments from './pages/Payments';
@@ -16,7 +16,7 @@ const ProtectedApp = () => {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<SafeDashboard />} />
         <Route 
           path="/tenants" 
           element={

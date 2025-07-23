@@ -78,6 +78,8 @@ interface Activity {
 }
 
 const Dashboard = () => {
+  console.log('Dashboard component rendering');
+  
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     total_tenants: 0,
     active_tenants: 0,
@@ -356,7 +358,7 @@ const Dashboard = () => {
             Revenue Trend (Last 6 Months)
           </h3>
           <div className="space-y-3">
-            {dashboardData.monthly_revenue_trend.slice(-6).map((data, index) => {
+            {dashboardData.monthly_revenue_trend && dashboardData.monthly_revenue_trend.length > 0 ? dashboardData.monthly_revenue_trend.slice(-6).map((data, index) => {
               const maxRevenue = Math.max(...dashboardData.monthly_revenue_trend.map(d => d.revenue));
               const percentage = (data.revenue / maxRevenue) * 100;
               
