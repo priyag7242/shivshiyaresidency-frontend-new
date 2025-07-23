@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Lock, User, AlertCircle, CheckCircle, Building2 } from 'lucide-react';
 import axios from 'axios';
+import { supabaseAuth } from '../lib/supabase';
 
 const apiUrl = import.meta.env.VITE_API_URL || '';
+const USE_SUPABASE = true; // Toggle this to switch between backends
 
 interface LoginResponse {
   message: string;
