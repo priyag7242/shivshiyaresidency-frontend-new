@@ -20,41 +20,14 @@ connectDatabase();
 // Middleware
 app.use(helmet());
 
-// CORS configuration
-const corsOptions = {
-  origin: function (origin: any, callback: any) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // Allow configured origins
-    const allowedOrigins = [
-      config.frontendUrl,
-      'http://localhost:3000',
-      'http://localhost:5173', // Vite default port
-    ];
-    
-    // Allow any Vercel deployment that contains our project name
-    if (origin.includes('vercel.app') && 
-        (origin.includes('shivshiyaresidency-frontend-new') || 
-         origin.includes('priyag7242'))) {
-      return callback(null, true);
-    }
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(null, false); // Reject other origins
-    }
-  },
+// Simplified CORS configuration - TEMPORARY for debugging
+app.use(cors({
+  origin: '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Handle preflight requests
+  optionsSuccessStatus: 200 // Change from 204 to 200
+}));
 
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
