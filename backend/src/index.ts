@@ -16,28 +16,50 @@ const app = express();
 // Connect to MongoDB
 connectDatabase();
 
+// First, intercept all requests and strip any existing CORS headers
+app.use((req, res, next) => {
+  // Store the original res.setHeader
+  const originalSetHeader = res.setHeader;
+  
+  // Override setHeader to intercept CORS headers
+  res.setHeader = function(name: string, value: string | number | string[]) {
+    // If it's a CORS header being set, ignore it unless it's our own
+    if (name.toLowerCase().startsWith('access-control-') && value !== '*') {
+      console.log(`Intercepted CORS header: ${name} = ${value}`);
+      return res;
+    }
+    return originalSetHeader.call(this, name, value);
+  };
+  
+  next();
+});
+
 // CORS must be first - before any other middleware
 // Handle CORS preflight requests immediately
 app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  res.sendStatus(204);
 });
 
 // Apply CORS to all routes
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
+  // Force set our CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   next();
 });
 
 // Now apply other middleware
 app.use(helmet({
   crossOriginResourcePolicy: false,
+  // Disable HSTS as it might interfere
+  hsts: false
 }));
 
 app.use(morgan('combined'));
