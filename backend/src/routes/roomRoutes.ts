@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { body, validationResult } from 'express-validator';
+import { body, validationResult } from "../utils/validation";
 import { tenants } from './tenantRoutes'; // Import tenants array from tenant routes
 import SimpleRoom from '../models/SimpleRoom'; // Import SimpleRoom model
 
