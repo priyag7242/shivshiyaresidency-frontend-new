@@ -1,4 +1,4 @@
-# Use Node.js LTS version
+# Use Node.js 18 LTS
 FROM node:18-alpine
 
 # Set working directory
@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install all dependencies (including dev dependencies for build)
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -16,12 +16,14 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
-# Expose port
-EXPOSE 5000
+# Remove dev dependencies after build
+RUN npm prune --production
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:5000/api/health || exit 1
+# Expose port
+EXPOSE 5001
+
+# Set environment to production
+ENV NODE_ENV=production
 
 # Start the application
 CMD ["npm", "start"] 

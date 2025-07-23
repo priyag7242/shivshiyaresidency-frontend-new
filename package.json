@@ -15,10 +15,17 @@
     "deploy": "chmod +x deploy.sh && ./deploy.sh",
     "test": "cd backend && npm test && cd ../frontend && npm test --if-present"
   },
-  "keywords": ["pg-management", "residency", "property-management"],
+  "keywords": [
+    "pg-management",
+    "residency",
+    "property-management"
+  ],
   "author": "Shiv Shiva Residency",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "mongodb": "^6.17.0"
   }
-} 
+}

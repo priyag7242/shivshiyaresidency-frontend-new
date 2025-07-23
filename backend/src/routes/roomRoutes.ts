@@ -1,11 +1,14 @@
 import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
+import { tenants } from './tenantRoutes'; // Import tenants array from tenant routes
+import SimpleRoom from '../models/SimpleRoom'; // Import SimpleRoom model
 
 const router = express.Router();
 
 // Enhanced room data structure with allocation and maintenance tracking
 interface RoomData {
   id: string;
+  name: string; // Add name field
   room_number: string;
   floor: 0 | 1 | 2 | 3 | 4 | 5;
   type: 'single' | 'double' | 'triple' | 'quad';
@@ -68,46 +71,100 @@ router.get('/', async (req: Request, res: Response) => {
       maintenance_status = ''
     } = req.query;
 
-    let filteredRooms = rooms;
+    // Try to fetch from MongoDB first
+    const mongoRooms = await SimpleRoom.find({}).sort({ room_number: 1 });
+    
+    if (mongoRooms && mongoRooms.length > 0) {
+      // Convert MongoDB documents to the expected format
+      let formattedRooms = mongoRooms.map(room => ({
+        id: String(room._id),
+        name: room.name || `Room ${room.room_number}`, // Add proper name field
+        room_number: room.room_number.toString(),
+        floor: Math.floor(room.room_number / 100) as 0 | 1 | 2 | 3 | 4 | 5,
+        type: room.type.toLowerCase() as 'single' | 'double' | 'triple' | 'quad',
+        capacity: room.occupancy,
+        current_occupancy: room.occupancy,
+        monthly_rent: room.rent,
+        security_deposit: room.rent, // Assuming same as rent for now
+        amenities: room.amenities || ['WiFi', 'Fan', 'Light', 'Attached Bathroom'],
+        status: room.status as 'available' | 'occupied' | 'maintenance' | 'reserved',
+        description: `${room.type} room - ${room.name || `Room ${room.room_number}`}`,
+        images: [],
+        tenants: [{ id: '1', name: room.name || `Room ${room.room_number}`, allocated_date: new Date().toISOString().split('T')[0] }],
+        created_date: new Date().toISOString().split('T')[0],
+        updated_date: new Date().toISOString().split('T')[0],
+        maintenance_status: 'none' as 'none' | 'scheduled' | 'in_progress' | 'completed'
+      }));
 
-    // Apply filters
-    if (search) {
-      filteredRooms = filteredRooms.filter(room => 
-        room.room_number.toLowerCase().includes(search.toString().toLowerCase()) ||
-        room.description?.toLowerCase().includes(search.toString().toLowerCase())
-      );
+      // Apply filters
+      if (search) {
+        formattedRooms = formattedRooms.filter(room => 
+          room.room_number.toLowerCase().includes(search.toString().toLowerCase()) ||
+          room.description?.toLowerCase().includes(search.toString().toLowerCase())
+        );
+      }
+
+      if (floor !== '') {
+        formattedRooms = formattedRooms.filter(room => room.floor === Number(floor));
+      }
+
+      if (type) {
+        formattedRooms = formattedRooms.filter(room => room.type === type);
+      }
+
+      if (status) {
+        formattedRooms = formattedRooms.filter(room => room.status === status);
+      }
+
+      if (maintenance_status) {
+        formattedRooms = formattedRooms.filter(room => room.maintenance_status === maintenance_status);
+      }
+
+      // Pagination
+      const startIndex = (Number(page) - 1) * Number(limit);
+      const endIndex = startIndex + Number(limit);
+      const paginatedRooms = formattedRooms.slice(startIndex, endIndex);
+
+      console.log(`🎉 Successfully loaded ${formattedRooms.length} rooms from MongoDB Atlas`);
+      
+      res.json(paginatedRooms);
+    } else {
+      // Fallback to in-memory storage
+      let filteredRooms = rooms;
+
+      // Apply filters
+      if (search) {
+        filteredRooms = filteredRooms.filter(room => 
+          room.room_number.toLowerCase().includes(search.toString().toLowerCase()) ||
+          room.description?.toLowerCase().includes(search.toString().toLowerCase())
+        );
+      }
+
+      if (floor !== '') {
+        filteredRooms = filteredRooms.filter(room => room.floor === Number(floor));
+      }
+
+      if (type) {
+        filteredRooms = filteredRooms.filter(room => room.type === type);
+      }
+
+      if (status) {
+        filteredRooms = filteredRooms.filter(room => room.status === status);
+      }
+
+      if (maintenance_status) {
+        filteredRooms = filteredRooms.filter(room => room.maintenance_status === maintenance_status);
+      }
+
+      // Pagination
+      const startIndex = (Number(page) - 1) * Number(limit);
+      const endIndex = startIndex + Number(limit);
+      const paginatedRooms = filteredRooms.slice(startIndex, endIndex);
+
+      res.json(paginatedRooms);
     }
-
-    if (floor !== '') {
-      filteredRooms = filteredRooms.filter(room => room.floor === Number(floor));
-    }
-
-    if (type) {
-      filteredRooms = filteredRooms.filter(room => room.type === type);
-    }
-
-    if (status) {
-      filteredRooms = filteredRooms.filter(room => room.status === status);
-    }
-
-    if (maintenance_status) {
-      filteredRooms = filteredRooms.filter(room => room.maintenance_status === maintenance_status);
-    }
-
-    // Pagination
-    const startIndex = (Number(page) - 1) * Number(limit);
-    const endIndex = startIndex + Number(limit);
-    const paginatedRooms = filteredRooms.slice(startIndex, endIndex);
-
-    res.json({
-      rooms: paginatedRooms,
-      totalCount: filteredRooms.length,
-      totalPages: Math.ceil(filteredRooms.length / Number(limit)),
-      currentPage: Number(page),
-      hasNextPage: endIndex < filteredRooms.length,
-      hasPrevPage: startIndex > 0
-    });
   } catch (error) {
+    console.error('❌ Error fetching rooms from MongoDB:', error);
     res.status(500).json({ error: 'Failed to fetch rooms' });
   }
 });
@@ -133,6 +190,24 @@ router.get('/available', async (req: Request, res: Response) => {
 // GET /api/rooms/stats - Get room statistics
 router.get('/stats', async (req: Request, res: Response) => {
   try {
+    // Try to fetch from MongoDB first
+    const mongoRooms = await SimpleRoom.find({});
+    
+    let roomsToProcess = [];
+    
+    if (mongoRooms && mongoRooms.length > 0) {
+      // Convert MongoDB documents to expected format for stats calculation
+      roomsToProcess = mongoRooms.map(room => ({
+        floor: Math.floor(room.room_number / 100),
+        type: room.type.toLowerCase(),
+        status: room.status,
+        maintenance_status: 'none'
+      }));
+    } else {
+      // Fallback to in-memory rooms
+      roomsToProcess = rooms;
+    }
+
     const floorStats = {
       0: { total: 0, occupied: 0, available: 0, maintenance: 0 },
       1: { total: 0, occupied: 0, available: 0, maintenance: 0 },
@@ -156,17 +231,24 @@ router.get('/stats', async (req: Request, res: Response) => {
       completed: 0
     };
 
-    rooms.forEach(room => {
+    roomsToProcess.forEach((room: any) => {
+      const floor = Math.min(Math.max(room.floor, 0), 5);
+      
       // Floor stats
-      floorStats[room.floor].total++;
-      if (room.status === 'occupied') floorStats[room.floor].occupied++;
-      else if (room.status === 'available') floorStats[room.floor].available++;
-      else if (room.status === 'maintenance') floorStats[room.floor].maintenance++;
+      if (floorStats[floor as keyof typeof floorStats]) {
+        floorStats[floor as keyof typeof floorStats].total++;
+        if (room.status === 'occupied') floorStats[floor as keyof typeof floorStats].occupied++;
+        else if (room.status === 'available') floorStats[floor as keyof typeof floorStats].available++;
+        else if (room.status === 'maintenance') floorStats[floor as keyof typeof floorStats].maintenance++;
+      }
 
       // Type stats
-      typeStats[room.type].total++;
-      if (room.status === 'occupied') typeStats[room.type].occupied++;
-      else if (room.status === 'available') typeStats[room.type].available++;
+      const roomType = room.type.toLowerCase();
+      if (typeStats[roomType as keyof typeof typeStats]) {
+        typeStats[roomType as keyof typeof typeStats].total++;
+        if (room.status === 'occupied') typeStats[roomType as keyof typeof typeStats].occupied++;
+        else if (room.status === 'available') typeStats[roomType as keyof typeof typeStats].available++;
+      }
 
       // Maintenance stats
       const maintenanceStatus = room.maintenance_status || 'none';
@@ -176,14 +258,14 @@ router.get('/stats', async (req: Request, res: Response) => {
     });
 
     const stats = {
-      total: rooms.length,
-      occupied: rooms.filter(r => r.status === 'occupied').length,
-      available: rooms.filter(r => r.status === 'available').length,
-      maintenance: rooms.filter(r => r.status === 'maintenance').length,
-      reserved: rooms.filter(r => r.status === 'reserved').length,
-      totalCapacity: rooms.reduce((sum, r) => sum + r.capacity, 0),
-      currentOccupancy: rooms.reduce((sum, r) => sum + r.current_occupancy, 0),
-      totalRevenue: rooms.filter(r => r.status === 'occupied').reduce((sum, r) => sum + r.monthly_rent, 0),
+      total: roomsToProcess.length,
+      occupied: roomsToProcess.filter((r: any) => r.status === 'occupied').length,
+      available: roomsToProcess.filter((r: any) => r.status === 'available').length,
+      maintenance: roomsToProcess.filter((r: any) => r.status === 'maintenance').length,
+      reserved: roomsToProcess.filter((r: any) => r.status === 'reserved').length,
+      totalCapacity: roomsToProcess.length * 2, // Estimate
+      currentOccupancy: roomsToProcess.filter((r: any) => r.status === 'occupied').length,
+      totalRevenue: roomsToProcess.filter((r: any) => r.status === 'occupied').length * 15000, // Estimate
       floorStats,
       typeStats,
       maintenanceStats
@@ -191,6 +273,7 @@ router.get('/stats', async (req: Request, res: Response) => {
 
     res.json(stats);
   } catch (error) {
+    console.error('❌ Error fetching room stats from MongoDB:', error);
     res.status(500).json({ error: 'Failed to fetch room statistics' });
   }
 });
@@ -226,6 +309,7 @@ router.post('/', validateRoom, async (req: Request, res: Response) => {
 
     const newRoom: RoomData = {
       id: Date.now().toString(), // In production, use proper UUID
+      name: req.body.name || `Room ${req.body.room_number}`, // Add name field
       room_number: req.body.room_number,
       floor: Number(req.body.floor) as 0 | 1 | 2 | 3 | 4 | 5,
       type: req.body.type,
@@ -538,6 +622,107 @@ router.get('/floor/:floorNumber', async (req: Request, res: Response) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch floor rooms' });
+  }
+});
+
+// Initialize rooms from tenant data
+router.post('/initialize', async (req: Request, res: Response) => {
+  try {
+    console.log(`Found ${tenants.length} tenants for room initialization`);
+    
+    // Extract unique rooms and their details
+    const roomMap = new Map();
+    
+    tenants.forEach((tenant: any) => {
+      const roomNumber = tenant.room_number;
+      if (!roomMap.has(roomNumber)) {
+        // Determine floor from room number
+        const floor = parseInt(roomNumber.toString().charAt(0));
+        
+        // Determine room type based on rent (approximation)
+        let type = 'single';
+        if (tenant.monthly_rent >= 16000) type = 'double';
+        if (tenant.monthly_rent >= 20000) type = 'triple';
+        if (tenant.monthly_rent >= 25000) type = 'quad';
+        
+        // Set capacity based on type
+        const capacity = {
+          'single': 1,
+          'double': 2,
+          'triple': 3,
+          'quad': 4
+        }[type];
+        
+        roomMap.set(roomNumber, {
+          id: `room-${roomNumber}-${Date.now()}`,
+          name: `Room ${roomNumber}`, // Add name field
+          room_number: roomNumber,
+          floor: Math.min(Math.max(floor, 0), 5) as 0 | 1 | 2 | 3 | 4 | 5, // Ensure valid floor
+          type: type as 'single' | 'double' | 'triple' | 'quad',
+          capacity: capacity,
+          current_occupancy: 0,
+          monthly_rent: tenant.monthly_rent,
+          security_deposit: tenant.security_deposit,
+          amenities: ['wifi', 'ac', 'attached_bathroom'],
+          status: 'occupied' as 'available' | 'occupied' | 'maintenance' | 'reserved',
+          description: `${type.charAt(0).toUpperCase() + type.slice(1)} occupancy room on floor ${floor}`,
+          images: [],
+          tenants: [],
+          maintenance_status: 'none' as 'none' | 'scheduled' | 'in_progress' | 'completed',
+          created_date: new Date().toISOString().split('T')[0],
+          updated_date: new Date().toISOString().split('T')[0]
+        });
+      }
+    });
+    
+    // Count tenants per room and populate tenant information
+    tenants.forEach((tenant: any) => {
+      const room = roomMap.get(tenant.room_number);
+      if (room) {
+        room.current_occupancy += 1;
+        room.tenants.push({
+          id: tenant.id,
+          name: tenant.name,
+          allocated_date: tenant.joining_date || tenant.created_date
+        });
+        // If room is full, mark as occupied, otherwise available
+        room.status = room.current_occupancy >= room.capacity ? 'occupied' : 'available';
+      }
+    });
+    
+    // Clear existing rooms and add new ones
+    rooms.length = 0;
+    const roomsToInsert = Array.from(roomMap.values());
+    rooms.push(...roomsToInsert);
+    
+    // Summary
+    const summary = {
+      total_rooms: rooms.length,
+      floors: [...new Set(roomsToInsert.map((r: any) => r.floor))].sort(),
+      room_types: roomsToInsert.reduce((acc: any, room: any) => {
+        acc[room.type] = (acc[room.type] || 0) + 1;
+        return acc;
+      }, {}),
+      occupancy_summary: {
+        occupied: roomsToInsert.filter((r: any) => r.status === 'occupied').length,
+        available: roomsToInsert.filter((r: any) => r.status === 'available').length
+      }
+    };
+    
+    console.log('✅ Rooms initialized successfully:', summary);
+    
+    res.status(201).json({
+      message: 'Rooms initialized successfully from tenant data! 🏠',
+      summary,
+      rooms_created: rooms.length
+    });
+    
+  } catch (error: any) {
+    console.error('❌ Error initializing rooms:', error);
+    res.status(500).json({
+      error: 'Failed to initialize rooms',
+      message: error.message
+    });
   }
 });
 

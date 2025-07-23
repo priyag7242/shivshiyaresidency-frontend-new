@@ -1,0 +1,22 @@
+{
+  "name": "shiv-shiva-residency-frontend",
+  "version": 2,
+  "framework": "vite",
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "cd frontend && npm install",
+  "devCommand": "cd frontend && npm run dev",
+  "env": {
+    "VITE_API_BASE_URL": "https://your-backend-url.railway.app/api"
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "https://your-backend-url.railway.app/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+} 

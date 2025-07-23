@@ -16,7 +16,7 @@ import {
   FileText
 } from 'lucide-react';
 import TenantForm from '../components/TenantForm';
-import { completeTenantsData } from '../utils/completeTenantsData';
+import { completeTenantsData } from '../data/completeTenantsData';
 
 interface Tenant {
   id: string;
@@ -88,21 +88,34 @@ const Tenants = () => {
 
   const autoImportData = async () => {
     try {
-      const response = await fetch('/api/tenants/import', {
+      // Try to import complete tenant database
+      const response = await fetch('/api/tenants/import/complete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ tenantsData: completeTenantsData }),
+        }
       });
 
       if (response.ok) {
-        console.log('Tenant data automatically loaded');
+        const result = await response.json();
+        console.log('✅ Complete tenant database imported:', result);
         fetchTenants();
         fetchStats();
       }
     } catch (error) {
-      console.error('Failed to auto-import tenant data:', error);
+      console.error('❌ Backend not available, loading local data for testing:', error);
+      // Fallback: Use local data for testing responsiveness
+      setTenants(completeTenantsData as Tenant[]);
+      setStats({
+        total: completeTenantsData.length,
+        active: completeTenantsData.filter(t => t.status === 'active').length,
+        adjusting: completeTenantsData.filter(t => t.status === 'adjust').length,
+        withFood: completeTenantsData.filter(t => t.has_food).length,
+        newTenants: completeTenantsData.filter(t => t.category === 'new').length,
+        totalRent: completeTenantsData.reduce((sum, t) => sum + t.monthly_rent, 0),
+        totalDeposits: completeTenantsData.reduce((sum, t) => sum + t.security_deposit, 0)
+      });
+      setLoading(false);
     }
   };
 
