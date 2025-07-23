@@ -39,6 +39,9 @@ const Login = () => {
     setSuccess('');
 
     try {
+      console.log('USE_SUPABASE:', USE_SUPABASE);
+      console.log('API URL:', apiUrl);
+      
       if (USE_SUPABASE) {
         // Use Supabase authentication
         console.log('Attempting Supabase login...');
