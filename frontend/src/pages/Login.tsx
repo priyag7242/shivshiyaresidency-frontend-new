@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Eye, EyeOff, Lock, User, AlertCircle, CheckCircle, Building2 } from 'lucide-react';
 import axios from 'axios';
 
+const apiUrl = import.meta.env.VITE_API_URL || '';
+
 interface LoginResponse {
   message: string;
   token: string;
@@ -35,22 +37,25 @@ const Login = () => {
     setSuccess('');
 
     try {
-      const response = await axios.post<LoginResponse>('/api/auth/login', formData);
-      
+      // Use the full API URL
+      const response = await axios.post(
+        `${apiUrl}/auth/login`,
+        formData
+      );
+
       // Store token and user data
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      
+
       setSuccess('Login successful! Redirecting...');
-      
-      // Redirect to dashboard after 1 second
       setTimeout(() => {
         window.location.href = '/';
       }, 1000);
-      
     } catch (error: any) {
       console.error('Login error:', error);
-      setError(error.response?.data?.error || 'Login failed. Please try again.');
+      setError(
+        error.response?.data?.error || 'Login failed. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
