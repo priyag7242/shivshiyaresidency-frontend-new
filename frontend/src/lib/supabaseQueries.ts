@@ -114,20 +114,30 @@ export const dashboardQueries = {
 // Rooms queries
 export const roomsQueries = {
   async getAll() {
-    const { data, error } = await supabase
+    const { data: rooms, error: roomsError } = await supabase
       .from('rooms')
-      .select(`
-        *,
-        tenants!inner(
-          id,
-          name,
-          mobile
-        )
-      `)
+      .select('*')
       .order('room_number');
     
-    if (error) throw error;
-    return data;
+    if (roomsError) throw roomsError;
+
+    // Get tenants for each room
+    const roomsWithTenants = await Promise.all(
+      (rooms || []).map(async (room) => {
+        const { data: tenants } = await supabase
+          .from('tenants')
+          .select('id, name, mobile')
+          .eq('room_id', room.id)
+          .eq('is_active', true);
+        
+        return {
+          ...room,
+          tenants: tenants || []
+        };
+      })
+    );
+    
+    return roomsWithTenants;
   },
 
   async create(room: any) {
@@ -188,6 +198,142 @@ export const tenantsQueries = {
     const { data, error } = await supabase
       .from('tenants')
       .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+};
+
+// Payments queries
+export const paymentsQueries = {
+  async getAll() {
+    const { data: payments, error } = await supabase
+      .from('payments')
+      .select(`
+        *,
+        tenants!inner(name, mobile),
+        rooms!inner(room_number)
+      `)
+      .order('payment_date', { ascending: false });
+    
+    if (error) throw error;
+    
+    return payments?.map(p => ({
+      ...p,
+      tenant_name: p.tenants?.name || 'Unknown',
+      tenant_mobile: p.tenants?.mobile || '',
+      room_number: p.rooms?.room_number || ''
+    })) || [];
+  },
+
+  async create(payment: any) {
+    const { data, error } = await supabase
+      .from('payments')
+      .insert([payment])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id: string, updates: any) {
+    const { data, error } = await supabase
+      .from('payments')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+};
+
+// Maintenance queries
+export const maintenanceQueries = {
+  async getAll() {
+    const { data, error } = await supabase
+      .from('maintenance')
+      .select(`
+        *,
+        rooms!inner(room_number),
+        tenants(name)
+      `)
+      .order('reported_date', { ascending: false });
+    
+    if (error) throw error;
+    
+    return data?.map(m => ({
+      ...m,
+      room_number: m.rooms?.room_number || '',
+      tenant_name: m.tenants?.name || 'N/A'
+    })) || [];
+  },
+
+  async create(maintenance: any) {
+    const { data, error } = await supabase
+      .from('maintenance')
+      .insert([maintenance])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async update(id: string, updates: any) {
+    const { data, error } = await supabase
+      .from('maintenance')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  }
+};
+
+// Visitors queries
+export const visitorsQueries = {
+  async getAll() {
+    const { data, error } = await supabase
+      .from('visitors')
+      .select(`
+        *,
+        tenants!inner(name),
+        rooms!inner(room_number)
+      `)
+      .order('check_in_time', { ascending: false });
+    
+    if (error) throw error;
+    
+    return data?.map(v => ({
+      ...v,
+      tenant_name: v.tenants?.name || '',
+      room_number: v.rooms?.room_number || ''
+    })) || [];
+  },
+
+  async create(visitor: any) {
+    const { data, error } = await supabase
+      .from('visitors')
+      .insert([visitor])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async checkOut(id: string) {
+    const { data, error } = await supabase
+      .from('visitors')
+      .update({ check_out_time: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();

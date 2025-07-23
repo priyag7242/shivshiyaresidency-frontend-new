@@ -4,8 +4,10 @@ import axios from 'axios';
 import RoomForm from '../components/RoomForm';
 import RoomAllocationModal from '../components/RoomAllocationModal';
 import MaintenanceModal from '../components/MaintenanceModal';
+import { roomsQueries } from '../lib/supabaseQueries';
 
 const apiUrl = import.meta.env.VITE_API_URL || '';
+const USE_SUPABASE = true;
 
 interface Room {
   id: string;
@@ -99,17 +101,42 @@ const Rooms = () => {
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
-      if (floorFilter) params.append('floor', floorFilter);
-      if (typeFilter) params.append('type', typeFilter);
-      if (statusFilter) params.append('status', statusFilter);
-      if (maintenanceFilter) params.append('maintenance_status', maintenanceFilter);
       
-      const response = await axios.get(`${apiUrl}/rooms?${params}`);
-      setRooms(response.data.rooms || []);
+      if (USE_SUPABASE) {
+        const data = await roomsQueries.getAll();
+        let filteredRooms = data || [];
+        
+        // Apply filters
+        if (searchTerm) {
+          filteredRooms = filteredRooms.filter(room => 
+            room.room_number.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        }
+        if (floorFilter) {
+          filteredRooms = filteredRooms.filter(room => room.floor.toString() === floorFilter);
+        }
+        if (typeFilter) {
+          filteredRooms = filteredRooms.filter(room => room.room_type === typeFilter);
+        }
+        if (statusFilter) {
+          filteredRooms = filteredRooms.filter(room => room.status === statusFilter);
+        }
+        
+        setRooms(filteredRooms);
+      } else {
+        const params = new URLSearchParams();
+        if (searchTerm) params.append('search', searchTerm);
+        if (floorFilter) params.append('floor', floorFilter);
+        if (typeFilter) params.append('type', typeFilter);
+        if (statusFilter) params.append('status', statusFilter);
+        if (maintenanceFilter) params.append('maintenance_status', maintenanceFilter);
+        
+        const response = await axios.get(`${apiUrl}/rooms?${params}`);
+        setRooms(response.data.rooms || []);
+      }
     } catch (error) {
       console.error('Error fetching rooms:', error);
+      setRooms([]);
     } finally {
       setLoading(false);
     }

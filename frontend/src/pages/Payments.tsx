@@ -29,8 +29,10 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import BillTemplate from '../components/BillTemplate';
+import { paymentsQueries, tenantsQueries, roomsQueries } from '../lib/supabaseQueries';
 
 const apiUrl = import.meta.env.VITE_API_URL || '';
+const USE_SUPABASE = true;
 
 interface Payment {
   id: string;
