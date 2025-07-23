@@ -164,9 +164,7 @@ router.get('/', async (req: Request, res: Response) => {
       visitors: paginatedVisitors,
       totalCount: filteredVisitors.length,
       totalPages: Math.ceil(filteredVisitors.length / Number(limit)),
-      currentPage: Number(page),
-      hasNextPage: endIndex < filteredVisitors.length,
-      hasPrevPage: startIndex > 0
+      currentPage: Number(page)
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch visitors' });
