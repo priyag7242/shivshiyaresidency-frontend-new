@@ -28,6 +28,7 @@ app.use(cors({
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.options('*', cors());
 
 // Routes
 app.get('/api/health', (req, res) => {
