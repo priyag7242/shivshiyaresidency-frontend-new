@@ -11,6 +11,8 @@ import Login from './pages/Login';
 //
 // Protected App component that renders after authentication
 const ProtectedApp = () => {
+  console.log('ProtectedApp rendering');
+  
   return (
     <Layout>
       <Routes>
@@ -98,7 +100,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="App">
+        <div className="App min-h-screen bg-gray-900">
           <AppRouter />
         </div>
       </Router>
