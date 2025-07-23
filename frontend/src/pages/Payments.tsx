@@ -151,7 +151,7 @@ const Payments = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/payments/stats`);
+      const response = await axios.get('/api/payments/stats');
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -160,7 +160,7 @@ const Payments = () => {
 
   const fetchRooms = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/rooms`);
+      const response = await axios.get('/api/rooms');
       setRooms(response.data.rooms || []);
     } catch (error) {
       console.error('Error fetching rooms:', error);
@@ -182,7 +182,7 @@ const Payments = () => {
 
     try {
       setGenerating(true);
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/payments/electricity/update`, {
+      const response = await axios.post('/api/payments/electricity/update', {
         room_readings: readingsToUpdate
       });
       
@@ -200,7 +200,7 @@ const Payments = () => {
   const generateBills = async () => {
     try {
       setGenerating(true);
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/payments/bills/generate`, {
+      const response = await axios.post('/api/payments/bills/generate', {
         billing_month: billGeneration.billing_month,
         electricity_rate: billGeneration.electricity_rate
       });
@@ -217,7 +217,7 @@ const Payments = () => {
 
   const recordPayment = async (paymentData: any) => {
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/api/payments`, paymentData);
+      await axios.post('/api/payments', paymentData);
       fetchData();
       setShowPaymentModal(false);
       setSelectedBill(null);
@@ -948,7 +948,7 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
   const fetchTenants = async () => {
     try {
       setLoadingTenants(true);
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/tenants`);
+      const response = await axios.get('/api/tenants');
       setTenants(response.data.tenants || []);
     } catch (error) {
       console.error('Error fetching tenants:', error);
@@ -968,12 +968,12 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
       setRoomFetchMessage('🔍 Fetching tenant & bill details...');
       
       // Fetch tenant data
-      const tenantResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/tenants/room/${roomNumber.trim()}`);
+      const tenantResponse = await axios.get(`/api/tenants/room/${roomNumber.trim()}`);
       const tenantData = tenantResponse.data.tenant;
       
       if (tenantData) {
         // Fetch current bills for this tenant
-        const billsResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/payments/bills`);
+        const billsResponse = await axios.get('/api/payments/bills');
         const allBills = billsResponse.data.bills || [];
         
         // Find current month's bill for this tenant
@@ -1103,7 +1103,7 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
           setRoomFetchMessage('🔍 Loading bill details...');
           
           // Fetch current bills for this tenant
-          const billsResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/payments/bills`);
+          const billsResponse = await axios.get('/api/payments/bills');
           const allBills = billsResponse.data.bills || [];
           
           // Find current month's bill for this tenant
@@ -1695,7 +1695,7 @@ const WhatsAppBillModal = ({ isOpen, bill, onClose }: WhatsAppBillModalProps) =>
         setTenantPhone(tenantData.mobile);
       } else {
         // Fallback: try to fetch by room number
-        const roomResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/tenants/room/${bill.room_number}`);
+        const roomResponse = await axios.get(`/api/tenants/room/${bill.room_number}`);
         if (roomResponse.data.tenant?.mobile) {
           setTenantPhone(roomResponse.data.tenant.mobile);
         }

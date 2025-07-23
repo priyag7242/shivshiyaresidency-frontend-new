@@ -121,9 +121,9 @@ const Dashboard = () => {
     try {
       setLoading(true);
       const [overviewRes, activitiesRes, alertsRes] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/overview`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/recent-activities`),
-        axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/alerts`)
+        axios.get(`/api/dashboard/overview`),
+        axios.get(`/api/dashboard/recent-activities`),
+        axios.get(`/api/dashboard/alerts`)
       ]);
 
       setDashboardData(overviewRes.data);
@@ -138,7 +138,7 @@ const Dashboard = () => {
 
   const fetchRecentActivities = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/recent-activities`);
+      const response = await axios.get(`/api/dashboard/recent-activities`);
       const data = response.data;
       setActivities(data);
     } catch (error) {
@@ -148,7 +148,7 @@ const Dashboard = () => {
 
   const fetchAlerts = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/dashboard/alerts`);
+      const response = await axios.get(`/api/dashboard/alerts`);
       const data = response.data;
       setAlerts(data);
     } catch (error) {
