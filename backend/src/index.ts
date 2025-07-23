@@ -1,4 +1,4 @@
-import * as express from 'express';
+import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config/config';
@@ -21,7 +21,7 @@ app.set('trust proxy', true);
 app.enable('trust proxy');
 
 // Add bypass headers for Railway proxy
-app.use((req, res, next) => {
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   // Add headers that might bypass Railway's CORS enforcement
   res.setHeader('X-Powered-By', 'Express');
   res.setHeader('X-Railway-Bypass-CORS', 'true');
@@ -30,7 +30,7 @@ app.use((req, res, next) => {
 });
 
 // CORS middleware - simplified version
-app.use((req, res, next) => {
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const origin = req.headers.origin || '*';
   
   // Use setHeader instead of header to ensure headers are set
@@ -60,7 +60,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (req: express.Request, res: express.Response) => {
   res.json({
     status: 'OK',
     message: 'Shiv Shiva Residency Management API is running',
@@ -69,7 +69,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // CORS test endpoint
-app.get('/api/cors-test', (req, res) => {
+app.get('/api/cors-test', (req: express.Request, res: express.Response) => {
   res.json({
     message: 'CORS test successful',
     headers: {
