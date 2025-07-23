@@ -8,7 +8,7 @@ import Payments from './pages/Payments';
 import Maintenance from './pages/Maintenance';
 import Visitors from './pages/Visitors';
 import Login from './pages/Login';
-
+//
 // Protected App component that renders after authentication
 const ProtectedApp = () => {
   return (
