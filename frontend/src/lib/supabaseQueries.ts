@@ -210,23 +210,27 @@ export const tenantsQueries = {
 // Payments queries
 export const paymentsQueries = {
   async getAll() {
-    const { data: payments, error } = await supabase
-      .from('payments')
-      .select(`
-        *,
-        tenants!inner(name, mobile),
-        rooms!inner(room_number)
-      `)
-      .order('payment_date', { ascending: false });
-    
-    if (error) throw error;
-    
-    return payments?.map(p => ({
-      ...p,
-      tenant_name: p.tenants?.name || 'Unknown',
-      tenant_mobile: p.tenants?.mobile || '',
-      room_number: p.rooms?.room_number || ''
-    })) || [];
+    try {
+      const { data: payments, error } = await supabase
+        .from('payments')
+        .select('*, tenants(name, mobile), rooms(room_number)')
+        .order('payment_date', { ascending: false });
+      
+      if (error) {
+        console.error('Payments fetch error:', error);
+        return [];
+      }
+      
+      return payments?.map(p => ({
+        ...p,
+        tenant_name: p.tenants?.name || 'Unknown',
+        tenant_mobile: p.tenants?.mobile || '',
+        room_number: p.rooms?.room_number || ''
+      })) || [];
+    } catch (err) {
+      console.error('Payments query error:', err);
+      return [];
+    }
   },
 
   async create(payment: any) {
