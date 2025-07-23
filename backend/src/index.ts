@@ -74,4 +74,5 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🏠 Shiv Shiva Residency Management API`);
   console.log(`🌍 Environment: ${config.nodeEnv}`);
+  console.log(`🔧 CORS: Allowing ALL origins with wildcard (*)`);
 }); // Force rebuild Wed Jul 23 07:28:50 PM UTC 2025
