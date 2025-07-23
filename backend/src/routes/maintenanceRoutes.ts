@@ -119,9 +119,7 @@ router.get('/', async (req: Request, res: Response) => {
       requests: paginatedRequests,
       totalCount: filteredRequests.length,
       totalPages: Math.ceil(filteredRequests.length / Number(limit)),
-      currentPage: Number(page),
-      hasNextPage: endIndex < filteredRequests.length,
-      hasPrevPage: startIndex > 0
+      currentPage: Number(page)
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch maintenance requests' });
