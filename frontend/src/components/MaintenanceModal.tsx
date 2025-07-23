@@ -57,7 +57,7 @@ const MaintenanceModal = ({ isOpen, onClose, room, onMaintenanceUpdate }: Mainte
 
     try {
       setLoading(true);
-      await axios.put(`${apiUrl}/api/rooms/${room.id}/maintenance`, formData);
+      await axios.put(`${apiUrl}/rooms/${room.id}/maintenance`, formData);
       onMaintenanceUpdate();
       onClose();
     } catch (error: any) {

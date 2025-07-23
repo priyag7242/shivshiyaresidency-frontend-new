@@ -158,7 +158,7 @@ const Payments = () => {
       if (statusFilter) params.append('status', statusFilter);
       if (methodFilter) params.append('payment_method', methodFilter);
       
-      const response = await axios.get(`${apiUrl}/api/payments?${params}`);
+      const response = await axios.get(`${apiUrl}/payments?${params}`);
       setPayments(response.data.payments || []);
     } catch (error) {
       console.error('Error fetching payments:', error);
@@ -171,7 +171,7 @@ const Payments = () => {
       if (monthFilter) params.append('billing_month', monthFilter);
       if (statusFilter) params.append('status', statusFilter);
       
-      const response = await axios.get(`${apiUrl}/api/payments/bills?${params}`);
+      const response = await axios.get(`${apiUrl}/payments/bills?${params}`);
       setBills(response.data.bills || []);
     } catch (error) {
       console.error('Error fetching bills:', error);
@@ -180,7 +180,7 @@ const Payments = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/api/payments/stats`);
+      const response = await axios.get(`${apiUrl}/payments/stats`);
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -189,7 +189,7 @@ const Payments = () => {
 
   const fetchRooms = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/api/rooms`);
+      const response = await axios.get(`${apiUrl}/rooms`);
       setRooms(response.data.rooms || []);
     } catch (error) {
       console.error('Error fetching rooms:', error);
@@ -211,7 +211,7 @@ const Payments = () => {
 
     try {
       setGenerating(true);
-      const response = await axios.post(`${apiUrl}/api/payments/electricity/update`, {
+      const response = await axios.post(`${apiUrl}/payments/electricity/update`, {
         room_readings: readingsToUpdate
       });
       
@@ -229,7 +229,7 @@ const Payments = () => {
   const generateBills = async () => {
     try {
       setGenerating(true);
-      const response = await axios.post(`${apiUrl}/api/payments/bills/generate`, {
+      const response = await axios.post(`${apiUrl}/payments/bills/generate`, {
         billing_month: billGeneration.billing_month,
         electricity_rate: billGeneration.electricity_rate
       });
@@ -246,7 +246,7 @@ const Payments = () => {
 
   const recordPayment = async (paymentData: any) => {
     try {
-      await axios.post(`${apiUrl}/api/payments`, paymentData);
+      await axios.post(`${apiUrl}/payments`, paymentData);
       fetchData();
       setShowPaymentModal(false);
       setSelectedBill(null);
@@ -806,7 +806,7 @@ const Payments = () => {
                         <button
                           onClick={async () => {
                             try {
-                              const response = await axios.get(`${apiUrl}/api/payments/receipt/${payment.id}`);
+                              const response = await axios.get(`${apiUrl}/payments/receipt/${payment.id}`);
                               // Here you could open a receipt modal or download PDF
                               console.log('Receipt data:', response.data);
                               alert('Receipt feature will be implemented soon!');
@@ -977,7 +977,7 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
   const fetchTenants = async () => {
     try {
       setLoadingTenants(true);
-      const response = await axios.get(`${apiUrl}/api/tenants`);
+      const response = await axios.get(`${apiUrl}/tenants`);
       setTenants(response.data.tenants || []);
     } catch (error) {
       console.error('Error fetching tenants:', error);
@@ -997,12 +997,12 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
       setRoomFetchMessage('🔍 Fetching tenant & bill details...');
       
       // Fetch tenant data
-      const tenantResponse = await axios.get(`${apiUrl}/api/tenants/room/${roomNumber.trim()}`);
+      const tenantResponse = await axios.get(`${apiUrl}/tenants/room/${roomNumber.trim()}`);
       const tenantData = tenantResponse.data.tenant;
       
       if (tenantData) {
         // Fetch current bills for this tenant
-        const billsResponse = await axios.get(`${apiUrl}/api/payments/bills`);
+        const billsResponse = await axios.get(`${apiUrl}/payments/bills`);
         const allBills = billsResponse.data.bills || [];
         
         // Find current month's bill for this tenant
@@ -1132,7 +1132,7 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
           setRoomFetchMessage('🔍 Loading bill details...');
           
           // Fetch current bills for this tenant
-          const billsResponse = await axios.get(`${apiUrl}/api/payments/bills`);
+          const billsResponse = await axios.get(`${apiUrl}/payments/bills`);
           const allBills = billsResponse.data.bills || [];
           
           // Find current month's bill for this tenant
@@ -1717,14 +1717,14 @@ const WhatsAppBillModal = ({ isOpen, bill, onClose }: WhatsAppBillModalProps) =>
     
     try {
       setFetchingPhone(true);
-      const response = await axios.get(`${apiUrl}/api/tenants/${bill.tenant_id}`);
+      const response = await axios.get(`${apiUrl}/tenants/${bill.tenant_id}`);
       const tenantData = response.data.tenant;
       
       if (tenantData?.mobile) {
         setTenantPhone(tenantData.mobile);
       } else {
         // Fallback: try to fetch by room number
-        const roomResponse = await axios.get(`${apiUrl}/api/tenants/room/${bill.room_number}`);
+        const roomResponse = await axios.get(`${apiUrl}/tenants/room/${bill.room_number}`);
         if (roomResponse.data.tenant?.mobile) {
           setTenantPhone(roomResponse.data.tenant.mobile);
         }

@@ -44,7 +44,7 @@ const RoomAllocationModal = ({ isOpen, onClose, room, onAllocationUpdate }: Room
   const fetchTenants = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${apiUrl}/api/tenants`);
+      const response = await axios.get(`${apiUrl}/tenants`);
       setTenants(response.data.tenants || []);
     } catch (error) {
       console.error('Error fetching tenants:', error);
@@ -61,7 +61,7 @@ const RoomAllocationModal = ({ isOpen, onClose, room, onAllocationUpdate }: Room
 
     try {
       setLoading(true);
-      await axios.post(`${apiUrl}/api/rooms/${room.id}/allocate`, {
+      await axios.post(`${apiUrl}/rooms/${room.id}/allocate`, {
         tenant_id: tenant.id,
         tenant_name: tenant.name
       });
@@ -82,7 +82,7 @@ const RoomAllocationModal = ({ isOpen, onClose, room, onAllocationUpdate }: Room
 
     try {
       setLoading(true);
-      await axios.post(`${apiUrl}/api/rooms/${room.id}/deallocate`, {
+      await axios.post(`${apiUrl}/rooms/${room.id}/deallocate`, {
         tenant_id: tenantId
       });
       

@@ -20,7 +20,7 @@ const TenantDataImporter = ({ onImportComplete }: TenantDataImporterProps) => {
     setImportStatus('idle');
 
     try {
-      const response = await fetch(`${apiUrl}/api/tenants/import`, {
+      const response = await fetch(`${apiUrl}/tenants/import`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

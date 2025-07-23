@@ -73,7 +73,7 @@ const Tenants = () => {
     try {
       setLoading(true);
       // First, check if data already exists
-      const response = await axios.get(`${apiUrl}/api/tenants`);
+      const response = await axios.get(`${apiUrl}/tenants`);
       const data = response.data;
       
       // If no tenants exist, automatically load the complete data
@@ -92,7 +92,7 @@ const Tenants = () => {
   const autoImportData = async () => {
     try {
       // Try to import complete tenant database
-      const response = await axios.post(`${apiUrl}/api/tenants/import/complete`, {}, {
+      const response = await axios.post(`${apiUrl}/tenants/import/complete`, {}, {
         headers: {
           'Content-Type': 'application/json',
         }
@@ -129,7 +129,7 @@ const Tenants = () => {
       if (statusFilter) queryParams.append('status', statusFilter);
       if (categoryFilter) queryParams.append('category', categoryFilter);
 
-      const response = await axios.get(`${apiUrl}/api/tenants?${queryParams.toString()}`);
+      const response = await axios.get(`${apiUrl}/tenants?${queryParams.toString()}`);
       const data = response.data;
       setTenants(data.tenants || []);
     } catch (error) {
@@ -141,7 +141,7 @@ const Tenants = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/api/tenants/stats`);
+      const response = await axios.get(`${apiUrl}/tenants/stats`);
       const data = response.data;
       setStats(data);
     } catch (error) {
@@ -155,7 +155,7 @@ const Tenants = () => {
     }
 
     try {
-      const response = await axios.delete(`${apiUrl}/api/tenants/${tenantId}`);
+      const response = await axios.delete(`${apiUrl}/tenants/${tenantId}`);
 
       if (response.status === 200) {
         fetchTenants();

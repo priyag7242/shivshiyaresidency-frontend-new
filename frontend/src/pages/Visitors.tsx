@@ -114,7 +114,7 @@ const Visitors = () => {
       if (statusFilter) params.append('status', statusFilter);
       if (purposeFilter) params.append('purpose', purposeFilter);
       
-      const response = await axios.get(`${apiUrl}/api/visitors?${params}`);
+      const response = await axios.get(`${apiUrl}/visitors?${params}`);
       setVisitors(response.data.visitors || []);
     } catch (error) {
       console.error('Error fetching visitors:', error);
@@ -123,7 +123,7 @@ const Visitors = () => {
 
   const fetchActiveVisitors = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/api/visitors/active`);
+      const response = await axios.get(`${apiUrl}/visitors/active`);
       setActiveVisitors(response.data || []);
     } catch (error) {
       console.error('Error fetching active visitors:', error);
@@ -132,7 +132,7 @@ const Visitors = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/api/visitors/stats`);
+      const response = await axios.get(`${apiUrl}/visitors/stats`);
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -141,7 +141,7 @@ const Visitors = () => {
 
   const checkOutVisitor = async (visitorId: string, notes?: string) => {
     try {
-      await axios.put(`${apiUrl}/api/visitors/${visitorId}/checkout`, {
+      await axios.put(`${apiUrl}/visitors/${visitorId}/checkout`, {
         notes,
         performed_by: 'security'
       });
@@ -154,7 +154,7 @@ const Visitors = () => {
 
   const approveVisitor = async (visitorId: string, approved: boolean) => {
     try {
-      await axios.put(`${apiUrl}/api/visitors/${visitorId}/approve`, {
+      await axios.put(`${apiUrl}/visitors/${visitorId}/approve`, {
         approval_status: approved ? 'approved' : 'rejected',
         approved_by: 'admin'
       });
@@ -570,7 +570,7 @@ const VisitorCheckinModal = ({ isOpen, onClose, onSubmit }: VisitorCheckinModalP
   const fetchTenants = async () => {
     try {
       setLoadingTenants(true);
-      const response = await axios.get(`${apiUrl}/api/tenants`);
+      const response = await axios.get(`${apiUrl}/tenants`);
       setTenants(response.data.tenants || []);
     } catch (error) {
       console.error('Error fetching tenants:', error);
@@ -628,7 +628,7 @@ const VisitorCheckinModal = ({ isOpen, onClose, onSubmit }: VisitorCheckinModalP
 
     try {
       setLoading(true);
-      const response = await axios.post(`${apiUrl}/api/visitors/checkin`, {
+      const response = await axios.post(`${apiUrl}/visitors/checkin`, {
         visitor_name: formData.visitor_name.trim(),
         visitor_phone: formData.visitor_phone.trim(),
         visitor_id_type: formData.visitor_id_type,

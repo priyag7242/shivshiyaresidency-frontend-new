@@ -110,7 +110,7 @@ const Maintenance = () => {
       if (priorityFilter) params.append('priority', priorityFilter);
       if (typeFilter) params.append('request_type', typeFilter);
       
-      const response = await axios.get(`${apiUrl}/api/maintenance?${params}`);
+      const response = await axios.get(`${apiUrl}/maintenance?${params}`);
       setRequests(response.data.requests || []);
     } catch (error) {
       console.error('Error fetching maintenance requests:', error);
@@ -121,7 +121,7 @@ const Maintenance = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/api/maintenance/stats`);
+      const response = await axios.get(`${apiUrl}/maintenance/stats`);
       setStats(response.data);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -130,7 +130,7 @@ const Maintenance = () => {
 
   const updateRequestStatus = async (requestId: string, status: string, data: any = {}) => {
     try {
-      await axios.put(`${apiUrl}/api/maintenance/${requestId}/status`, { status, ...data });
+      await axios.put(`${apiUrl}/maintenance/${requestId}/status`, { status, ...data });
       fetchRequests();
       fetchStats();
     } catch (error: any) {
@@ -143,7 +143,7 @@ const Maintenance = () => {
     if (!confirm('Are you sure you want to delete this maintenance request?')) return;
     
     try {
-      await axios.delete(`${apiUrl}/api/maintenance/${requestId}`);
+      await axios.delete(`${apiUrl}/maintenance/${requestId}`);
       fetchRequests();
       fetchStats();
     } catch (error: any) {
@@ -512,7 +512,7 @@ const MaintenanceRequestModal = ({ isOpen, onClose, onSubmit }: MaintenanceReque
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post(`${apiUrl}/api/maintenance`, formData);
+      await axios.post(`${apiUrl}/maintenance`, formData);
       onSubmit();
     } catch (error: any) {
       console.error('Error creating request:', error);

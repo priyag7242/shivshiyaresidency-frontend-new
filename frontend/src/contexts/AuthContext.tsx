@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         
         // Verify token with backend
         try {
-          const response = await axios.get(`${apiUrl}/api/auth/verify`);
+          const response = await axios.get(`${apiUrl}/auth/verify`);
           if (response.data.valid) {
             setToken(storedToken);
             setUser(response.data.user);
@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       // Call logout endpoint if token exists
       if (token) {
-        await axios.post(`${apiUrl}/api/auth/logout`);
+        await axios.post(`${apiUrl}/auth/logout`);
       }
     } catch (error) {
       console.error('Logout error:', error);
