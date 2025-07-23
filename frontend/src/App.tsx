@@ -92,6 +92,9 @@ const AppRouter = () => {
 
 // Main App component
 function App() {
+  console.log('API URL:', import.meta.env.VITE_API_URL);
+  console.log('All env vars:', import.meta.env);
+  
   return (
     <AuthProvider>
       <Router>
