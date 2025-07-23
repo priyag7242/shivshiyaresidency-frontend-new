@@ -20,8 +20,10 @@ connectDatabase();
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: config.frontendUrl,
-  credentials: true
+  origin: [config.frontendUrl, 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
