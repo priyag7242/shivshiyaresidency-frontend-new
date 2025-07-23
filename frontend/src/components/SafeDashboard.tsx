@@ -1,10 +1,10 @@
 import React from 'react';
 import Dashboard from '../pages/Dashboard';
 
-class SafeDashboard extends React.Component {
+class SafeDashboard extends React.Component<{}, { hasError: boolean; error: Error | null }> {
   state = {
     hasError: false,
-    error: null
+    error: null as Error | null
   };
 
   static getDerivedStateFromError(error: any) {

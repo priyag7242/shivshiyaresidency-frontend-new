@@ -85,7 +85,7 @@ export const dashboardQueries = {
       alerts.push({
         id: '1',
         type: 'payment',
-        priority: 'high',
+        priority: 'high' as const,
         title: 'Pending Payments',
         message: `${pendingPayments.length} payments pending`,
         count: pendingPayments.length,
@@ -98,7 +98,7 @@ export const dashboardQueries = {
       alerts.push({
         id: '2',
         type: 'maintenance',
-        priority: 'medium',
+        priority: 'medium' as const,
         title: 'Maintenance Required',
         message: `${maintenanceIssues.length} issues pending`,
         count: maintenanceIssues.length,

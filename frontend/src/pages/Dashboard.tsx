@@ -399,7 +399,7 @@ const Dashboard = () => {
                   </div>
                 </div>
               );
-            })}
+            }) : <div className="text-golden-400/60 text-center py-4">No revenue data available</div>}
           </div>
         </div>
 
