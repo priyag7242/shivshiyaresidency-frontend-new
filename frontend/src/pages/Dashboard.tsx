@@ -129,11 +129,23 @@ const Dashboard = () => {
         axios.get(`${apiUrl}/dashboard/alerts`)
       ]);
 
-      setDashboardData(overviewRes.data);
-      setActivities(activitiesRes.data);
-      setAlerts(alertsRes.data);
+      // Ensure arrays are arrays
+      const dashData = overviewRes.data;
+      setDashboardData({
+        ...dashData,
+        monthly_revenue_trend: Array.isArray(dashData.monthly_revenue_trend) ? dashData.monthly_revenue_trend : [],
+        occupancy_trend: Array.isArray(dashData.occupancy_trend) ? dashData.occupancy_trend : [],
+        recent_payments: Array.isArray(dashData.recent_payments) ? dashData.recent_payments : [],
+        payment_method_distribution: dashData.payment_method_distribution || {}
+      });
+      
+      setActivities(Array.isArray(activitiesRes.data) ? activitiesRes.data : []);
+      setAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      // Set default empty arrays to prevent map errors
+      setActivities([]);
+      setAlerts([]);
     } finally {
       setLoading(false);
     }
@@ -143,9 +155,10 @@ const Dashboard = () => {
     try {
       const response = await axios.get(`${apiUrl}/dashboard/recent-activities`);
       const data = response.data;
-      setActivities(data);
+      setActivities(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch activities:', error);
+      setActivities([]);
     }
   };
 
@@ -153,9 +166,10 @@ const Dashboard = () => {
     try {
       const response = await axios.get(`${apiUrl}/dashboard/alerts`);
       const data = response.data;
-      setAlerts(data);
+      setAlerts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch alerts:', error);
+      setAlerts([]);
     }
   };
 
