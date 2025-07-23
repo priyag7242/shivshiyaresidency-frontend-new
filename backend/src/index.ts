@@ -50,18 +50,9 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
 });
 
 // Middleware
-<<<<<<< HEAD
-app.use(helmet());
-app.use(cors({
-  origin: true, // Allow all origins for now
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-=======
 app.use(helmet({
   crossOriginResourcePolicy: false,
   hsts: false
->>>>>>> eb45687e6e4ddb43fd5b495c70eca26716066f9d
 }));
 
 app.use(morgan('combined'));
