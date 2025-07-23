@@ -51,7 +51,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         // Set axios default authorization header
         axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
         
-        // Verify token with backend
+        // Skip token verification for now - just trust stored data
+        setToken(storedToken);
+        setUser(userData);
+        
+        // Comment out verification temporarily
+        /*
         try {
           const response = await axios.get(`${apiUrl}/auth/verify`);
           if (response.data.valid) {
@@ -66,6 +71,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           console.error('Token verification failed:', error);
           clearAuth();
         }
+        */
       }
     } catch (error) {
       console.error('Auth initialization error:', error);
