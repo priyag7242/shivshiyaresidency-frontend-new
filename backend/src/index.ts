@@ -1,4 +1,4 @@
-import express from 'express';
+import * as express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config/config';
@@ -16,49 +16,42 @@ const app = express();
 // Connect to MongoDB
 connectDatabase();
 
-// First, intercept all requests and strip any existing CORS headers
+// Trust proxy - important for Railway
+app.set('trust proxy', true);
+app.enable('trust proxy');
+
+// Add bypass headers for Railway proxy
 app.use((req, res, next) => {
-  // Store the original res.setHeader
-  const originalSetHeader = res.setHeader;
+  // Add headers that might bypass Railway's CORS enforcement
+  res.setHeader('X-Powered-By', 'Express');
+  res.setHeader('X-Railway-Bypass-CORS', 'true');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  next();
+});
+
+// CORS middleware - simplified version
+app.use((req, res, next) => {
+  const origin = req.headers.origin || '*';
   
-  // Override setHeader to intercept CORS headers
-  res.setHeader = function(name: string, value: string | number | string[]) {
-    // If it's a CORS header being set, ignore it unless it's our own
-    if (name.toLowerCase().startsWith('access-control-') && value !== '*') {
-      console.log(`Intercepted CORS header: ${name} = ${value}`);
-      return res;
-    }
-    return originalSetHeader.call(this, name, value);
-  };
+  // Use setHeader instead of header to ensure headers are set
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-access-token');
+  res.setHeader('Access-Control-Max-Age', '3600');
+  res.setHeader('Vary', 'Origin');
+  
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+    return res.sendStatus(204);
+  }
   
   next();
 });
 
-// CORS must be first - before any other middleware
-// Handle CORS preflight requests immediately
-app.options('*', (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Max-Age', '86400');
-  res.sendStatus(204);
-});
-
-// Apply CORS to all routes
-app.use((req, res, next) => {
-  // Force set our CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  next();
-});
-
-// Now apply other middleware
+// Middleware
 app.use(helmet({
   crossOriginResourcePolicy: false,
-  // Disable HSTS as it might interfere
   hsts: false
 }));
 
@@ -97,16 +90,6 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/visitors', visitorRoutes);
 
-// Final CORS enforcement - this runs after all routes
-app.use((req, res, next) => {
-  // Force CORS headers on all responses
-  if (!res.headersSent) {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Credentials', 'true');
-  }
-  next();
-});
-
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
@@ -130,6 +113,6 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🏠 Shiv Shiva Residency Management API`);
   console.log(`🌍 Environment: ${config.nodeEnv}`);
-  console.log(`🔧 CORS: Manual headers - accepting all origins (*)`);
+  console.log(`🔧 CORS: Allowing requests from all origins`);
   console.log(`📝 Test CORS at: /api/cors-test`);
 });
