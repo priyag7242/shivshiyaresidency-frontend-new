@@ -1,5 +1,4 @@
 import express from 'express';
-import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config/config';
@@ -17,39 +16,29 @@ const app = express();
 // Connect to MongoDB
 connectDatabase();
 
-// Middleware
-app.use(helmet());
+// CORS must be first - before any other middleware
+// Handle CORS preflight requests immediately
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
 
-// Simplified CORS configuration that accepts all origins
-// In production, you should restrict this to specific domains
-const corsOptions = {
-  origin: true, // This allows all origins
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200
-};
-
-app.use(cors(corsOptions));
-
-// Additional middleware to ensure CORS headers are set
+// Apply CORS to all routes
 app.use((req, res, next) => {
-  // Set CORS headers explicitly as a fallback
-  const origin = req.headers.origin;
-  if (origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
   next();
 });
+
+// Now apply other middleware
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
@@ -64,6 +53,19 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// CORS test endpoint
+app.get('/api/cors-test', (req, res) => {
+  res.json({
+    message: 'CORS test successful',
+    headers: {
+      origin: req.headers.origin || 'No origin header',
+      'access-control-allow-origin': res.getHeaders()['access-control-allow-origin'] || 'Not set',
+      'access-control-allow-credentials': res.getHeaders()['access-control-allow-credentials'] || 'Not set'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/dashboard', dashboardRoutes);
@@ -72,6 +74,16 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/visitors', visitorRoutes);
+
+// Final CORS enforcement - this runs after all routes
+app.use((req, res, next) => {
+  // Force CORS headers on all responses
+  if (!res.headersSent) {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+  next();
+});
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -96,5 +108,6 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🏠 Shiv Shiva Residency Management API`);
   console.log(`🌍 Environment: ${config.nodeEnv}`);
-  console.log(`🔧 CORS: Accepting all origins with explicit headers`);
+  console.log(`🔧 CORS: Manual headers - accepting all origins (*)`);
+  console.log(`📝 Test CORS at: /api/cors-test`);
 });
