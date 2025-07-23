@@ -70,7 +70,7 @@ const Tenants = () => {
     try {
       setLoading(true);
       // First, check if data already exists
-      const response = await fetch('/api/tenants');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tenants`);
       const data = await response.json();
       
       // If no tenants exist, automatically load the complete data
@@ -89,7 +89,7 @@ const Tenants = () => {
   const autoImportData = async () => {
     try {
       // Try to import complete tenant database
-      const response = await fetch('/api/tenants/import/complete', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tenants/import/complete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +127,7 @@ const Tenants = () => {
       if (statusFilter) queryParams.append('status', statusFilter);
       if (categoryFilter) queryParams.append('category', categoryFilter);
 
-      const response = await fetch(`/api/tenants?${queryParams}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tenants?${queryParams}`);
       const data = await response.json();
       setTenants(data.tenants || []);
     } catch (error) {
@@ -139,7 +139,7 @@ const Tenants = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/tenants/stats');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tenants/stats`);
       const data = await response.json();
       setStats(data);
     } catch (error) {
@@ -153,7 +153,7 @@ const Tenants = () => {
     }
 
     try {
-      const response = await fetch(`/api/tenants/${tenantId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tenants/${tenantId}`, {
         method: 'DELETE',
       });
 

@@ -42,7 +42,7 @@ const RoomAllocationModal = ({ isOpen, onClose, room, onAllocationUpdate }: Room
   const fetchTenants = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/tenants');
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/tenants`);
       setTenants(response.data.tenants || []);
     } catch (error) {
       console.error('Error fetching tenants:', error);
@@ -59,7 +59,7 @@ const RoomAllocationModal = ({ isOpen, onClose, room, onAllocationUpdate }: Room
 
     try {
       setLoading(true);
-      await axios.post(`/api/rooms/${room.id}/allocate`, {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/rooms/${room.id}/allocate`, {
         tenant_id: tenant.id,
         tenant_name: tenant.name
       });
@@ -80,7 +80,7 @@ const RoomAllocationModal = ({ isOpen, onClose, room, onAllocationUpdate }: Room
 
     try {
       setLoading(true);
-      await axios.post(`/api/rooms/${room.id}/deallocate`, {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/rooms/${room.id}/deallocate`, {
         tenant_id: tenantId
       });
       

@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         
         // Verify token with backend
         try {
-          const response = await axios.get('/api/auth/verify');
+          const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth/verify`);
           if (response.data.valid) {
             setToken(storedToken);
             setUser(response.data.user);
@@ -89,7 +89,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       // Call logout endpoint if token exists
       if (token) {
-        await axios.post('/api/auth/logout');
+        await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/logout`);
       }
     } catch (error) {
       console.error('Logout error:', error);

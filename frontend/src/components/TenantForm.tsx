@@ -106,7 +106,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
 
   const fetchAvailableRooms = async () => {
     try {
-      const response = await axios.get('/api/rooms?status=available');
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/rooms?status=available`);
       setAvailableRooms(response.data.rooms || []);
     } catch (error) {
       console.error('Error fetching rooms:', error);
@@ -127,12 +127,12 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
   const deallocateFromOldRoom = async (oldRoomNumber: string, tenantId: string) => {
     try {
       // Find the old room
-      const roomsResponse = await axios.get('/api/rooms');
+      const roomsResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/rooms`);
       const oldRoom = roomsResponse.data.rooms?.find((room: any) => room.room_number === oldRoomNumber);
       
       if (oldRoom) {
         // Deallocate tenant from old room
-        await axios.post(`/api/rooms/${oldRoom.id}/deallocate`, {
+        await axios.post(`${import.meta.env.VITE_API_URL}/api/rooms/${oldRoom.id}/deallocate`, {
           tenant_id: tenantId
         });
         console.log(`Deallocated tenant ${tenantId} from room ${oldRoomNumber}`);
@@ -145,7 +145,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
   const allocateToNewRoom = async (newRoomNumber: string, tenantId: string, tenantName: string) => {
     try {
       // Find the new room
-      const roomsResponse = await axios.get('/api/rooms');
+      const roomsResponse = await axios.get(`${import.meta.env.VITE_API_URL}/api/rooms`);
       const newRoom = roomsResponse.data.rooms?.find((room: any) => room.room_number === newRoomNumber);
       
       if (newRoom) {
@@ -155,7 +155,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
         }
         
         // Allocate tenant to new room
-        await axios.post(`/api/rooms/${newRoom.id}/allocate`, {
+        await axios.post(`${import.meta.env.VITE_API_URL}/api/rooms/${newRoom.id}/allocate`, {
           tenant_id: tenantId,
           tenant_name: tenantName
         });
@@ -199,7 +199,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
 
       if (tenant) {
         // Update existing tenant
-        const updatedTenant = await axios.put(`/api/tenants/${tenant.id}`, submitData);
+        const updatedTenant = await axios.put(`${import.meta.env.VITE_API_URL}/api/tenants/${tenant.id}`, submitData);
         
         // Handle room change if applicable
         if (roomChanged && originalRoomNumber !== formData.room_number) {
@@ -213,7 +213,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
             alert(`✅ Tenant updated successfully!\n🏠 Room changed from ${originalRoomNumber} to ${formData.room_number}`);
           } catch (roomError: any) {
             // If room allocation fails, revert the tenant update
-            await axios.put(`/api/tenants/${tenant.id}`, {
+            await axios.put(`${import.meta.env.VITE_API_URL}/api/tenants/${tenant.id}`, {
               ...tenant,
               room_number: originalRoomNumber
             });
@@ -222,7 +222,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
         }
       } else {
         // Create new tenant
-        const newTenant = await axios.post('/api/tenants', submitData);
+        const newTenant = await axios.post(`${import.meta.env.VITE_API_URL}/api/tenants`, submitData);
         
         // Allocate room to new tenant
         try {
@@ -230,7 +230,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
           alert('✅ New tenant created and room allocated successfully!');
         } catch (roomError: any) {
           // If room allocation fails, delete the tenant
-          await axios.delete(`/api/tenants/${newTenant.data.id}`);
+          await axios.delete(`${import.meta.env.VITE_API_URL}/api/tenants/${newTenant.data.id}`);
           throw new Error(`Room allocation failed: ${roomError.message}`);
         }
       }
