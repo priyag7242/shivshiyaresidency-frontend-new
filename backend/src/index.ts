@@ -27,11 +27,21 @@ const corsOptions = {
     if (!origin) return callback(null, true);
     
     // Allow configured origins
-    const allowedOrigins = [config.frontendUrl, 'http://localhost:3000'];
+    const allowedOrigins = [
+      config.frontendUrl,
+      'http://localhost:3000',
+      'http://localhost:5173', // Vite default port
+    ];
+    
+    // Also allow any Vercel preview deployments
+    if (origin.includes('shivshiyaresidency-frontend-new') && origin.includes('.vercel.app')) {
+      return callback(null, true);
+    }
+    
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(null, true); // Temporarily allow all origins for debugging
+      callback(null, false); // Reject other origins
     }
   },
   credentials: true,
