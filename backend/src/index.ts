@@ -20,40 +20,10 @@ connectDatabase();
 // Middleware
 app.use(helmet());
 
-// Dynamic CORS configuration to handle Vercel preview deployments
+// Simplified CORS configuration that accepts all origins
+// In production, you should restrict this to specific domains
 const corsOptions = {
-  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // List of allowed origins
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'https://shivshiyaresidency-frontend-new.vercel.app',
-      // Allow all Vercel preview deployments
-      /^https:\/\/shivshiyaresidency-frontend-new-.*\.vercel\.app$/,
-      // Allow all deployments from your Vercel projects
-      /^https:\/\/.*-priyag7242s-projects\.vercel\.app$/
-    ];
-    
-    // Check if the origin matches any allowed origin
-    const isAllowed = allowedOrigins.some(allowed => {
-      if (allowed instanceof RegExp) {
-        return allowed.test(origin);
-      }
-      return allowed === origin;
-    });
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      // Log rejected origins for debugging
-      console.log(`CORS rejected origin: ${origin}`);
-      // Still allow the request in production for now
-      callback(null, true);
-    }
-  },
+  origin: true, // This allows all origins
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -61,6 +31,25 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Additional middleware to ensure CORS headers are set
+app.use((req, res, next) => {
+  // Set CORS headers explicitly as a fallback
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
 
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
@@ -107,5 +96,5 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🏠 Shiv Shiva Residency Management API`);
   console.log(`🌍 Environment: ${config.nodeEnv}`);
-  console.log(`🔧 CORS: Dynamic configuration for Vercel deployments`);
+  console.log(`🔧 CORS: Accepting all origins with explicit headers`);
 });
