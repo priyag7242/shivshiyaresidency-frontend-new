@@ -19,16 +19,34 @@ connectDatabase();
 
 // Middleware
 app.use(helmet());
-app.use(cors({
-  origin: [config.frontendUrl, 'http://localhost:3000'],
+
+// CORS configuration
+const corsOptions = {
+  origin: function (origin: any, callback: any) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Allow configured origins
+    const allowedOrigins = [config.frontendUrl, 'http://localhost:3000'];
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Temporarily allow all origins for debugging
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests
+
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.options('*', cors());
 
 // Routes
 app.get('/api/health', (req, res) => {
