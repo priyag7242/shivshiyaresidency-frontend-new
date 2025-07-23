@@ -33,8 +33,10 @@ const corsOptions = {
       'http://localhost:5173', // Vite default port
     ];
     
-    // Also allow any Vercel preview deployments
-    if (origin.includes('shivshiyaresidency-frontend-new') && origin.includes('.vercel.app')) {
+    // Allow any Vercel deployment that contains our project name
+    if (origin.includes('vercel.app') && 
+        (origin.includes('shivshiyaresidency-frontend-new') || 
+         origin.includes('priyag7242'))) {
       return callback(null, true);
     }
     
