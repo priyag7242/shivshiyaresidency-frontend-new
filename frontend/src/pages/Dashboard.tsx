@@ -24,8 +24,10 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import TenantDataImporter from '../components/TenantDataImporter';
+import { dashboardQueries } from '../lib/supabaseQueries';
 
 const apiUrl = import.meta.env.VITE_API_URL || '';
+const USE_SUPABASE = true; // Toggle to switch between backends
 
 interface DashboardData {
   total_tenants: number;
@@ -125,24 +127,39 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const [overviewRes, activitiesRes, alertsRes] = await Promise.all([
-        axios.get(`${apiUrl}/dashboard/overview`),
-        axios.get(`${apiUrl}/dashboard/recent-activities`),
-        axios.get(`${apiUrl}/dashboard/alerts`)
-      ]);
-
-      // Ensure arrays are arrays
-      const dashData = overviewRes.data;
-      setDashboardData({
-        ...dashData,
-        monthly_revenue_trend: Array.isArray(dashData.monthly_revenue_trend) ? dashData.monthly_revenue_trend : [],
-        occupancy_trend: Array.isArray(dashData.occupancy_trend) ? dashData.occupancy_trend : [],
-        recent_payments: Array.isArray(dashData.recent_payments) ? dashData.recent_payments : [],
-        payment_method_distribution: dashData.payment_method_distribution || {}
-      });
       
-      setActivities(Array.isArray(activitiesRes.data) ? activitiesRes.data : []);
-      setAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
+      if (USE_SUPABASE) {
+        // Use Supabase queries
+        const [overview, activities, alerts] = await Promise.all([
+          dashboardQueries.getOverview(),
+          dashboardQueries.getRecentActivities(),
+          dashboardQueries.getAlerts()
+        ]);
+
+        setDashboardData(overview);
+        setActivities(activities);
+        setAlerts(alerts);
+      } else {
+        // Use old backend
+        const [overviewRes, activitiesRes, alertsRes] = await Promise.all([
+          axios.get(`${apiUrl}/dashboard/overview`),
+          axios.get(`${apiUrl}/dashboard/recent-activities`),
+          axios.get(`${apiUrl}/dashboard/alerts`)
+        ]);
+
+        // Ensure arrays are arrays
+        const dashData = overviewRes.data;
+        setDashboardData({
+          ...dashData,
+          monthly_revenue_trend: Array.isArray(dashData.monthly_revenue_trend) ? dashData.monthly_revenue_trend : [],
+          occupancy_trend: Array.isArray(dashData.occupancy_trend) ? dashData.occupancy_trend : [],
+          recent_payments: Array.isArray(dashData.recent_payments) ? dashData.recent_payments : [],
+          payment_method_distribution: dashData.payment_method_distribution || {}
+        });
+        
+        setActivities(Array.isArray(activitiesRes.data) ? activitiesRes.data : []);
+        setAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       // Set default empty arrays to prevent map errors
