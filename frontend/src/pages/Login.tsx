@@ -38,6 +38,9 @@ const Login = () => {
 
     try {
       // Use the full API URL
+      console.log('Attempting login with URL:', `${apiUrl}/auth/login`);
+      console.log('Form data:', formData);
+      
       const response = await axios.post(
         `${apiUrl}/auth/login`,
         formData
