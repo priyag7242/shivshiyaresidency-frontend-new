@@ -339,7 +339,7 @@ const Rooms = () => {
             Floor Distribution
           </h3>
           <div className="space-y-3">
-            {Object.entries(stats.floorStats).map(([floor, floorData]) => (
+            {Object.entries(stats.floorStats || {}).map(([floor, floorData]) => (
               <div key={floor} className="flex items-center justify-between">
                 <span className="text-golden-300">Floor {floor} {floor === '0' ? '(Ground)' : ''}</span>
                 <div className="flex items-center gap-2 text-sm">
@@ -359,7 +359,7 @@ const Rooms = () => {
             Room Types
           </h3>
           <div className="space-y-3">
-            {Object.entries(stats.typeStats).map(([type, typeData]) => (
+            {Object.entries(stats.typeStats || {}).map(([type, typeData]) => (
               <div key={type} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {getRoomTypeIcon(type)}

@@ -259,7 +259,7 @@ const Visitors = () => {
             Visit Purposes
           </h3>
           <div className="space-y-3">
-            {Object.entries(stats.purpose_breakdown).map(([purpose, count]) => (
+            {Object.entries(stats.purpose_breakdown || {}).map(([purpose, count]) => (
               <div key={purpose} className="flex items-center justify-between">
                 <span className="text-golden-300 capitalize">{purpose.replace('_', ' ')}</span>
                 <span className="text-golden-100 font-medium">{count}</span>

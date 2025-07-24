@@ -424,4 +424,19 @@ router.delete('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/tenants/import - Import tenant data
+router.post('/import', async (req: Request, res: Response) => {
+  try {
+    const { tenantsData } = req.body;
+    if (!Array.isArray(tenantsData)) {
+      return res.status(400).json({ error: 'Invalid data format' });
+    }
+    tenants.length = 0;
+    tenants.push(...tenantsData);
+    res.status(201).json({ message: 'Tenants imported successfully', count: tenants.length });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to import tenants' });
+  }
+});
+
 export default router;

@@ -260,7 +260,7 @@ const Maintenance = () => {
             Request Types
           </h3>
           <div className="space-y-3">
-            {Object.entries(stats.request_type_breakdown).map(([type, count]) => (
+            {Object.entries(stats.request_type_breakdown || {}).map(([type, count]) => (
               <div key={type} className="flex items-center justify-between">
                 <span className="text-golden-300 capitalize">{type.replace('_', ' ')}</span>
                 <span className="text-golden-100 font-medium">{count}</span>
@@ -275,7 +275,7 @@ const Maintenance = () => {
             Priority Breakdown
           </h3>
           <div className="space-y-3">
-            {Object.entries(stats.priority_breakdown).map(([priority, count]) => (
+            {Object.entries(stats.priority_breakdown || {}).map(([priority, count]) => (
               <div key={priority} className="flex items-center justify-between">
                 <span className={`capitalize px-2 py-1 rounded text-xs ${getPriorityColor(priority)}`}>
                   {priority}

@@ -630,7 +630,7 @@ const Payments = () => {
         <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-golden-400 mb-4">Monthly Collection Overview</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {Object.entries(stats.monthly_collection).slice(-12).map(([month, amount]) => (
+            {Object.entries(stats.monthly_collection || {}).slice(-12).map(([month, amount]) => (
               <div key={month} className="bg-dark-800 border border-golden-600/30 rounded-lg p-4">
                 <div className="text-golden-300 text-sm">{new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</div>
                 <div className="text-golden-100 font-bold text-lg">{formatCurrency(amount)}</div>

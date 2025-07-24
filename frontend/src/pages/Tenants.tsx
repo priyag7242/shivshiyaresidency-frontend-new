@@ -92,7 +92,7 @@ const Tenants = () => {
   const autoImportData = async () => {
     try {
       // Try to import complete tenant database
-      const response = await axios.post(`${apiUrl}/tenants/import/complete`, {}, {
+      const response = await axios.post(`${apiUrl}/tenants/import`, {}, {
         headers: {
           'Content-Type': 'application/json',
         }
