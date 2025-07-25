@@ -25,7 +25,8 @@ import {
   MessageCircle,
   Printer,
   Phone,
-  Copy
+  Copy,
+  Info
 } from 'lucide-react';
 import axios from 'axios';
 import BillTemplate from '../components/BillTemplate';
@@ -1461,76 +1462,90 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
       if (tenant) {
         try {
           setFetchingFromRoom(true);
-          setRoomFetchMessage('🔍 Loading bill details...');
+          setRoomFetchMessage('🔍 Loading tenant details...');
+          
+          console.log('Selected tenant:', tenant);
           
           if (USE_SUPABASE) {
-            // Fetch current bills for this tenant from Supabase
-            const { data: allBills, error: billsError } = await supabase
-              .from('payments')
-              .select('*')
-              .eq('tenant_id', tenant.id);
-            
-            if (billsError) throw billsError;
-            
-            // Find current month's bill for this tenant
+            // First, populate with tenant's basic details
             const currentMonth = new Date().toISOString().slice(0, 7);
-            const currentBill = allBills?.find((bill: any) => 
-              bill.billing_month === currentMonth &&
-              bill.balance_due > 0
-            );
-
-            // Find any pending bills
-            const pendingBills = allBills?.filter((bill: any) => 
-              bill.balance_due > 0
-            ) || [];
-
-            const totalPendingDues = pendingBills.reduce((sum: number, bill: any) => sum + bill.balance_due, 0);
-
-            if (currentBill) {
-              // Pre-populate with current bill details
-              setFormData(prev => ({
-                ...prev,
-                tenant_id: tenant.id,
-                tenant_name: tenant.name,
-                room_number: tenant.room_number,
-                billing_month: currentBill.billing_month,
-                rent_amount: currentBill.rent_amount,
-                electricity_amount: currentBill.electricity_amount,
-                other_charges: currentBill.other_charges,
-                adjustments: currentBill.adjustments,
-                total_amount: currentBill.total_amount,
-                amount_paid: currentBill.balance_due // Set to balance due as suggested payment
-              }));
+            
+            setFormData(prev => ({
+              ...prev,
+              tenant_id: tenant.id,
+              tenant_name: tenant.name,
+              room_number: tenant.room_number,
+              billing_month: currentMonth,
+              rent_amount: tenant.monthly_rent || 0,
+              electricity_amount: 0,
+              other_charges: 0,
+              adjustments: 0,
+              total_amount: tenant.monthly_rent || 0,
+              amount_paid: tenant.monthly_rent || 0
+            }));
+            
+            // Try to fetch any existing bills (if payments table exists)
+            try {
+              const { data: allBills, error: billsError } = await supabase
+                .from('payments')
+                .select('*')
+                .eq('tenant_id', tenant.id);
               
-              setRoomFetchMessage(
-                `✅ Current Bill: ₹${currentBill.balance_due}${
-                  pendingBills.length > 1 ? ` | Total Pending: ₹${totalPendingDues}` : ''
-                }`
-              );
-            } else {
-              // No current bill, just populate tenant details with standard rent
-              setFormData(prev => ({
-                ...prev,
-                tenant_id: tenant.id,
-                tenant_name: tenant.name,
-                room_number: tenant.room_number,
-                rent_amount: tenant.monthly_rent || 0,
-                electricity_amount: 0,
-                other_charges: 0,
-                adjustments: 0,
-                total_amount: tenant.monthly_rent || 0,
-                amount_paid: tenant.monthly_rent || 0
-              }));
-              
-              if (pendingBills.length > 0) {
-                setRoomFetchMessage(
-                  `✅ No current bill | Pending Dues: ₹${totalPendingDues}`
+              if (!billsError && allBills) {
+                // Find current month's bill for this tenant
+                const currentBill = allBills.find((bill: any) => 
+                  bill.billing_month === currentMonth &&
+                  bill.balance_due > 0
                 );
+
+                // Find any pending bills
+                const pendingBills = allBills.filter((bill: any) => 
+                  bill.balance_due > 0
+                ) || [];
+
+                const totalPendingDues = pendingBills.reduce((sum: number, bill: any) => sum + bill.balance_due, 0);
+
+                if (currentBill) {
+                  // Pre-populate with current bill details
+                  setFormData(prev => ({
+                    ...prev,
+                    tenant_id: tenant.id,
+                    tenant_name: tenant.name,
+                    room_number: tenant.room_number,
+                    billing_month: currentBill.billing_month,
+                    rent_amount: currentBill.rent_amount,
+                    electricity_amount: currentBill.electricity_amount,
+                    other_charges: currentBill.other_charges,
+                    adjustments: currentBill.adjustments,
+                    total_amount: currentBill.total_amount,
+                    amount_paid: currentBill.balance_due // Set to balance due as suggested payment
+                  }));
+                  
+                  setRoomFetchMessage(
+                    `✅ Current Bill: ₹${currentBill.balance_due}${
+                      pendingBills.length > 1 ? ` | Total Pending: ₹${totalPendingDues}` : ''
+                    }`
+                  );
+                } else if (pendingBills.length > 0) {
+                  setRoomFetchMessage(
+                    `✅ No current bill | Pending Dues: ₹${totalPendingDues}`
+                  );
+                } else {
+                  setRoomFetchMessage(
+                    `✅ No pending bills | Standard Rent: ₹${tenant.monthly_rent || 0}`
+                  );
+                }
               } else {
+                // No payments table or no bills found
                 setRoomFetchMessage(
-                  `✅ No pending bills | Standard Rent: ₹${tenant.monthly_rent || 0}`
+                  `✅ Tenant loaded | Standard Rent: ₹${tenant.monthly_rent || 0} | You can edit amounts below`
                 );
               }
+            } catch (error) {
+              // Payments table doesn't exist yet, just show tenant details
+              setRoomFetchMessage(
+                `✅ Tenant loaded | Standard Rent: ₹${tenant.monthly_rent || 0} | You can edit amounts below`
+              );
             }
           } else {
             // Fetch current bills for this tenant
@@ -1641,6 +1656,16 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
   const calculateTotal = () => {
     const total = formData.rent_amount + formData.electricity_amount + formData.other_charges + formData.adjustments;
     setFormData(prev => ({ ...prev, total_amount: total }));
+  };
+
+  const handleInputChange = (field: string, value: string | number) => {
+    const numValue = typeof value === 'string' ? parseFloat(value) || 0 : value;
+    setFormData(prev => ({ ...prev, [field]: numValue }));
+    
+    // Update the message to show manual edit
+    if (field !== 'tenant_id' && field !== 'tenant_name' && field !== 'room_number' && field !== 'billing_month') {
+      setRoomFetchMessage('✏️ Amounts manually edited - you can adjust as needed');
+    }
   };
 
   useEffect(() => {
@@ -1854,6 +1879,24 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
             )}
           </div>
 
+          {/* Helpful Message Section */}
+          {formData.tenant_name && (
+            <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-400 mb-2">
+                <Info className="h-4 w-4" />
+                <span className="font-medium">Payment Details</span>
+              </div>
+              <div className="text-blue-300 text-sm space-y-1">
+                <div><strong>Tenant:</strong> {formData.tenant_name} (Room {formData.room_number})</div>
+                <div><strong>Standard Rent:</strong> {formatCurrency(formData.rent_amount)}</div>
+                <div className="text-blue-400/80 text-xs mt-2">
+                  💡 <strong>Tip:</strong> All amounts below are pre-filled but you can edit them as needed. 
+                  The system will automatically calculate the total.
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Payment Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
@@ -1863,7 +1906,7 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
                 min="0"
                 step="1"
                 value={formData.rent_amount}
-                onChange={(e) => setFormData({ ...formData, rent_amount: Number(e.target.value) })}
+                onChange={(e) => handleInputChange('rent_amount', e.target.value)}
                 className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
                 placeholder="Enter rent amount"
               />
@@ -1876,7 +1919,7 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
                 min="0"
                 step="1"
                 value={formData.electricity_amount}
-                onChange={(e) => setFormData({ ...formData, electricity_amount: Number(e.target.value) })}
+                onChange={(e) => handleInputChange('electricity_amount', e.target.value)}
                 className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
                 placeholder="Enter electricity charges"
               />
@@ -1889,7 +1932,7 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
                 min="0"
                 step="1"
                 value={formData.other_charges}
-                onChange={(e) => setFormData({ ...formData, other_charges: Number(e.target.value) })}
+                onChange={(e) => handleInputChange('other_charges', e.target.value)}
                 className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
                 placeholder="Enter other charges"
               />
@@ -1901,7 +1944,7 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
                 type="number"
                 step="1"
                 value={formData.adjustments}
-                onChange={(e) => setFormData({ ...formData, adjustments: Number(e.target.value) })}
+                onChange={(e) => handleInputChange('adjustments', e.target.value)}
                 className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
                 placeholder="Enter adjustments (+/-)"
               />
@@ -1932,7 +1975,7 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
                   max={formData.total_amount}
                   required
                   value={formData.amount_paid}
-                  onChange={(e) => setFormData({ ...formData, amount_paid: Number(e.target.value) })}
+                  onChange={(e) => handleInputChange('amount_paid', e.target.value)}
                   className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
                   placeholder="Enter amount received"
                 />
