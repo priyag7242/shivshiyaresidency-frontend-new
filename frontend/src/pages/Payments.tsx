@@ -30,6 +30,7 @@ import {
 import axios from 'axios';
 import BillTemplate from '../components/BillTemplate';
 import { paymentsQueries, tenantsQueries, roomsQueries } from '../lib/supabaseQueries';
+import { supabase } from '../lib/supabase';
 
 const apiUrl = import.meta.env.VITE_API_URL || '';
 const USE_SUPABASE = true;
@@ -155,13 +156,25 @@ const Payments = () => {
 
   const fetchPayments = async () => {
     try {
-      const params = new URLSearchParams();
-      if (monthFilter) params.append('billing_month', monthFilter);
-      if (statusFilter) params.append('status', statusFilter);
-      if (methodFilter) params.append('payment_method', methodFilter);
-      
-      const response = await axios.get(`${apiUrl}/payments?${params}`);
-      setPayments(response.data.payments || []);
+      if (USE_SUPABASE) {
+        let query = supabase.from('payments').select('*');
+        
+        if (monthFilter) query = query.eq('billing_month', monthFilter);
+        if (statusFilter) query = query.eq('status', statusFilter);
+        if (methodFilter) query = query.eq('payment_method', methodFilter);
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        setPayments(data || []);
+      } else {
+        const params = new URLSearchParams();
+        if (monthFilter) params.append('billing_month', monthFilter);
+        if (statusFilter) params.append('status', statusFilter);
+        if (methodFilter) params.append('payment_method', methodFilter);
+        
+        const response = await axios.get(`${apiUrl}/payments?${params}`);
+        setPayments(response.data.payments || []);
+      }
     } catch (error) {
       console.error('Error fetching payments:', error);
     }
@@ -169,12 +182,23 @@ const Payments = () => {
 
   const fetchBills = async () => {
     try {
-      const params = new URLSearchParams();
-      if (monthFilter) params.append('billing_month', monthFilter);
-      if (statusFilter) params.append('status', statusFilter);
-      
-      const response = await axios.get(`${apiUrl}/payments/bills?${params}`);
-      setBills(response.data.bills || []);
+      if (USE_SUPABASE) {
+        let query = supabase.from('payments').select('*');
+        
+        if (monthFilter) query = query.eq('billing_month', monthFilter);
+        if (statusFilter) query = query.eq('status', statusFilter);
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        setBills(data || []);
+      } else {
+        const params = new URLSearchParams();
+        if (monthFilter) params.append('billing_month', monthFilter);
+        if (statusFilter) params.append('status', statusFilter);
+        
+        const response = await axios.get(`${apiUrl}/payments/bills?${params}`);
+        setBills(response.data.bills || []);
+      }
     } catch (error) {
       console.error('Error fetching bills:', error);
     }
@@ -182,8 +206,62 @@ const Payments = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/payments/stats`);
-      setStats(response.data);
+      if (USE_SUPABASE) {
+        // Get all payments data
+        const { data: payments, error: paymentsError } = await supabase
+          .from('payments')
+          .select('*');
+        
+        if (paymentsError) throw paymentsError;
+        
+        const paymentsData = payments || [];
+        
+        // Calculate stats from payments data
+        const currentMonth = new Date().toISOString().slice(0, 7);
+        const currentYear = new Date().getFullYear();
+        
+        const stats: PaymentStats = {
+          total_collected: paymentsData.reduce((sum, p) => sum + (p.amount_paid || 0), 0),
+          this_month_collected: paymentsData
+            .filter(p => p.billing_month === currentMonth)
+            .reduce((sum, p) => sum + (p.amount_paid || 0), 0),
+          this_year_collected: paymentsData
+            .filter(p => p.billing_month?.startsWith(currentYear.toString()))
+            .reduce((sum, p) => sum + (p.amount_paid || 0), 0),
+          pending_amount: paymentsData
+            .filter(p => p.status === 'pending')
+            .reduce((sum, p) => sum + (p.balance_due || 0), 0),
+          overdue_amount: paymentsData
+            .filter(p => p.status === 'overdue')
+            .reduce((sum, p) => sum + (p.balance_due || 0), 0),
+          total_bills: paymentsData.length,
+          paid_bills: paymentsData.filter(p => p.status === 'paid').length,
+          pending_bills: paymentsData.filter(p => p.status === 'pending').length,
+          overdue_bills: paymentsData.filter(p => p.status === 'overdue').length,
+          payment_methods: {
+            cash: paymentsData.filter(p => p.payment_method === 'cash').length,
+            upi: paymentsData.filter(p => p.payment_method === 'upi').length,
+            bank_transfer: paymentsData.filter(p => p.payment_method === 'bank_transfer').length,
+            card: paymentsData.filter(p => p.payment_method === 'card').length
+          },
+          monthly_collection: {}
+        };
+        
+        // Calculate monthly collection
+        paymentsData.forEach(payment => {
+          if (payment.billing_month && payment.amount_paid) {
+            if (!stats.monthly_collection[payment.billing_month]) {
+              stats.monthly_collection[payment.billing_month] = 0;
+            }
+            stats.monthly_collection[payment.billing_month] += payment.amount_paid;
+          }
+        });
+        
+        setStats(stats);
+      } else {
+        const response = await axios.get(`${apiUrl}/payments/stats`);
+        setStats(response.data);
+      }
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
@@ -191,8 +269,14 @@ const Payments = () => {
 
   const fetchRooms = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/rooms`);
-      setRooms(response.data.rooms || []);
+      if (USE_SUPABASE) {
+        const { data, error } = await supabase.from('rooms').select('*');
+        if (error) throw error;
+        setRooms(data || []);
+      } else {
+        const response = await axios.get(`${apiUrl}/rooms`);
+        setRooms(response.data.rooms || []);
+      }
     } catch (error) {
       console.error('Error fetching rooms:', error);
     }
@@ -231,13 +315,126 @@ const Payments = () => {
   const generateBills = async () => {
     try {
       setGenerating(true);
-      const response = await axios.post(`${apiUrl}/payments/bills/generate`, {
-        billing_month: billGeneration.billing_month,
-        electricity_rate: billGeneration.electricity_rate
-      });
       
-      alert(`Generated ${response.data.bills?.length || 0} bills for ${billGeneration.billing_month}`);
-      fetchData();
+      if (USE_SUPABASE) {
+        // Get all active tenants
+        const { data: tenants, error: tenantsError } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('status', 'active');
+        
+        if (tenantsError) throw tenantsError;
+        
+        if (!tenants || tenants.length === 0) {
+          alert('No active tenants found. Please add tenants first.');
+          return;
+        }
+
+        // Check if bills already exist for this month
+        const { data: existingBills, error: billsError } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('billing_month', billGeneration.billing_month);
+        
+        if (billsError) throw billsError;
+        
+        if (existingBills && existingBills.length > 0) {
+          const confirmed = confirm(`Bills for ${billGeneration.billing_month} already exist. Do you want to generate new bills? This will create duplicates.`);
+          if (!confirmed) return;
+        }
+
+        const electricityRate = Number(billGeneration.electricity_rate);
+        const generatedBills = [];
+
+        // Group tenants by room for electricity sharing
+        const roomGroups: { [roomNumber: string]: any[] } = {};
+        tenants.forEach((tenant: any) => {
+          if (!roomGroups[tenant.room_number]) {
+            roomGroups[tenant.room_number] = [];
+          }
+          roomGroups[tenant.room_number].push(tenant);
+        });
+
+        // Generate bills for each room
+        for (const [roomNumber, roomTenants] of Object.entries(roomGroups)) {
+          // Get current electricity reading for this room
+          const currentReading = currentReadings[roomNumber] || 
+            (roomTenants[0].last_electricity_reading || roomTenants[0].electricity_joining_reading) + Math.floor(Math.random() * 100) + 50;
+
+          // Calculate total consumption for the room
+          const roomJoiningReading = Math.max(...roomTenants.map((t: any) => t.electricity_joining_reading || 0));
+          const totalUnitsConsumed = Math.max(0, currentReading - roomJoiningReading);
+          const totalElectricityCost = totalUnitsConsumed * electricityRate;
+
+          // Split electricity cost among tenants in the room
+          const unitsPerTenant = Math.floor(totalUnitsConsumed / roomTenants.length);
+          const costPerTenant = Math.floor(totalElectricityCost / roomTenants.length);
+
+          // Generate bill for each tenant in the room
+          for (let i = 0; i < roomTenants.length; i++) {
+            const tenant = roomTenants[i];
+            const isLastTenant = i === roomTenants.length - 1;
+            
+            const tenantUnits = isLastTenant ? 
+              totalUnitsConsumed - (unitsPerTenant * (roomTenants.length - 1)) : 
+              unitsPerTenant;
+            const tenantElectricityCost = isLastTenant ? 
+              totalElectricityCost - (costPerTenant * (roomTenants.length - 1)) : 
+              costPerTenant;
+
+            const totalAmount = tenant.monthly_rent + tenantElectricityCost;
+
+            const billData = {
+              tenant_id: tenant.id,
+              tenant_name: tenant.name,
+              room_number: tenant.room_number,
+              billing_month: billGeneration.billing_month,
+              rent_amount: tenant.monthly_rent,
+              electricity_units: tenantUnits,
+              electricity_rate: electricityRate,
+              electricity_amount: tenantElectricityCost,
+              other_charges: 0,
+              adjustments: 0,
+              total_amount: totalAmount,
+              amount_paid: 0,
+              balance_due: totalAmount,
+              due_date: new Date(new Date().setDate(new Date().getDate() + 10)).toISOString().split('T')[0],
+              status: 'pending',
+              generated_date: new Date().toISOString().split('T')[0],
+              payment_method: 'pending',
+              payment_date: null,
+              transaction_id: null,
+              notes: null
+            };
+
+            const { data: newBill, error: billError } = await supabase
+              .from('payments')
+              .insert([billData])
+              .select()
+              .single();
+
+            if (billError) throw billError;
+            generatedBills.push(newBill);
+
+            // Update tenant's last electricity reading
+            await supabase
+              .from('tenants')
+              .update({ last_electricity_reading: currentReading })
+              .eq('id', tenant.id);
+          }
+        }
+
+        alert(`Generated ${generatedBills.length} bills for ${billGeneration.billing_month}`);
+        fetchData();
+      } else {
+        const response = await axios.post(`${apiUrl}/payments/bills/generate`, {
+          billing_month: billGeneration.billing_month,
+          electricity_rate: billGeneration.electricity_rate
+        });
+        
+        alert(`Generated ${response.data.bills?.length || 0} bills for ${billGeneration.billing_month}`);
+        fetchData();
+      }
     } catch (error: any) {
       console.error('Error generating bills:', error);
       alert(error.response?.data?.error || 'Failed to generate bills');
@@ -248,10 +445,21 @@ const Payments = () => {
 
   const recordPayment = async (paymentData: any) => {
     try {
-      await axios.post(`${apiUrl}/payments`, paymentData);
-      fetchData();
-      setShowPaymentModal(false);
-      setSelectedBill(null);
+      if (USE_SUPABASE) {
+        const { error } = await supabase
+          .from('payments')
+          .insert([paymentData]);
+        
+        if (error) throw error;
+        fetchData();
+        setShowPaymentModal(false);
+        setSelectedBill(null);
+      } else {
+        await axios.post(`${apiUrl}/payments`, paymentData);
+        fetchData();
+        setShowPaymentModal(false);
+        setSelectedBill(null);
+      }
     } catch (error: any) {
       console.error('Error recording payment:', error);
       alert(error.response?.data?.error || 'Failed to record payment');
@@ -979,8 +1187,14 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
   const fetchTenants = async () => {
     try {
       setLoadingTenants(true);
-      const response = await axios.get(`${apiUrl}/tenants`);
-      setTenants(response.data.tenants || []);
+      if (USE_SUPABASE) {
+        const { data, error } = await supabase.from('tenants').select('*');
+        if (error) throw error;
+        setTenants(data || []);
+      } else {
+        const response = await axios.get(`${apiUrl}/tenants`);
+        setTenants(response.data.tenants || []);
+      }
     } catch (error) {
       console.error('Error fetching tenants:', error);
     } finally {
@@ -998,75 +1212,158 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
       setFetchingFromRoom(true);
       setRoomFetchMessage('🔍 Fetching tenant & bill details...');
       
-      // Fetch tenant data
-      const tenantResponse = await axios.get(`${apiUrl}/tenants/room/${roomNumber.trim()}`);
-      const tenantData = tenantResponse.data.tenant;
-      
-      if (tenantData) {
-        // Fetch current bills for this tenant
-        const billsResponse = await axios.get(`${apiUrl}/payments/bills`);
-        const allBills = billsResponse.data.bills || [];
+      if (USE_SUPABASE) {
+        // Fetch tenant data
+        const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('room_number', roomNumber.trim())
+          .eq('status', 'active')
+          .single();
         
-        // Find current month's bill for this tenant
-        const currentMonth = new Date().toISOString().slice(0, 7);
-        const currentBill = allBills.find((bill: any) => 
-          bill.tenant_id === tenantData.id && 
-          bill.billing_month === currentMonth &&
-          bill.balance_due > 0
-        );
-
-        // Find any pending bills
-        const pendingBills = allBills.filter((bill: any) => 
-          bill.tenant_id === tenantData.id && 
-          bill.balance_due > 0
-        );
-
-        const totalPendingDues = pendingBills.reduce((sum: number, bill: any) => sum + bill.balance_due, 0);
-
-        if (currentBill) {
-          // Pre-populate with current bill details
-          setFormData(prev => ({
-            ...prev,
-            tenant_id: tenantData.id,
-            tenant_name: tenantData.name,
-            room_number: tenantData.room_number,
-            billing_month: currentBill.billing_month,
-            rent_amount: currentBill.rent_amount,
-            electricity_amount: currentBill.electricity_amount,
-            other_charges: currentBill.other_charges,
-            adjustments: currentBill.adjustments,
-            total_amount: currentBill.total_amount,
-            amount_paid: currentBill.balance_due // Set to balance due as suggested payment
-          }));
+        if (tenantError) throw tenantError;
+        
+        if (tenantData) {
+          // Fetch current bills for this tenant
+          const { data: allBills, error: billsError } = await supabase
+            .from('payments')
+            .select('*')
+            .eq('tenant_id', tenantData.id);
           
-          setRoomFetchMessage(
-            `✅ ${tenantData.name} | Current Bill: ₹${currentBill.balance_due}${
-              pendingBills.length > 1 ? ` | Total Pending: ₹${totalPendingDues}` : ''
-            }`
+          if (billsError) throw billsError;
+          
+          // Find current month's bill for this tenant
+          const currentMonth = new Date().toISOString().slice(0, 7);
+          const currentBill = allBills?.find((bill: any) => 
+            bill.billing_month === currentMonth &&
+            bill.balance_due > 0
           );
-        } else {
-          // No current bill, just populate tenant details with standard rent
-          setFormData(prev => ({
-            ...prev,
-            tenant_id: tenantData.id,
-            tenant_name: tenantData.name,
-            room_number: tenantData.room_number,
-            rent_amount: tenantData.monthly_rent || 0,
-            electricity_amount: 0,
-            other_charges: 0,
-            adjustments: 0,
-            total_amount: tenantData.monthly_rent || 0,
-            amount_paid: tenantData.monthly_rent || 0
-          }));
-          
-          if (pendingBills.length > 0) {
+
+          // Find any pending bills
+          const pendingBills = allBills?.filter((bill: any) => 
+            bill.balance_due > 0
+          ) || [];
+
+          const totalPendingDues = pendingBills.reduce((sum: number, bill: any) => sum + bill.balance_due, 0);
+
+          if (currentBill) {
+            // Pre-populate with current bill details
+            setFormData(prev => ({
+              ...prev,
+              tenant_id: tenantData.id,
+              tenant_name: tenantData.name,
+              room_number: tenantData.room_number,
+              billing_month: currentBill.billing_month,
+              rent_amount: currentBill.rent_amount,
+              electricity_amount: currentBill.electricity_amount,
+              other_charges: currentBill.other_charges,
+              adjustments: currentBill.adjustments,
+              total_amount: currentBill.total_amount,
+              amount_paid: currentBill.balance_due // Set to balance due as suggested payment
+            }));
+            
             setRoomFetchMessage(
-              `✅ ${tenantData.name} | No current bill | Pending Dues: ₹${totalPendingDues}`
+              `✅ ${tenantData.name} | Current Bill: ₹${currentBill.balance_due}${
+                pendingBills.length > 1 ? ` | Total Pending: ₹${totalPendingDues}` : ''
+              }`
             );
           } else {
+            // No current bill, just populate tenant details with standard rent
+            setFormData(prev => ({
+              ...prev,
+              tenant_id: tenantData.id,
+              tenant_name: tenantData.name,
+              room_number: tenantData.room_number,
+              rent_amount: tenantData.monthly_rent || 0,
+              electricity_amount: 0,
+              other_charges: 0,
+              adjustments: 0,
+              total_amount: tenantData.monthly_rent || 0,
+              amount_paid: tenantData.monthly_rent || 0
+            }));
+            
+            if (pendingBills.length > 0) {
+              setRoomFetchMessage(
+                `✅ ${tenantData.name} | No current bill | Pending Dues: ₹${totalPendingDues}`
+              );
+            } else {
+              setRoomFetchMessage(
+                `✅ ${tenantData.name} | No pending bills | Standard Rent: ₹${tenantData.monthly_rent || 0}`
+              );
+            }
+          }
+        }
+      } else {
+        // Fetch tenant data
+        const tenantResponse = await axios.get(`${apiUrl}/tenants/room/${roomNumber.trim()}`);
+        const tenantData = tenantResponse.data.tenant;
+        
+        if (tenantData) {
+          // Fetch current bills for this tenant
+          const billsResponse = await axios.get(`${apiUrl}/payments/bills`);
+          const allBills = billsResponse.data.bills || [];
+          
+          // Find current month's bill for this tenant
+          const currentMonth = new Date().toISOString().slice(0, 7);
+          const currentBill = allBills.find((bill: any) => 
+            bill.tenant_id === tenantData.id && 
+            bill.billing_month === currentMonth &&
+            bill.balance_due > 0
+          );
+
+          // Find any pending bills
+          const pendingBills = allBills.filter((bill: any) => 
+            bill.tenant_id === tenantData.id && 
+            bill.balance_due > 0
+          );
+
+          const totalPendingDues = pendingBills.reduce((sum: number, bill: any) => sum + bill.balance_due, 0);
+
+          if (currentBill) {
+            // Pre-populate with current bill details
+            setFormData(prev => ({
+              ...prev,
+              tenant_id: tenantData.id,
+              tenant_name: tenantData.name,
+              room_number: tenantData.room_number,
+              billing_month: currentBill.billing_month,
+              rent_amount: currentBill.rent_amount,
+              electricity_amount: currentBill.electricity_amount,
+              other_charges: currentBill.other_charges,
+              adjustments: currentBill.adjustments,
+              total_amount: currentBill.total_amount,
+              amount_paid: currentBill.balance_due // Set to balance due as suggested payment
+            }));
+            
             setRoomFetchMessage(
-              `✅ ${tenantData.name} | No pending bills | Standard Rent: ₹${tenantData.monthly_rent || 0}`
+              `✅ ${tenantData.name} | Current Bill: ₹${currentBill.balance_due}${
+                pendingBills.length > 1 ? ` | Total Pending: ₹${totalPendingDues}` : ''
+              }`
             );
+          } else {
+            // No current bill, just populate tenant details with standard rent
+            setFormData(prev => ({
+              ...prev,
+              tenant_id: tenantData.id,
+              tenant_name: tenantData.name,
+              room_number: tenantData.room_number,
+              rent_amount: tenantData.monthly_rent || 0,
+              electricity_amount: 0,
+              other_charges: 0,
+              adjustments: 0,
+              total_amount: tenantData.monthly_rent || 0,
+              amount_paid: tenantData.monthly_rent || 0
+            }));
+            
+            if (pendingBills.length > 0) {
+              setRoomFetchMessage(
+                `✅ ${tenantData.name} | No current bill | Pending Dues: ₹${totalPendingDues}`
+              );
+            } else {
+              setRoomFetchMessage(
+                `✅ ${tenantData.name} | No pending bills | Standard Rent: ₹${tenantData.monthly_rent || 0}`
+              );
+            }
           }
         }
       }
