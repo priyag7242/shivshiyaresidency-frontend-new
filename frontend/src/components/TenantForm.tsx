@@ -23,6 +23,7 @@ interface Tenant {
   notice_date: string | null;
   security_adjustment: number;
   // New fields for security deposit tracking
+  security_deposit_total: number;
   security_deposit_paid: number;
   security_deposit_balance: number;
   security_balance_due_date: string | null;
@@ -56,6 +57,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
     notice_date: '',
     security_adjustment: '',
     // New fields for security deposit tracking
+    security_deposit_total: '',
     security_deposit_paid: '',
     security_deposit_balance: '',
     security_balance_due_date: '',
@@ -89,6 +91,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
           notice_date: tenant.notice_date || '',
           security_adjustment: (tenant.security_adjustment || 0).toString(),
           // New fields for security deposit tracking
+          security_deposit_total: (tenant.security_deposit_total || tenant.security_deposit || 0).toString(),
           security_deposit_paid: (tenant.security_deposit_paid || tenant.security_deposit || 0).toString(),
           security_deposit_balance: (tenant.security_deposit_balance || 0).toString(),
           security_balance_due_date: tenant.security_balance_due_date || '',
@@ -114,6 +117,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
           notice_date: '',
           security_adjustment: '0',
           // New fields for security deposit tracking
+          security_deposit_total: '',
           security_deposit_paid: '',
           security_deposit_balance: '',
           security_balance_due_date: '',
@@ -175,6 +179,7 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
         electricity_joining_reading: Number(formData.electricity_joining_reading),
         security_adjustment: Number(formData.security_adjustment),
         // New fields for security deposit tracking
+        security_deposit_total: Number(formData.security_deposit_total),
         security_deposit_paid: Number(formData.security_deposit_paid),
         security_deposit_balance: Number(formData.security_deposit_balance),
         security_balance_due_date: formData.security_balance_due_date || null,

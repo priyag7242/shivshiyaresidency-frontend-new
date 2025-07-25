@@ -39,6 +39,7 @@ interface Tenant {
   notice_date: string | null;
   security_adjustment: number;
   // New fields for security deposit tracking
+  security_deposit_total: number;
   security_deposit_paid: number;
   security_deposit_balance: number;
   security_balance_due_date: string | null;
