@@ -178,11 +178,14 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
         security_deposit: Number(formData.security_deposit),
         electricity_joining_reading: Number(formData.electricity_joining_reading),
         security_adjustment: Number(formData.security_adjustment),
+        // Handle date fields - convert empty strings to null
+        departure_date: formData.departure_date ? formData.departure_date : null,
+        notice_date: formData.notice_date ? formData.notice_date : null,
         // New fields for security deposit tracking
         security_deposit_total: Number(formData.security_deposit_total),
         security_deposit_paid: Number(formData.security_deposit_paid),
         security_deposit_balance: Number(formData.security_deposit_balance),
-        security_balance_due_date: formData.security_balance_due_date || null,
+        security_balance_due_date: formData.security_balance_due_date ? formData.security_balance_due_date : null,
         adjust_rent_from_security: formData.adjust_rent_from_security
       };
 
