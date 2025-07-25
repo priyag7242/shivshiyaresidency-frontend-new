@@ -45,8 +45,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const storedToken = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
 
+      console.log('Auth initialization - storedToken:', !!storedToken);
+      console.log('Auth initialization - storedUser:', !!storedUser);
+
       if (storedToken && storedUser) {
         const userData = JSON.parse(storedUser);
+        console.log('User data loaded:', userData);
         
         // Set axios default authorization header
         axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
@@ -72,6 +76,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           clearAuth();
         }
         */
+      } else {
+        console.log('No stored auth data found');
       }
     } catch (error) {
       console.error('Auth initialization error:', error);
@@ -122,7 +128,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (!user) return false;
     
     // Admin has all permissions
-    if (user.permissions.includes('all')) return true;
+    if (user.role === 'admin' || user.permissions.includes('all')) return true;
     
     // Check specific permission
     return user.permissions.includes(permission);
@@ -174,7 +180,13 @@ export const ProtectedRoute = ({
   role, 
   fallback 
 }: ProtectedRouteProps) => {
-  const { isAuthenticated, hasPermission, isRole, isLoading } = useAuth();
+  const { isAuthenticated, hasPermission, isRole, isLoading, user } = useAuth();
+
+  console.log('ProtectedRoute - isLoading:', isLoading);
+  console.log('ProtectedRoute - isAuthenticated:', isAuthenticated);
+  console.log('ProtectedRoute - user:', user);
+  console.log('ProtectedRoute - permission:', permission);
+  console.log('ProtectedRoute - role:', role);
 
   if (isLoading) {
     return (
@@ -188,12 +200,14 @@ export const ProtectedRoute = ({
   }
 
   if (!isAuthenticated) {
+    console.log('Not authenticated, redirecting to login');
     window.location.href = '/login';
     return null;
   }
 
   // Check permission if specified
   if (permission && !hasPermission(permission)) {
+    console.log('Permission denied:', permission);
     return fallback || (
       <div className="min-h-screen bg-dark-950 flex items-center justify-center">
         <div className="text-center">
@@ -206,6 +220,7 @@ export const ProtectedRoute = ({
 
   // Check role if specified
   if (role && !isRole(role)) {
+    console.log('Role denied:', role);
     return fallback || (
       <div className="min-h-screen bg-dark-950 flex items-center justify-center">
         <div className="text-center">
@@ -216,6 +231,7 @@ export const ProtectedRoute = ({
     );
   }
 
+  console.log('ProtectedRoute - rendering children');
   return <>{children}</>;
 };
 

@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Eye, EyeOff, Lock, User, AlertCircle, CheckCircle, Building2 } from 'lucide-react';
-import axios from 'axios';
-
-const apiUrl = import.meta.env.VITE_API_URL || 'https://shivshivaresidency-backend.onrender.com/api';
+import { supabaseAuth } from '../lib/supabase';
 
 interface LoginResponse {
   message: string;
@@ -37,28 +35,17 @@ const Login = () => {
     setSuccess('');
 
     try {
-      console.log('API URL:', apiUrl);
-      console.log('Attempting login with URL:', `${apiUrl}/auth/login`);
-      console.log('Form data:', formData);
-      
-      const response = await axios.post(
-        `${apiUrl}/auth/login`,
-        formData
-      );
-
+      // Use Supabase Auth for login
+      const result = await supabaseAuth.login(formData.username, formData.password);
       // Store token and user data
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-
+      localStorage.setItem('token', result.token);
+      localStorage.setItem('user', JSON.stringify(result.user));
       setSuccess('Login successful! Redirecting...');
       setTimeout(() => {
         window.location.href = '/';
       }, 1000);
     } catch (error: any) {
-      console.error('Login error:', error);
-      setError(
-        error.response?.data?.error || error.message || 'Login failed. Please try again.'
-      );
+      setError(error.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }

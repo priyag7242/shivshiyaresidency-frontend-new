@@ -8,6 +8,7 @@ import Payments from './pages/Payments';
 import Maintenance from './pages/Maintenance';
 import Visitors from './pages/Visitors';
 import Login from './pages/Login';
+import ErrorBoundary from './components/ErrorBoundary';
 //
 // Protected App component that renders after authentication
 const ProtectedApp = () => {
@@ -20,7 +21,7 @@ const ProtectedApp = () => {
         <Route 
           path="/tenants" 
           element={
-            <ProtectedRoute permission="tenants:read">
+            <ProtectedRoute>
               <Tenants />
             </ProtectedRoute>
           } 
@@ -28,7 +29,7 @@ const ProtectedApp = () => {
         <Route 
           path="/rooms" 
           element={
-            <ProtectedRoute permission="rooms:read">
+            <ProtectedRoute>
               <Rooms />
             </ProtectedRoute>
           } 
@@ -36,7 +37,7 @@ const ProtectedApp = () => {
         <Route 
           path="/payments" 
           element={
-            <ProtectedRoute permission="payments:read">
+            <ProtectedRoute>
               <Payments />
             </ProtectedRoute>
           } 
@@ -44,7 +45,7 @@ const ProtectedApp = () => {
         <Route 
           path="/maintenance" 
           element={
-            <ProtectedRoute permission="maintenance:read">
+            <ProtectedRoute>
               <Maintenance />
             </ProtectedRoute>
           } 
@@ -52,7 +53,7 @@ const ProtectedApp = () => {
         <Route 
           path="/visitors" 
           element={
-            <ProtectedRoute permission="visitors:read">
+            <ProtectedRoute>
               <Visitors />
             </ProtectedRoute>
           } 
@@ -98,13 +99,15 @@ function App() {
   console.log('All env vars:', import.meta.env);
   
   return (
-    <AuthProvider>
-      <Router>
-        <div className="App min-h-screen bg-gray-900">
-          <AppRouter />
-        </div>
-      </Router>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <div className="App min-h-screen bg-gray-900">
+            <AppRouter />
+          </div>
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

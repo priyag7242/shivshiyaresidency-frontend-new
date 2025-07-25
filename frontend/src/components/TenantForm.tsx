@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, User, Phone, Home, Calendar, IndianRupee, Settings, Utensils } from 'lucide-react';
 import axios from 'axios';
-
-const apiUrl = import.meta.env.VITE_API_URL || '';
+import { supabase } from '../lib/supabase';
 
 interface Tenant {
   id: string;
@@ -23,6 +22,11 @@ interface Tenant {
   notice_given: boolean;
   notice_date: string | null;
   security_adjustment: number;
+  // New fields for security deposit tracking
+  security_deposit_paid: number;
+  security_deposit_balance: number;
+  security_balance_due_date: string | null;
+  adjust_rent_from_security: boolean;
 }
 
 interface TenantFormProps {
@@ -50,7 +54,12 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
     stay_duration: '',
     notice_given: false,
     notice_date: '',
-    security_adjustment: ''
+    security_adjustment: '',
+    // New fields for security deposit tracking
+    security_deposit_paid: '',
+    security_deposit_balance: '',
+    security_balance_due_date: '',
+    adjust_rent_from_security: false
   });
 
   const [availableRooms, setAvailableRooms] = useState<any[]>([]);
@@ -68,9 +77,9 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
           mobile: tenant.mobile,
           room_number: tenant.room_number,
           joining_date: tenant.joining_date,
-          monthly_rent: tenant.monthly_rent.toString(),
-          security_deposit: tenant.security_deposit.toString(),
-          electricity_joining_reading: tenant.electricity_joining_reading.toString(),
+          monthly_rent: (tenant.monthly_rent || 0).toString(),
+          security_deposit: (tenant.security_deposit || 0).toString(),
+          electricity_joining_reading: (tenant.electricity_joining_reading || 0).toString(),
           status: tenant.status,
           has_food: tenant.has_food,
           category: tenant.category || 'new',
@@ -78,7 +87,12 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
           stay_duration: tenant.stay_duration || '',
           notice_given: tenant.notice_given,
           notice_date: tenant.notice_date || '',
-          security_adjustment: tenant.security_adjustment.toString()
+          security_adjustment: (tenant.security_adjustment || 0).toString(),
+          // New fields for security deposit tracking
+          security_deposit_paid: (tenant.security_deposit_paid || tenant.security_deposit || 0).toString(),
+          security_deposit_balance: (tenant.security_deposit_balance || 0).toString(),
+          security_balance_due_date: tenant.security_balance_due_date || '',
+          adjust_rent_from_security: tenant.adjust_rent_from_security
         });
       } else {
         // Reset form for new tenant
@@ -98,7 +112,12 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
           stay_duration: '',
           notice_given: false,
           notice_date: '',
-          security_adjustment: '0'
+          security_adjustment: '0',
+          // New fields for security deposit tracking
+          security_deposit_paid: '',
+          security_deposit_balance: '',
+          security_balance_due_date: '',
+          adjust_rent_from_security: false
         });
       }
       setActiveTab('basic');
@@ -108,8 +127,9 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
 
   const fetchAvailableRooms = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/rooms?status=available`);
-      setAvailableRooms(response.data.rooms || []);
+      const { data, error } = await supabase.from('rooms').select('*').eq('status', 'available');
+      if (error) throw error;
+      setAvailableRooms(data || []);
     } catch (error) {
       console.error('Error fetching rooms:', error);
     }
@@ -123,49 +143,6 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
       alert('⚠️ Room change detected! Please update the electricity joining reading for the new room.');
     } else {
       setRoomChanged(false);
-    }
-  };
-
-  const deallocateFromOldRoom = async (oldRoomNumber: string, tenantId: string) => {
-    try {
-      // Find the old room
-      const roomsResponse = await axios.get(`${apiUrl}/rooms`);
-      const oldRoom = roomsResponse.data.rooms?.find((room: any) => room.room_number === oldRoomNumber);
-      
-      if (oldRoom) {
-        // Deallocate tenant from old room
-        await axios.post(`${apiUrl}/rooms/${oldRoom.id}/deallocate`, {
-          tenant_id: tenantId
-        });
-        console.log(`Deallocated tenant ${tenantId} from room ${oldRoomNumber}`);
-      }
-    } catch (error) {
-      console.error('Error deallocating from old room:', error);
-    }
-  };
-
-  const allocateToNewRoom = async (newRoomNumber: string, tenantId: string, tenantName: string) => {
-    try {
-      // Find the new room
-      const roomsResponse = await axios.get(`${apiUrl}/rooms`);
-      const newRoom = roomsResponse.data.rooms?.find((room: any) => room.room_number === newRoomNumber);
-      
-      if (newRoom) {
-        // Check if room has capacity
-        if (newRoom.current_occupancy >= newRoom.capacity) {
-          throw new Error(`Room ${newRoomNumber} is at full capacity`);
-        }
-        
-        // Allocate tenant to new room
-        await axios.post(`${apiUrl}/rooms/${newRoom.id}/allocate`, {
-          tenant_id: tenantId,
-          tenant_name: tenantName
-        });
-        console.log(`Allocated tenant ${tenantId} to room ${newRoomNumber}`);
-      }
-    } catch (error) {
-      console.error('Error allocating to new room:', error);
-      throw error;
     }
   };
 
@@ -196,52 +173,29 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
         monthly_rent: Number(formData.monthly_rent),
         security_deposit: Number(formData.security_deposit),
         electricity_joining_reading: Number(formData.electricity_joining_reading),
-        security_adjustment: Number(formData.security_adjustment)
+        security_adjustment: Number(formData.security_adjustment),
+        // New fields for security deposit tracking
+        security_deposit_paid: Number(formData.security_deposit_paid),
+        security_deposit_balance: Number(formData.security_deposit_balance),
+        security_balance_due_date: formData.security_balance_due_date || null,
+        adjust_rent_from_security: formData.adjust_rent_from_security
       };
 
       if (tenant) {
         // Update existing tenant
-        const updatedTenant = await axios.put(`${apiUrl}/tenants/${tenant.id}`, submitData);
-        
-        // Handle room change if applicable
-        if (roomChanged && originalRoomNumber !== formData.room_number) {
-          try {
-            // Deallocate from old room
-            await deallocateFromOldRoom(originalRoomNumber, tenant.id);
-            
-            // Allocate to new room
-            await allocateToNewRoom(formData.room_number, tenant.id, formData.name);
-            
-            alert(`✅ Tenant updated successfully!\n🏠 Room changed from ${originalRoomNumber} to ${formData.room_number}`);
-          } catch (roomError: any) {
-            // If room allocation fails, revert the tenant update
-            await axios.put(`${apiUrl}/tenants/${tenant.id}`, {
-              ...tenant,
-              room_number: originalRoomNumber
-            });
-            throw new Error(`Room change failed: ${roomError.message}`);
-          }
-        }
+        const { error } = await supabase.from('tenants').update(submitData).eq('id', tenant.id);
+        if (error) throw error;
       } else {
         // Create new tenant
-        const newTenant = await axios.post(`${apiUrl}/tenants`, submitData);
-        
-        // Allocate room to new tenant
-        try {
-          await allocateToNewRoom(formData.room_number, newTenant.data.id, formData.name);
-          alert('✅ New tenant created and room allocated successfully!');
-        } catch (roomError: any) {
-          // If room allocation fails, delete the tenant
-          await axios.delete(`${apiUrl}/tenants/${newTenant.data.id}`);
-          throw new Error(`Room allocation failed: ${roomError.message}`);
-        }
+        const { error } = await supabase.from('tenants').insert([submitData]);
+        if (error) throw error;
       }
 
       onSubmit();
       onClose();
     } catch (error: any) {
       console.error('Error saving tenant:', error);
-      alert(error.message || error.response?.data?.error || 'Failed to save tenant');
+      alert(error.message || 'Failed to save tenant');
     } finally {
       setLoading(false);
     }
@@ -514,6 +468,68 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
                       Positive for additional charges, negative for deductions
                     </p>
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-golden-300 mb-2">
+                      <IndianRupee className="inline h-4 w-4 mr-1" />
+                      Security Deposit Paid
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.security_deposit_paid}
+                      onChange={(e) => {
+                        const paid = Number(e.target.value) || 0;
+                        const total = Number(formData.security_deposit) || 0;
+                        const balance = total - paid;
+                        setFormData({ 
+                          ...formData, 
+                          security_deposit_paid: e.target.value,
+                          security_deposit_balance: balance.toString()
+                        });
+                      }}
+                      className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 placeholder-golden-400/50 focus:outline-none focus:border-golden-500 focus:ring-1 focus:ring-golden-500"
+                      placeholder="Amount paid so far"
+                    />
+                    <p className="text-golden-400/60 text-xs mt-1">
+                      How much of the security deposit has been paid
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-golden-300 mb-2">
+                      <Calendar className="inline h-4 w-4 mr-1" />
+                      Balance Due Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.security_balance_due_date}
+                      onChange={(e) => setFormData({ ...formData, security_balance_due_date: e.target.value })}
+                      className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500 focus:ring-1 focus:ring-golden-500"
+                    />
+                    <p className="text-golden-400/60 text-xs mt-1">
+                      When the remaining balance should be paid
+                    </p>
+                  </div>
+
+                  <div className="col-span-2">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        id="adjust_rent_from_security"
+                        checked={formData.adjust_rent_from_security}
+                        onChange={(e) => setFormData({ ...formData, adjust_rent_from_security: e.target.checked })}
+                        className="h-4 w-4 text-golden-500 bg-dark-800 border-golden-600/30 rounded focus:ring-golden-500"
+                      />
+                      <label htmlFor="adjust_rent_from_security" className="text-golden-300 flex items-center gap-2">
+                        <IndianRupee className="h-4 w-4" />
+                        Allow rent adjustment from security deposit
+                      </label>
+                    </div>
+                    <p className="text-golden-400/60 text-xs mt-1 ml-7">
+                      Enable this option to allow deducting one month's rent from security deposit when tenant leaves
+                    </p>
+                  </div>
                 </div>
 
                 {/* Financial Summary */}
@@ -525,15 +541,41 @@ const TenantForm = ({ isOpen, onClose, onSubmit, tenant }: TenantFormProps) => {
                       <span className="text-golden-100">₹{formData.monthly_rent || '0'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-golden-300">Security Deposit:</span>
+                      <span className="text-golden-300">Security Deposit (Total):</span>
                       <span className="text-golden-100">₹{formData.security_deposit || '0'}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-golden-300">Total Initial Payment:</span>
-                      <span className="text-golden-100 font-medium">
-                        ₹{(Number(formData.monthly_rent || 0) + Number(formData.security_deposit || 0) + Number(formData.security_adjustment || 0)).toLocaleString()}
+                      <span className="text-golden-300">Security Deposit (Paid):</span>
+                      <span className="text-golden-100">₹{formData.security_deposit_paid || '0'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-golden-300">Security Deposit (Balance):</span>
+                      <span className={`font-medium ${Number(formData.security_deposit_balance || 0) > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                        ₹{formData.security_deposit_balance || '0'}
                       </span>
                     </div>
+                    {Number(formData.security_adjustment || 0) !== 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-golden-300">Security Adjustment:</span>
+                        <span className={`font-medium ${Number(formData.security_adjustment || 0) > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                          {Number(formData.security_adjustment || 0) > 0 ? '+' : ''}₹{formData.security_adjustment || '0'}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between col-span-2 border-t border-golden-600/20 pt-2">
+                      <span className="text-golden-300 font-medium">Total Initial Payment:</span>
+                      <span className="text-golden-100 font-medium">
+                        ₹{(Number(formData.monthly_rent || 0) + Number(formData.security_deposit_paid || 0) + Number(formData.security_adjustment || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                    {Number(formData.security_deposit_balance || 0) > 0 && formData.security_balance_due_date && (
+                      <div className="flex justify-between col-span-2">
+                        <span className="text-golden-300">Balance Due Date:</span>
+                        <span className="text-orange-400 font-medium">
+                          {new Date(formData.security_balance_due_date).toLocaleDateString()}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -151,16 +151,26 @@ export const roomsQueries = {
     return data;
   },
 
-  async update(id: string, updates: any) {
+    async update(id: string, updates: any) {
     const { data, error } = await supabase
       .from('rooms')
       .update(updates)
       .eq('id', id)
       .select()
       .single();
-    
+
     if (error) throw error;
     return data;
+  },
+
+  async delete(id: string) {
+    const { error } = await supabase
+      .from('rooms')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
   }
 };
 

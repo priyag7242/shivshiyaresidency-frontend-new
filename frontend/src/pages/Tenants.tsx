@@ -15,11 +15,9 @@ import {
   Clock,
   FileText
 } from 'lucide-react';
-import axios from 'axios';
+import { supabase } from '../lib/supabase';
 import TenantForm from '../components/TenantForm';
 import { completeTenantsData } from '../data/completeTenantsData';
-
-const apiUrl = import.meta.env.VITE_API_URL || '';
 
 interface Tenant {
   id: string;
@@ -40,9 +38,16 @@ interface Tenant {
   notice_given: boolean;
   notice_date: string | null;
   security_adjustment: number;
+  // New fields for security deposit tracking
+  security_deposit_paid: number;
+  security_deposit_balance: number;
+  security_balance_due_date: string | null;
+  adjust_rent_from_security: boolean;
 }
 
 const Tenants = () => {
+  console.log('Tenants component rendering');
+  
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -73,11 +78,12 @@ const Tenants = () => {
     try {
       setLoading(true);
       // First, check if data already exists
-      const response = await axios.get(`${apiUrl}/tenants`);
-      const data = response.data;
+      const { data, error } = await supabase.from('tenants').select('*');
+      if (error) throw error;
+      const existingData = data || [];
       
       // If no tenants exist, automatically load the complete data
-      if (!data.tenants || data.tenants.length === 0) {
+      if (!existingData || existingData.length === 0) {
         await autoImportData();
       }
     } catch (error) {
@@ -92,14 +98,14 @@ const Tenants = () => {
   const autoImportData = async () => {
     try {
       // Try to import complete tenant database
-      const response = await axios.post(`${apiUrl}/tenants/import`, {}, {
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
+      const { data, error } = await supabase.from('tenants').select('*');
+      if (error) throw error;
+      const existingData = data || [];
 
-      if (response.status === 200) {
-        const result = response.data;
+      if (existingData.length === 0) {
+        const { data: importedData, error: importError } = await supabase.from('tenants').select('*');
+        if (importError) throw importError;
+        const result = importedData || [];
         console.log('✅ Complete tenant database imported:', result);
         fetchTenants();
         fetchStats();
@@ -124,14 +130,14 @@ const Tenants = () => {
   const fetchTenants = async () => {
     try {
       setLoading(true);
-      const queryParams = new URLSearchParams();
-      if (searchTerm) queryParams.append('search', searchTerm);
-      if (statusFilter) queryParams.append('status', statusFilter);
-      if (categoryFilter) queryParams.append('category', categoryFilter);
+      let query = supabase.from('tenants').select('*');
+      if (searchTerm) query = query.ilike('name', `%${searchTerm}%`).or(`mobile.ilike.%${searchTerm}%,room_number.ilike.%${searchTerm}%`);
+      if (statusFilter) query = query.eq('status', statusFilter);
+      if (categoryFilter) query = query.eq('category', categoryFilter);
 
-      const response = await axios.get(`${apiUrl}/tenants?${queryParams.toString()}`);
-      const data = response.data;
-      setTenants(data.tenants || []);
+      const { data, error } = await query;
+      if (error) throw error;
+      setTenants(data || []);
     } catch (error) {
       console.error('Failed to fetch tenants:', error);
     } finally {
@@ -141,9 +147,18 @@ const Tenants = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get(`${apiUrl}/tenants/stats`);
-      const data = response.data;
-      setStats(data);
+      const { data, error } = await supabase.from('tenants').select('*');
+      if (error) throw error;
+      const tenantsData = data || [];
+      setStats({
+        total: tenantsData.length,
+        active: tenantsData.filter(t => t.status === 'active').length,
+        adjusting: tenantsData.filter(t => t.status === 'adjust').length,
+        withFood: tenantsData.filter(t => t.has_food).length,
+        newTenants: tenantsData.filter(t => t.category === 'new').length,
+        totalRent: tenantsData.reduce((sum, t) => sum + (t.monthly_rent || 0), 0),
+        totalDeposits: tenantsData.reduce((sum, t) => sum + (t.security_deposit || 0), 0)
+      });
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     }
@@ -153,16 +168,11 @@ const Tenants = () => {
     if (!confirm(`Are you sure you want to delete ${tenantName}? This action cannot be undone.`)) {
       return;
     }
-
     try {
-      const response = await axios.delete(`${apiUrl}/tenants/${tenantId}`);
-
-      if (response.status === 200) {
-        fetchTenants();
-        fetchStats();
-      } else {
-        alert('Failed to delete tenant');
-      }
+      const { error } = await supabase.from('tenants').delete().eq('id', tenantId);
+      if (error) throw error;
+      fetchTenants();
+      fetchStats();
     } catch (error) {
       console.error('Error deleting tenant:', error);
       alert('Failed to delete tenant');
@@ -364,6 +374,35 @@ const Tenants = () => {
                       </div>
                       <div className="text-green-400 text-sm">{formatCurrency(tenant.monthly_rent)}/month</div>
                       <div className="text-golden-400 text-xs">Deposit: {formatCurrency(tenant.security_deposit)}</div>
+                      
+                      {/* Show paid amount and balance */}
+                      {tenant.security_deposit_paid !== undefined && tenant.security_deposit_paid !== tenant.security_deposit ? (
+                        <div className="text-xs mt-1">
+                          <div className="text-blue-400">Paid: {formatCurrency(tenant.security_deposit_paid)}</div>
+                          <div className={`font-semibold ${tenant.security_deposit_balance > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                            Balance: {formatCurrency(tenant.security_deposit_balance)}
+                          </div>
+                          {tenant.security_balance_due_date && (
+                            <div className="text-orange-300 text-xs">
+                              Due: {new Date(tenant.security_balance_due_date).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-green-400 text-xs mt-1">✓ Full deposit paid</div>
+                      )}
+                      
+                      {/* Show security adjustments */}
+                      {tenant.security_adjustment !== 0 && (
+                        <div className={`text-xs font-semibold mt-1 ${tenant.security_adjustment > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                          Adjustment: {tenant.security_adjustment > 0 ? '+' : ''}{formatCurrency(tenant.security_adjustment)}
+                        </div>
+                      )}
+                      
+                      {/* Show rent adjustment option */}
+                      {tenant.adjust_rent_from_security && (
+                        <div className="text-purple-400 text-xs mt-1">🔄 Rent adjustment enabled</div>
+                      )}
                     </td>
                     <td className="py-3 px-4">
                       <div className="space-y-1">

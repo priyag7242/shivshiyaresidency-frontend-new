@@ -20,7 +20,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 9500,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "suman-108",
@@ -40,7 +45,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 0,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "anish-114",
@@ -60,7 +70,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 16200,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "vikash-103",
@@ -80,7 +95,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 0,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "kuldeep-105",
@@ -100,7 +120,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 0,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "sahil-107",
@@ -120,7 +145,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 0,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "pradeep-109",
@@ -140,7 +170,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 0,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "subodh-110",
@@ -160,7 +195,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 0,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "vikas-111",
@@ -180,7 +220,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 0,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "deepak-112",
@@ -200,7 +245,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 15900,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   // Continue with more tenants for responsive testing...
   {
@@ -221,7 +271,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 15900,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "love-116",
@@ -241,7 +296,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 0,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "anuj-117",
@@ -261,7 +321,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 0,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "rohit-119",
@@ -281,7 +346,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 0,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "pradeep-201",
@@ -301,7 +371,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 0,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "abhishek-202-1",
@@ -321,7 +396,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 10500,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "chandan-202-2",
@@ -341,7 +421,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 10500,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   },
   {
     id: "ankit-202-3",
@@ -361,7 +446,12 @@ export const completeTenantsData = [
     stay_duration: null,
     notice_given: false,
     notice_date: null,
-    security_adjustment: 0
+    security_adjustment: 0,
+    // New fields for security deposit tracking
+    security_deposit_paid: 0,
+    security_deposit_balance: 0,
+    security_balance_due_date: null,
+    adjust_rent_from_security: false
   }
   // Add more for comprehensive testing...
 ]; 
