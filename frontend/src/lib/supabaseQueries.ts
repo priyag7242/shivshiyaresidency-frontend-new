@@ -126,13 +126,17 @@ export const roomsQueries = {
       (rooms || []).map(async (room) => {
         const { data: tenants } = await supabase
           .from('tenants')
-          .select('id, name, mobile')
-          .eq('room_id', room.id)
-          .eq('is_active', true);
+          .select('id, name, mobile, joining_date, status')
+          .eq('room_number', room.room_number)
+          .eq('status', 'active');
         
         return {
           ...room,
-          tenants: tenants || []
+          tenants: tenants?.map(tenant => ({
+            id: tenant.id,
+            name: tenant.name,
+            allocated_date: tenant.joining_date
+          })) || []
         };
       })
     );

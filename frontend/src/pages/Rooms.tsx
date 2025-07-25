@@ -899,17 +899,63 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
             {room.tenants && room.tenants.length > 0 ? (
               <div className="space-y-3">
                 {room.tenants.map((tenant, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-dark-700 rounded-lg">
-                    <div>
-                      <div className="text-golden-100 font-medium">{tenant.name}</div>
-                      <div className="text-golden-400 text-sm">Allocated: {new Date(tenant.allocated_date).toLocaleDateString()}</div>
+                  <div key={index} className="bg-dark-700 rounded-lg p-4 border border-golden-600/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                        <div className="text-golden-100 font-medium text-lg">{tenant.name}</div>
+                      </div>
+                      <div className="text-golden-400 text-sm">ID: {tenant.id}</div>
                     </div>
-                    <div className="text-golden-300 text-sm">ID: {tenant.id}</div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-golden-400">Allocated Date:</span>
+                        <span className="text-golden-100 ml-2">
+                          {new Date(tenant.allocated_date).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-golden-400">Status:</span>
+                        <span className="text-green-400 ml-2">Active</span>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-3 pt-3 border-t border-golden-600/20">
+                      <div className="flex items-center gap-2 text-golden-300 text-sm">
+                        <Users className="h-4 w-4" />
+                        <span>Tenant #{index + 1} in Room {room.room_number}</span>
+                      </div>
+                    </div>
                   </div>
                 ))}
+                
+                <div className="mt-4 p-3 bg-dark-700/50 rounded-lg border border-golden-600/20">
+                  <div className="text-center text-golden-400 text-sm">
+                    <div className="font-medium mb-1">Occupancy Summary</div>
+                    <div className="text-golden-100">
+                      {room.tenants.length} of {room.capacity} spots occupied
+                    </div>
+                    {room.capacity > room.tenants.length && (
+                      <div className="text-green-400 text-xs mt-1">
+                        {room.capacity - room.tenants.length} spot(s) available
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : (
-              <div className="text-golden-400">No tenants currently allocated</div>
+              <div className="text-center py-8">
+                <div className="text-golden-400 mb-2">No tenants currently allocated</div>
+                <div className="text-golden-600 text-sm">
+                  This room is available for new tenants
+                </div>
+                {room.status === 'occupied' && room.current_occupancy > 0 && (
+                  <div className="text-orange-400 text-sm mt-2">
+                    ⚠️ Data inconsistency: Room shows occupied but no tenant details found
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
