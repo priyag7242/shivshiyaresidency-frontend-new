@@ -22,7 +22,7 @@ interface Room {
   status: 'available' | 'occupied' | 'maintenance' | 'reserved';
   description?: string;
   images?: { id: string; url: string; caption?: string }[];
-  tenants: { id: string; name: string; allocated_date: string }[];
+  tenants: { id: string; name: string; allocated_date: string; monthly_rent: number; security_deposit: number }[];
   created_date: string;
   updated_date: string;
   maintenance_status?: 'none' | 'scheduled' | 'in_progress' | 'completed';
@@ -811,10 +811,13 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
             <div className="bg-dark-800 border border-golden-600/30 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-2">
                 <IndianRupee className="h-4 w-4 text-golden-400" />
-                <span className="text-sm font-medium text-golden-300">Monthly Rent</span>
+                <span className="text-sm font-medium text-golden-300">Total Monthly Rent</span>
               </div>
               <div className="text-lg font-semibold text-golden-100">
                 {formatCurrency(room.monthly_rent)}
+              </div>
+              <div className="text-xs text-golden-400 mt-1">
+                Auto-calculated from tenants
               </div>
             </div>
           </div>
@@ -848,8 +851,9 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-golden-300">Security Deposit</label>
+                <label className="text-sm font-medium text-golden-300">Total Security Deposit</label>
                 <div className="text-golden-100 font-medium mt-1">{formatCurrency(room.security_deposit)}</div>
+                <div className="text-xs text-golden-400 mt-1">Auto-calculated from tenants</div>
               </div>
 
               <div>
@@ -919,6 +923,18 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
                         <span className="text-golden-400">Status:</span>
                         <span className="text-green-400 ml-2">Active</span>
                       </div>
+                      <div>
+                        <span className="text-golden-400">Monthly Rent:</span>
+                        <span className="text-golden-100 ml-2 font-medium">
+                          {formatCurrency(tenant.monthly_rent)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-golden-400">Security Deposit:</span>
+                        <span className="text-golden-100 ml-2 font-medium">
+                          {formatCurrency(tenant.security_deposit)}
+                        </span>
+                      </div>
                     </div>
                     
                     <div className="mt-3 pt-3 border-t border-golden-600/20">
@@ -941,6 +957,33 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
                         {room.capacity - room.tenants.length} spot(s) available
                       </div>
                     )}
+                  </div>
+                </div>
+                
+                {/* Financial Summary */}
+                <div className="mt-4 p-4 bg-gradient-to-r from-golden-600/10 to-golden-500/10 rounded-lg border border-golden-600/30">
+                  <div className="text-center text-golden-400 text-sm mb-3">
+                    <div className="font-medium text-lg">Room Financial Summary</div>
+                    <div className="text-golden-300 text-xs">Automatically calculated from tenant data</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <div className="text-golden-300 text-xs">Total Monthly Rent</div>
+                      <div className="text-golden-100 font-bold text-lg">
+                        {formatCurrency(room.monthly_rent)}
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-golden-300 text-xs">Total Security Deposit</div>
+                      <div className="text-golden-100 font-bold text-lg">
+                        {formatCurrency(room.security_deposit)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-golden-600/20 text-center">
+                    <div className="text-golden-400 text-xs">
+                      Based on {room.tenants.length} active tenant{room.tenants.length !== 1 ? 's' : ''}
+                    </div>
                   </div>
                 </div>
               </div>

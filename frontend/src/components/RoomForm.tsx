@@ -14,7 +14,7 @@ interface Room {
   status: 'available' | 'occupied' | 'maintenance' | 'reserved';
   description?: string;
   images?: { id: string; url: string; caption?: string }[];
-  tenants: { id: string; name: string; allocated_date: string }[];
+  tenants: { id: string; name: string; allocated_date: string; monthly_rent: number; security_deposit: number }[];
   created_date: string;
   updated_date: string;
   maintenance_status?: 'none' | 'scheduled' | 'in_progress' | 'completed';

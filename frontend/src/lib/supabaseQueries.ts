@@ -121,21 +121,30 @@ export const roomsQueries = {
     
     if (roomsError) throw roomsError;
 
-    // Get tenants for each room
+    // Get tenants for each room with financial details
     const roomsWithTenants = await Promise.all(
       (rooms || []).map(async (room) => {
         const { data: tenants } = await supabase
           .from('tenants')
-          .select('id, name, mobile, joining_date, status')
+          .select('id, name, mobile, joining_date, status, monthly_rent, security_deposit')
           .eq('room_number', room.room_number)
           .eq('status', 'active');
         
+        // Calculate total rent and deposit from all tenants in this room
+        const totalMonthlyRent = tenants?.reduce((sum, tenant) => sum + (tenant.monthly_rent || 0), 0) || 0;
+        const totalSecurityDeposit = tenants?.reduce((sum, tenant) => sum + (tenant.security_deposit || 0), 0) || 0;
+        
         return {
           ...room,
+          // Override room's rent and deposit with calculated totals from tenants
+          monthly_rent: totalMonthlyRent,
+          security_deposit: totalSecurityDeposit,
           tenants: tenants?.map(tenant => ({
             id: tenant.id,
             name: tenant.name,
-            allocated_date: tenant.joining_date
+            allocated_date: tenant.joining_date,
+            monthly_rent: tenant.monthly_rent || 0,
+            security_deposit: tenant.security_deposit || 0
           })) || []
         };
       })
