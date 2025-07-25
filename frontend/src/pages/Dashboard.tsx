@@ -321,7 +321,7 @@ const Dashboard = () => {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
+        <Link to="/tenants" className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 transition-colors cursor-pointer">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-golden-300 text-sm font-medium">Total Tenants</p>
@@ -330,9 +330,9 @@ const Dashboard = () => {
             </div>
             <Users className="h-8 w-8 text-golden-400" />
           </div>
-        </div>
+        </Link>
 
-        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
+        <Link to="/rooms" className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 transition-colors cursor-pointer">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-golden-300 text-sm font-medium">Occupancy Rate</p>
@@ -341,9 +341,9 @@ const Dashboard = () => {
             </div>
             <Building className="h-8 w-8 text-golden-400" />
           </div>
-        </div>
+        </Link>
 
-        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
+        <Link to="/payments" className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 transition-colors cursor-pointer">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-golden-300 text-sm font-medium">Monthly Revenue</p>
@@ -352,9 +352,9 @@ const Dashboard = () => {
             </div>
             <IndianRupee className="h-8 w-8 text-green-400" />
           </div>
-        </div>
+        </Link>
 
-        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
+        <Link to="/payments" className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 transition-colors cursor-pointer">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-golden-300 text-sm font-medium">Pending Collections</p>
@@ -363,7 +363,7 @@ const Dashboard = () => {
             </div>
             <Clock className="h-8 w-8 text-orange-400" />
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Charts and Analytics */}
@@ -564,7 +564,10 @@ const Dashboard = () => {
               <ArrowUpRight className="h-4 w-4 text-golden-400 group-hover:text-golden-100" />
             </Link>
 
-            <button className="w-full flex items-center justify-between p-3 bg-dark-800 rounded-lg hover:bg-dark-700 transition-colors group">
+            <button 
+              onClick={() => setShowReportsModal(true)}
+              className="w-full flex items-center justify-between p-3 bg-dark-800 rounded-lg hover:bg-dark-700 transition-colors group"
+            >
               <div className="flex items-center gap-3">
                 <FileText className="h-4 w-4 text-orange-400" />
                 <span className="text-golden-100">Generate Reports</span>
@@ -572,7 +575,10 @@ const Dashboard = () => {
               <ArrowUpRight className="h-4 w-4 text-golden-400 group-hover:text-golden-100" />
             </button>
 
-            <button className="w-full flex items-center justify-between p-3 bg-dark-800 rounded-lg hover:bg-dark-700 transition-colors group">
+            <button 
+              onClick={() => setShowNotificationsModal(true)}
+              className="w-full flex items-center justify-between p-3 bg-dark-800 rounded-lg hover:bg-dark-700 transition-colors group"
+            >
               <div className="flex items-center gap-3">
                 <Bell className="h-4 w-4 text-red-400" />
                 <span className="text-golden-100">Send Notifications</span>
