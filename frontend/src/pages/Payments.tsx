@@ -315,15 +315,23 @@ const Payments = () => {
   const generateBills = async () => {
     try {
       setGenerating(true);
+      console.log('Starting bill generation...');
       
       if (USE_SUPABASE) {
+        console.log('Using Supabase for bill generation');
+        
         // Get all active tenants
         const { data: tenants, error: tenantsError } = await supabase
           .from('tenants')
           .select('*')
           .eq('status', 'active');
         
-        if (tenantsError) throw tenantsError;
+        if (tenantsError) {
+          console.error('Error fetching tenants:', tenantsError);
+          throw tenantsError;
+        }
+        
+        console.log('Fetched tenants:', tenants?.length || 0);
         
         if (!tenants || tenants.length === 0) {
           alert('No active tenants found. Please add tenants first.');
@@ -336,7 +344,12 @@ const Payments = () => {
           .select('*')
           .eq('billing_month', billGeneration.billing_month);
         
-        if (billsError) throw billsError;
+        if (billsError) {
+          console.error('Error checking existing bills:', billsError);
+          throw billsError;
+        }
+        
+        console.log('Existing bills for this month:', existingBills?.length || 0);
         
         if (existingBills && existingBills.length > 0) {
           const confirmed = confirm(`Bills for ${billGeneration.billing_month} already exist. Do you want to generate new bills? This will create duplicates.`);
@@ -355,8 +368,12 @@ const Payments = () => {
           roomGroups[tenant.room_number].push(tenant);
         });
 
+        console.log('Room groups:', Object.keys(roomGroups));
+
         // Generate bills for each room
         for (const [roomNumber, roomTenants] of Object.entries(roomGroups)) {
+          console.log(`Processing room ${roomNumber} with ${roomTenants.length} tenants`);
+          
           // Get current electricity reading for this room
           const currentReading = currentReadings[roomNumber] || 
             (roomTenants[0].last_electricity_reading || roomTenants[0].electricity_joining_reading) + Math.floor(Math.random() * 100) + 50;
@@ -365,6 +382,8 @@ const Payments = () => {
           const roomJoiningReading = Math.max(...roomTenants.map((t: any) => t.electricity_joining_reading || 0));
           const totalUnitsConsumed = Math.max(0, currentReading - roomJoiningReading);
           const totalElectricityCost = totalUnitsConsumed * electricityRate;
+
+          console.log(`Room ${roomNumber}: Current=${currentReading}, Joining=${roomJoiningReading}, Units=${totalUnitsConsumed}, Cost=${totalElectricityCost}`);
 
           // Split electricity cost among tenants in the room
           const unitsPerTenant = Math.floor(totalUnitsConsumed / roomTenants.length);
@@ -407,23 +426,35 @@ const Payments = () => {
               notes: null
             };
 
+            console.log(`Creating bill for tenant ${tenant.name}:`, billData);
+
             const { data: newBill, error: billError } = await supabase
               .from('payments')
               .insert([billData])
               .select()
               .single();
 
-            if (billError) throw billError;
+            if (billError) {
+              console.error('Error creating bill:', billError);
+              throw billError;
+            }
+            
+            console.log('Bill created successfully:', newBill);
             generatedBills.push(newBill);
 
             // Update tenant's last electricity reading
-            await supabase
+            const { error: updateError } = await supabase
               .from('tenants')
               .update({ last_electricity_reading: currentReading })
               .eq('id', tenant.id);
+              
+            if (updateError) {
+              console.error('Error updating tenant electricity reading:', updateError);
+            }
           }
         }
 
+        console.log(`Successfully generated ${generatedBills.length} bills`);
         alert(`Generated ${generatedBills.length} bills for ${billGeneration.billing_month}`);
         fetchData();
       } else {
@@ -437,7 +468,7 @@ const Payments = () => {
       }
     } catch (error: any) {
       console.error('Error generating bills:', error);
-      alert(error.response?.data?.error || 'Failed to generate bills');
+      alert(error.response?.data?.error || error.message || 'Failed to generate bills');
     } finally {
       setGenerating(false);
     }
@@ -2089,16 +2120,57 @@ const WhatsAppBillModal = ({ isOpen, bill, onClose }: WhatsAppBillModalProps) =>
     
     try {
       setFetchingPhone(true);
-      const response = await axios.get(`${apiUrl}/tenants/${bill.tenant_id}`);
-      const tenantData = response.data.tenant;
+      console.log('Fetching phone for tenant:', bill.tenant_id, bill.tenant_name);
       
-      if (tenantData?.mobile) {
-        setTenantPhone(tenantData.mobile);
+      if (USE_SUPABASE) {
+        // Try to fetch tenant data by ID first
+        const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+          .select('mobile')
+          .eq('id', bill.tenant_id)
+          .single();
+        
+        console.log('Tenant data by ID:', tenantData, 'Error:', tenantError);
+        
+        if (!tenantError && tenantData?.mobile) {
+          setTenantPhone(tenantData.mobile);
+          console.log('Phone found by ID:', tenantData.mobile);
+        } else {
+          // Fallback: try to fetch by room number
+          const { data: roomTenantData, error: roomError } = await supabase
+            .from('tenants')
+            .select('mobile')
+            .eq('room_number', bill.room_number)
+            .eq('status', 'active')
+            .single();
+          
+          console.log('Tenant data by room:', roomTenantData, 'Error:', roomError);
+          
+          if (!roomError && roomTenantData?.mobile) {
+            setTenantPhone(roomTenantData.mobile);
+            console.log('Phone found by room:', roomTenantData.mobile);
+          } else {
+            // Set empty so user can enter manually
+            setTenantPhone('');
+            console.log('No phone found, user needs to enter manually');
+          }
+        }
       } else {
-        // Fallback: try to fetch by room number
-        const roomResponse = await axios.get(`${apiUrl}/tenants/room/${bill.room_number}`);
-        if (roomResponse.data.tenant?.mobile) {
-          setTenantPhone(roomResponse.data.tenant.mobile);
+        // Try to fetch by tenant ID
+        const response = await axios.get(`${apiUrl}/tenants/${bill.tenant_id}`);
+        const tenantData = response.data.tenant;
+        
+        if (tenantData?.mobile) {
+          setTenantPhone(tenantData.mobile);
+        } else {
+          // Fallback: try to fetch by room number
+          const roomResponse = await axios.get(`${apiUrl}/tenants/room/${bill.room_number}`);
+          if (roomResponse.data.tenant?.mobile) {
+            setTenantPhone(roomResponse.data.tenant.mobile);
+          } else {
+            // Set empty so user can enter manually
+            setTenantPhone('');
+          }
         }
       }
     } catch (error) {
