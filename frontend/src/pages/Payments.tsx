@@ -1190,6 +1190,8 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
       if (USE_SUPABASE) {
         const { data, error } = await supabase.from('tenants').select('*');
         if (error) throw error;
+        console.log('Fetched tenants from Supabase:', data?.length || 0);
+        console.log('Sample tenant:', data?.[0]);
         setTenants(data || []);
       } else {
         const response = await axios.get(`${apiUrl}/tenants`);
@@ -1430,70 +1432,141 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
           setFetchingFromRoom(true);
           setRoomFetchMessage('🔍 Loading bill details...');
           
-          // Fetch current bills for this tenant
-          const billsResponse = await axios.get(`${apiUrl}/payments/bills`);
-          const allBills = billsResponse.data.bills || [];
-          
-          // Find current month's bill for this tenant
-          const currentMonth = new Date().toISOString().slice(0, 7);
-          const currentBill = allBills.find((bill: any) => 
-            bill.tenant_id === tenant.id && 
-            bill.billing_month === currentMonth &&
-            bill.balance_due > 0
-          );
-
-          // Find any pending bills
-          const pendingBills = allBills.filter((bill: any) => 
-            bill.tenant_id === tenant.id && 
-            bill.balance_due > 0
-          );
-
-          const totalPendingDues = pendingBills.reduce((sum: number, bill: any) => sum + bill.balance_due, 0);
-
-          if (currentBill) {
-            // Pre-populate with current bill details
-            setFormData(prev => ({
-              ...prev,
-              tenant_id: tenant.id,
-              tenant_name: tenant.name,
-              room_number: tenant.room_number,
-              billing_month: currentBill.billing_month,
-              rent_amount: currentBill.rent_amount,
-              electricity_amount: currentBill.electricity_amount,
-              other_charges: currentBill.other_charges,
-              adjustments: currentBill.adjustments,
-              total_amount: currentBill.total_amount,
-              amount_paid: currentBill.balance_due // Set to balance due as suggested payment
-            }));
+          if (USE_SUPABASE) {
+            // Fetch current bills for this tenant from Supabase
+            const { data: allBills, error: billsError } = await supabase
+              .from('payments')
+              .select('*')
+              .eq('tenant_id', tenant.id);
             
-            setRoomFetchMessage(
-              `✅ Current Bill: ₹${currentBill.balance_due}${
-                pendingBills.length > 1 ? ` | Total Pending: ₹${totalPendingDues}` : ''
-              }`
+            if (billsError) throw billsError;
+            
+            // Find current month's bill for this tenant
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            const currentBill = allBills?.find((bill: any) => 
+              bill.billing_month === currentMonth &&
+              bill.balance_due > 0
             );
-          } else {
-            // No current bill, just populate tenant details with standard rent
-            setFormData(prev => ({
-              ...prev,
-              tenant_id: tenant.id,
-              tenant_name: tenant.name,
-              room_number: tenant.room_number,
-              rent_amount: tenant.monthly_rent || 0,
-              electricity_amount: 0,
-              other_charges: 0,
-              adjustments: 0,
-              total_amount: tenant.monthly_rent || 0,
-              amount_paid: tenant.monthly_rent || 0
-            }));
-            
-            if (pendingBills.length > 0) {
+
+            // Find any pending bills
+            const pendingBills = allBills?.filter((bill: any) => 
+              bill.balance_due > 0
+            ) || [];
+
+            const totalPendingDues = pendingBills.reduce((sum: number, bill: any) => sum + bill.balance_due, 0);
+
+            if (currentBill) {
+              // Pre-populate with current bill details
+              setFormData(prev => ({
+                ...prev,
+                tenant_id: tenant.id,
+                tenant_name: tenant.name,
+                room_number: tenant.room_number,
+                billing_month: currentBill.billing_month,
+                rent_amount: currentBill.rent_amount,
+                electricity_amount: currentBill.electricity_amount,
+                other_charges: currentBill.other_charges,
+                adjustments: currentBill.adjustments,
+                total_amount: currentBill.total_amount,
+                amount_paid: currentBill.balance_due // Set to balance due as suggested payment
+              }));
+              
               setRoomFetchMessage(
-                `✅ No current bill | Pending Dues: ₹${totalPendingDues}`
+                `✅ Current Bill: ₹${currentBill.balance_due}${
+                  pendingBills.length > 1 ? ` | Total Pending: ₹${totalPendingDues}` : ''
+                }`
               );
             } else {
+              // No current bill, just populate tenant details with standard rent
+              setFormData(prev => ({
+                ...prev,
+                tenant_id: tenant.id,
+                tenant_name: tenant.name,
+                room_number: tenant.room_number,
+                rent_amount: tenant.monthly_rent || 0,
+                electricity_amount: 0,
+                other_charges: 0,
+                adjustments: 0,
+                total_amount: tenant.monthly_rent || 0,
+                amount_paid: tenant.monthly_rent || 0
+              }));
+              
+              if (pendingBills.length > 0) {
+                setRoomFetchMessage(
+                  `✅ No current bill | Pending Dues: ₹${totalPendingDues}`
+                );
+              } else {
+                setRoomFetchMessage(
+                  `✅ No pending bills | Standard Rent: ₹${tenant.monthly_rent || 0}`
+                );
+              }
+            }
+          } else {
+            // Fetch current bills for this tenant
+            const billsResponse = await axios.get(`${apiUrl}/payments/bills`);
+            const allBills = billsResponse.data.bills || [];
+            
+            // Find current month's bill for this tenant
+            const currentMonth = new Date().toISOString().slice(0, 7);
+            const currentBill = allBills.find((bill: any) => 
+              bill.tenant_id === tenant.id && 
+              bill.billing_month === currentMonth &&
+              bill.balance_due > 0
+            );
+
+            // Find any pending bills
+            const pendingBills = allBills.filter((bill: any) => 
+              bill.tenant_id === tenant.id && 
+              bill.balance_due > 0
+            );
+
+            const totalPendingDues = pendingBills.reduce((sum: number, bill: any) => sum + bill.balance_due, 0);
+
+            if (currentBill) {
+              // Pre-populate with current bill details
+              setFormData(prev => ({
+                ...prev,
+                tenant_id: tenant.id,
+                tenant_name: tenant.name,
+                room_number: tenant.room_number,
+                billing_month: currentBill.billing_month,
+                rent_amount: currentBill.rent_amount,
+                electricity_amount: currentBill.electricity_amount,
+                other_charges: currentBill.other_charges,
+                adjustments: currentBill.adjustments,
+                total_amount: currentBill.total_amount,
+                amount_paid: currentBill.balance_due // Set to balance due as suggested payment
+              }));
+              
               setRoomFetchMessage(
-                `✅ No pending bills | Standard Rent: ₹${tenant.monthly_rent || 0}`
+                `✅ Current Bill: ₹${currentBill.balance_due}${
+                  pendingBills.length > 1 ? ` | Total Pending: ₹${totalPendingDues}` : ''
+                }`
               );
+            } else {
+              // No current bill, just populate tenant details with standard rent
+              setFormData(prev => ({
+                ...prev,
+                tenant_id: tenant.id,
+                tenant_name: tenant.name,
+                room_number: tenant.room_number,
+                rent_amount: tenant.monthly_rent || 0,
+                electricity_amount: 0,
+                other_charges: 0,
+                adjustments: 0,
+                total_amount: tenant.monthly_rent || 0,
+                amount_paid: tenant.monthly_rent || 0
+              }));
+              
+              if (pendingBills.length > 0) {
+                setRoomFetchMessage(
+                  `✅ No current bill | Pending Dues: ₹${totalPendingDues}`
+                );
+              } else {
+                setRoomFetchMessage(
+                  `✅ No pending bills | Standard Rent: ₹${tenant.monthly_rent || 0}`
+                );
+              }
             }
           }
         } catch (error) {
@@ -1686,7 +1759,7 @@ const PaymentModal = ({ isOpen, onClose, onSubmit, bill }: PaymentModalProps) =>
                   >
                     <option value="">Select Room & Tenant</option>
                     {tenants
-                      .filter(tenant => tenant.status === 'active')
+                      .filter(tenant => tenant.status === 'active' || !tenant.status)
                       .map((tenant) => (
                       <option key={tenant.id} value={`${tenant.room_number}-${tenant.id}`}>
                         Room {tenant.room_number} - {tenant.name}
