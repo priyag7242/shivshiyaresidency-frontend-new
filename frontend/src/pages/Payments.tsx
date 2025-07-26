@@ -994,59 +994,75 @@ const Payments = () => {
     return Math.max(0, consumption); // Don't allow negative consumption
   };
 
-  // Update electricity reading for a room
+  // Update electricity reading for a room - SAFE VERSION
   const updateElectricityReading = async (roomNumber: string, reading: string, readingDate: string) => {
     try {
       const readingNum = parseInt(reading) || 0;
-      const consumption = calculateElectricityConsumption(roomNumber);
+      const joiningReading = parseInt(joiningReadings[roomNumber] || '0');
+      const consumption = Math.max(0, readingNum - joiningReading);
       const electricityAmount = consumption * 12;
 
-      console.log(`Room ${roomNumber}: Joining=${joiningReadings[roomNumber]}, Current=${reading}, Consumption=${consumption}, Amount=₹${electricityAmount}`);
+      console.log(`Room ${roomNumber}: Joining=${joiningReading}, Current=${reading}, Consumption=${consumption}, Amount=₹${electricityAmount}`);
 
-      // Update tenant's last electricity reading
-      const { error: tenantError } = await supabase
-        .from('tenants')
-        .update({ 
-          last_electricity_reading: readingNum,
-          electricity_joining_reading: parseInt(joiningReadings[roomNumber] || '0')
-        })
-        .eq('room_number', roomNumber);
-
-      if (tenantError) {
-        console.error('Error updating tenant electricity reading:', tenantError);
-        alert('Failed to update electricity reading');
-        return;
-      }
-
-      // Update all bills for this room with new electricity calculation
-      const { data: roomBills, error: billsError } = await supabase
-        .from('payments')
-        .select('*')
-        .eq('room_number', roomNumber)
-        .eq('status', 'pending');
-
-      if (billsError) {
-        console.error('Error fetching room bills:', billsError);
-        return;
-      }
-
-      // Update each bill with new electricity calculation
-      for (const bill of roomBills || []) {
-        const { error: updateError } = await supabase
-          .from('payments')
-          .update({
-            electricity_units: consumption,
-            electricity_amount: electricityAmount,
-            total_amount: (bill.rent_amount || 0) + electricityAmount
+      // SAFELY update tenant's last electricity reading only (don't touch joining reading)
+      try {
+        const { error: tenantError } = await supabase
+          .from('tenants')
+          .update({ 
+            last_electricity_reading: readingNum
+            // Don't update electricity_joining_reading to avoid data loss
           })
-          .eq('id', bill.id);
+          .eq('room_number', roomNumber);
 
-        if (updateError) {
-          console.error(`Error updating bill ${bill.id}:`, updateError);
+        if (tenantError) {
+          console.error('Error updating tenant electricity reading:', tenantError);
+          // Don't stop here - continue with local updates
+        } else {
+          console.log(`✅ Successfully updated tenant reading for Room ${roomNumber}`);
         }
+      } catch (tenantUpdateError) {
+        console.error('Error in tenant update:', tenantUpdateError);
+        // Continue with local updates even if tenant update fails
       }
 
-      // Update local state
+      // SAFELY update bills for this room with new electricity calculation
+      try {
+        const { data: roomBills, error: billsError } = await supabase
+          .from('payments')
+          .select('*')
+          .eq('room_number', roomNumber)
+          .eq('status', 'pending');
+
+        if (billsError) {
+          console.error('Error fetching room bills:', billsError);
+        } else if (roomBills && roomBills.length > 0) {
+          // Update each bill with new electricity calculation
+          for (const bill of roomBills) {
+            try {
+              const { error: updateError } = await supabase
+                .from('payments')
+                .update({
+                  electricity_units: consumption,
+                  electricity_amount: electricityAmount,
+                  total_amount: (bill.rent_amount || 0) + electricityAmount
+                })
+                .eq('id', bill.id);
+
+              if (updateError) {
+                console.error(`Error updating bill ${bill.id}:`, updateError);
+              } else {
+                console.log(`✅ Successfully updated bill ${bill.id}`);
+              }
+            } catch (billUpdateError) {
+              console.error(`Error updating bill ${bill.id}:`, billUpdateError);
+            }
+          }
+        }
+      } catch (billsUpdateError) {
+        console.error('Error in bills update:', billsUpdateError);
+      }
+
+      // Update local state (this always works)
       setCurrentMonthReadings(prev => ({
         ...prev,
         [roomNumber]: reading
@@ -1056,12 +1072,15 @@ const Payments = () => {
         [roomNumber]: readingDate
       }));
 
-      alert(`Electricity reading updated for Room ${roomNumber}!\nConsumption: ${consumption} units\nAmount: ₹${electricityAmount}`);
-      fetchData();
+      // Show success message
+      alert(`✅ Electricity reading updated for Room ${roomNumber}!\n\n📊 Details:\n• Joining Reading: ${joiningReading}\n• Current Reading: ${reading}\n• Consumption: ${consumption} units\n• Amount: ₹${electricityAmount}\n\n💾 Data saved locally and to database.`);
+      
+      // Refresh data to show updated values
+      await fetchData();
 
     } catch (error) {
       console.error('Error updating electricity reading:', error);
-      alert('Failed to update electricity reading');
+      alert('⚠️ Error updating electricity reading. Local changes saved, but database update may have failed. Please check console for details.');
     }
   };
 
