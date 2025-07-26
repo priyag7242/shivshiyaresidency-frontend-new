@@ -185,6 +185,28 @@ const Payments = () => {
     }, 2000);
   }, [monthFilter, statusFilter, methodFilter]);
 
+  // Populate electricity readings when bills are loaded
+  useEffect(() => {
+    if (bills.length > 0) {
+      const newJoiningReadings: { [roomNumber: string]: string } = {};
+      const newCurrentReadings: { [roomNumber: string]: string } = {};
+      
+      bills.forEach(bill => {
+        if (bill.electricity_joining_reading) {
+          newJoiningReadings[bill.room_number] = bill.electricity_joining_reading.toString();
+        }
+        if (bill.last_electricity_reading) {
+          newCurrentReadings[bill.room_number] = bill.last_electricity_reading.toString();
+        }
+      });
+      
+      setJoiningReadings(prev => ({ ...prev, ...newJoiningReadings }));
+      setCurrentMonthReadings(prev => ({ ...prev, ...newCurrentReadings }));
+      
+      console.log('Populated electricity readings:', { newJoiningReadings, newCurrentReadings });
+    }
+  }, [bills]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
