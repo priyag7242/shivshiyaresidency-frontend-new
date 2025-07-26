@@ -198,7 +198,7 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
       <div className="border-2 border-black mb-4">
         <div className="flex justify-between items-center p-4 bg-yellow-100">
           <span className="text-xl font-bold">Grand Total</span>
-          <span className="text-2xl font-bold">₹ {bill.total_amount}</span>
+          <span className="text-2xl font-bold">₹ {(bill.rent_amount || 0) + (bill.electricity_amount || 0)}</span>
         </div>
       </div>
 

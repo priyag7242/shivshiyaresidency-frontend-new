@@ -2177,13 +2177,13 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
             <div className="bg-green-600 text-white p-4 rounded-lg">
               <h4 className="font-medium mb-2">WhatsApp Message Preview:</h4>
               <div className="text-sm whitespace-pre-wrap">
-                {`🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} is ready.\n\n💰 Total Amount: ₹${formatCurrency(whatsAppBill.total_amount)}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`}
+                {`🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} is ready.\n\n💰 Total Amount: ₹${formatCurrency((whatsAppBill.rent_amount || 0) + (whatsAppBill.electricity_amount || 0))}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`}
               </div>
             </div>
             <div className="flex gap-3 mt-4">
               <button
                 onClick={() => {
-                  const message = `🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} is ready.\n\n💰 Total Amount: ₹${formatCurrency(whatsAppBill.total_amount)}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`;
+                  const message = `🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} is ready.\n\n💰 Total Amount: ₹${formatCurrency((whatsAppBill.rent_amount || 0) + (whatsAppBill.electricity_amount || 0))}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`;
                   const encodedMessage = encodeURIComponent(message);
                   window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
                 }}
@@ -2194,7 +2194,7 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
               </button>
               <button
                 onClick={() => {
-                  const message = `🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} is ready.\n\n💰 Total Amount: ₹${formatCurrency(whatsAppBill.total_amount)}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`;
+                  const message = `🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} is ready.\n\n💰 Total Amount: ₹${formatCurrency((whatsAppBill.rent_amount || 0) + (whatsAppBill.electricity_amount || 0))}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`;
                   navigator.clipboard.writeText(message);
                   alert('Message copied to clipboard!');
                 }}
