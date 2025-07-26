@@ -187,21 +187,22 @@ const Payments = () => {
 
   // Populate electricity readings when bills are loaded
   useEffect(() => {
-    if (bills.length > 0) {
+    if (bills.length > 0 && allTenants.length > 0) {
       const newJoiningReadings: { [roomNumber: string]: string } = {};
       const newCurrentReadings: { [roomNumber: string]: string } = {};
       
-      // Set default values for electricity readings (since columns might not exist)
+      // Use actual tenant data for electricity readings
       allTenants.forEach(tenant => {
-        // Set default values - can be updated later
-        newJoiningReadings[tenant.room_number] = '0';
-        newCurrentReadings[tenant.room_number] = '0';
+        // Use actual joining reading from tenant data if available
+        newJoiningReadings[tenant.room_number] = (tenant.electricity_joining_reading || 0).toString();
+        // Use actual last reading from tenant data if available
+        newCurrentReadings[tenant.room_number] = (tenant.last_electricity_reading || 0).toString();
       });
       
       setJoiningReadings(prev => ({ ...prev, ...newJoiningReadings }));
       setCurrentMonthReadings(prev => ({ ...prev, ...newCurrentReadings }));
       
-      console.log('Set default electricity readings for tenants:', { newJoiningReadings, newCurrentReadings });
+      console.log('Populated electricity readings from tenant data:', { newJoiningReadings, newCurrentReadings });
     }
   }, [bills, allTenants]);
 
@@ -328,12 +329,23 @@ const Payments = () => {
     try {
       const { data, error } = await supabase
         .from('tenants')
-        .select('id, name, room_number, monthly_rent, status');
+        .select('id, name, room_number, monthly_rent, status, electricity_joining_reading, last_electricity_reading');
       if (error) throw error;
       setAllTenants(data || []);
-      console.log('Fetched all tenants:', data);
+      console.log('Fetched all tenants with electricity data:', data);
     } catch (error) {
       console.error('Error fetching all tenants:', error);
+      // Fallback to basic fields if electricity fields don't exist
+      try {
+        const { data: basicData, error: basicError } = await supabase
+          .from('tenants')
+          .select('id, name, room_number, monthly_rent, status');
+        if (basicError) throw basicError;
+        setAllTenants(basicData || []);
+        console.log('Fetched all tenants (basic fields):', basicData);
+      } catch (fallbackError) {
+        console.error('Error fetching tenants with fallback:', fallbackError);
+      }
     }
   };
 
@@ -2087,30 +2099,45 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
                 bill: selectedBill
               });
               
-                         // Get electricity readings from UI state
-           const joiningReading = joiningReadings[selectedBill.room_number] || 0;
-           const currentReading = currentMonthReadings[selectedBill.room_number] || 0;
+              // Get electricity readings from UI state
+              const joiningReading = joiningReadings[selectedBill.room_number] || 0;
+              const currentReading = currentMonthReadings[selectedBill.room_number] || 0;
+              
+              // Try to get the actual joining reading from tenant data
+              const tenant = allTenants.find(t => t.id === selectedBill.tenant_id || 
+                (t.name === selectedBill.tenant_name && t.room_number === selectedBill.room_number));
+              
+              const actualJoiningReading = tenant?.electricity_joining_reading || joiningReading;
+              const actualCurrentReading = tenant?.last_electricity_reading || currentReading;
+              
+              console.log('Tenant data for bill:', {
+                tenant,
+                actualJoiningReading,
+                actualCurrentReading,
+                joiningReading,
+                currentReading
+              });
               
               // Create a clean bill object with electricity reading data
               const cleanBill = {
                 ...selectedBill,
                 id: '1001', // Force the ID to be a simple number
-                electricity_units: Math.max(0, parseInt(currentReading.toString()) - parseInt(joiningReading.toString())),
-                electricity_amount: Math.max(0, parseInt(currentReading.toString()) - parseInt(joiningReading.toString())) * 12
+                electricity_units: Math.max(0, parseInt(actualCurrentReading.toString()) - parseInt(actualJoiningReading.toString())),
+                electricity_amount: Math.max(0, parseInt(actualCurrentReading.toString()) - parseInt(actualJoiningReading.toString())) * 12
               };
               
               console.log('Clean bill with electricity data:', cleanBill);
               
-                         return (
-             <BillTemplate 
-               bill={cleanBill} 
-               serialNumber="1001" 
-               receiptNumber="TEST-1001"
-               joiningReading={parseInt(joiningReading.toString())}
-               currentReading={parseInt(currentReading.toString())}
-               key={`bill-template-${Date.now()}-${Math.random()}`}
-             />
-           );
+              return (
+                <BillTemplate 
+                  bill={cleanBill} 
+                  serialNumber="1001" 
+                  receiptNumber="TEST-1001"
+                  joiningReading={parseInt(actualJoiningReading.toString())}
+                  currentReading={parseInt(actualCurrentReading.toString())}
+                  key={`bill-template-${Date.now()}-${Math.random()}`}
+                />
+              );
             })()}
           </div>
         </div>
