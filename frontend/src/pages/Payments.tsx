@@ -131,7 +131,8 @@ const Payments = () => {
   });
 
   const [rooms, setRooms] = useState<any[]>([]);
-  const [currentReadings, setCurrentReadings] = useState<{ [roomNumber: string]: string }>({});
+  const [currentReadings, setCurrentReadings] = useState<{ [key: string]: string }>({});
+  const [billElectricityInputs, setBillElectricityInputs] = useState<{ [key: string]: string }>({});
   const [joiningReadings, setJoiningReadings] = useState<{ [roomNumber: string]: string }>({});
   const [generating, setGenerating] = useState(false);
 
@@ -804,6 +805,51 @@ const Payments = () => {
     return serialNum.toString().padStart(2, '0');
   };
 
+  // Update electricity for individual bill
+  const updateBillElectricity = async (billId: string, units: string) => {
+    try {
+      const unitsNum = parseInt(units) || 0;
+      const electricityAmount = unitsNum * 12; // ₹12 per unit
+      
+      // Update the bill in database
+      const { error } = await supabase
+        .from('payments')
+        .update({
+          electricity_units: unitsNum,
+          electricity_amount: electricityAmount,
+          total_amount: (selectedBill?.rent_amount || 0) + electricityAmount
+        })
+        .eq('id', billId);
+      
+      if (error) {
+        console.error('Error updating bill electricity:', error);
+        alert('Failed to update electricity reading');
+        return;
+      }
+      
+      // Update local state
+      setBillElectricityInputs(prev => ({
+        ...prev,
+        [billId]: units
+      }));
+      
+      // Refresh data
+      fetchData();
+      
+      console.log(`Updated bill ${billId} with ${units} units = ₹${electricityAmount}`);
+      
+    } catch (error) {
+      console.error('Error updating bill electricity:', error);
+      alert('Failed to update electricity reading');
+    }
+  };
+
+  // Calculate electricity amount for display
+  const calculateElectricityAmount = (units: string) => {
+    const unitsNum = parseInt(units) || 0;
+    return unitsNum * 12;
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
@@ -1190,7 +1236,22 @@ const Payments = () => {
       {activeTab === 'bills' && (
         <div className="space-y-6">
           <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-golden-400 mb-4">All Bills</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-golden-400">All Bills</h3>
+              <button
+                onClick={async () => {
+                  const updates = Object.entries(billElectricityInputs).map(([billId, units]) => 
+                    updateBillElectricity(billId, units)
+                  );
+                  await Promise.all(updates);
+                  alert('All electricity readings updated successfully!');
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+                title="Save all electricity readings"
+              >
+                Save All Electricity
+              </button>
+            </div>
             {loading ? (
               <div className="text-center py-8 text-golden-400">Loading...</div>
             ) : filteredBills.length === 0 ? (
@@ -1198,41 +1259,101 @@ const Payments = () => {
             ) : (
               <div className="space-y-4">
                 {filteredBills.map((bill) => (
-                  <div key={bill.id} className="flex items-center justify-between p-4 bg-dark-800 rounded-lg">
-                    <div>
-                      <h4 className="text-golden-100 font-medium">{bill.tenant_name}</h4>
-                      <p className="text-golden-300 text-sm">Room {bill.room_number} • {bill.billing_month}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-golden-400">{formatCurrency(bill.total_amount)}</p>
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border ${getStatusColor(bill.status)}`}>
-                          {getStatusIcon(bill.status)}
-                          {bill.status}
-                        </span>
+                  <div key={bill.id} className="p-4 bg-dark-800 rounded-lg">
+                    {/* Bill Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h4 className="text-golden-100 font-medium">{bill.tenant_name}</h4>
+                        <p className="text-golden-300 text-sm">Room {bill.room_number} • {bill.billing_month}</p>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => openWhatsAppBill(bill)}
-                          className="p-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                          title="Send WhatsApp"
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => viewBillTemplate(bill)}
-                          className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                          title="View Bill"
-                        >
-                          <FileText className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => printBill(bill)}
-                          className="p-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
-                          title="Print Bill"
-                        >
-                          <Printer className="h-4 w-4" />
-                        </button>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-golden-400">{formatCurrency(bill.total_amount)}</p>
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border ${getStatusColor(bill.status)}`}>
+                            {getStatusIcon(bill.status)}
+                            {bill.status}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => openWhatsAppBill(bill)}
+                            className="p-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                            title="Send WhatsApp"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => viewBillTemplate(bill)}
+                            className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                            title="View Bill"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => printBill(bill)}
+                            className="p-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                            title="Print Bill"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Electricity Input Section */}
+                    <div className="bg-dark-700 p-3 rounded-lg border border-golden-600/20">
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                          <label className="block text-sm font-medium text-golden-300 mb-1">
+                            Current Electricity Units
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={billElectricityInputs[bill.id] || bill.electricity_units || ''}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setBillElectricityInputs(prev => ({
+                                  ...prev,
+                                  [bill.id]: value
+                                }));
+                              }}
+                              onBlur={(e) => {
+                                const value = e.target.value;
+                                if (value && value !== bill.electricity_units?.toString()) {
+                                  updateBillElectricity(bill.id, value);
+                                }
+                              }}
+                              placeholder="Enter units"
+                              className="flex-1 px-3 py-2 bg-dark-600 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
+                            />
+                            <span className="text-golden-300 text-sm">units</span>
+                          </div>
+                        </div>
+                        
+                        <div className="text-center">
+                          <p className="text-sm text-golden-300">Rate</p>
+                          <p className="text-lg font-bold text-golden-400">₹12/unit</p>
+                        </div>
+                        
+                        <div className="text-center">
+                          <p className="text-sm text-golden-300">Electricity Amount</p>
+                          <p className="text-lg font-bold text-blue-400">
+                            ₹{calculateElectricityAmount(billElectricityInputs[bill.id] || bill.electricity_units?.toString() || '0')}
+                          </p>
+                        </div>
+                        
+                        <div className="text-center">
+                          <p className="text-sm text-golden-300">Rent Amount</p>
+                          <p className="text-lg font-bold text-green-400">₹{bill.rent_amount || 0}</p>
+                        </div>
+                        
+                        <div className="text-center">
+                          <p className="text-sm text-golden-300">Total Amount</p>
+                          <p className="text-xl font-bold text-golden-400">
+                            ₹{(bill.rent_amount || 0) + calculateElectricityAmount(billElectricityInputs[bill.id] || bill.electricity_units?.toString() || '0')}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
