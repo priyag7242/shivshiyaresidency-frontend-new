@@ -69,8 +69,24 @@ interface BillTemplateProps {
 const BillTemplate: React.FC<BillTemplateProps> = ({ 
   bill, 
   serialNumber = '01',
-  receiptNumber = `M:${Math.floor(Math.random() * 10000000000)}`
+  receiptNumber = 'M:1001'
 }) => {
+  
+  // Force serial number to be a simple string
+  const displaySerialNumber = '1001';
+  
+  console.log('BillTemplate rendering with:', {
+    displaySerialNumber,
+    serialNumber,
+    billId: bill.id
+  });
+  
+  // Debug logging
+  console.log('BillTemplate received props:', {
+    billId: bill.id,
+    serialNumber,
+    receiptNumber
+  });
   
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -117,11 +133,23 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
           </div>
           <div className="text-right">
             <div className="border border-black px-3 py-1 mb-2">
-              <span className="font-bold">{serialNumber}</span>
+              <span className="font-bold">{displaySerialNumber}</span>
             </div>
             <div className="text-sm">
-              <div>Sr. No. <span className="font-bold">{serialNumber}</span></div>
+              <div>Sr. No. <span className="font-bold">{displaySerialNumber}</span></div>
               <div>Generated on: <span className="font-bold">{today}</span></div>
+            </div>
+            {/* Debug info - remove this later */}
+            <div className="text-xs text-red-500 mt-1">
+              Debug: Serial={serialNumber}, Receipt={receiptNumber}
+              <br />
+              ID Type: {typeof bill.id}, ID Length: {bill.id?.toString().length}
+              <br />
+              Raw ID: {bill.id}
+              <br />
+              Serial Number Type: {typeof serialNumber}
+              <br />
+              Display Serial: {displaySerialNumber}
             </div>
           </div>
         </div>

@@ -143,6 +143,7 @@ const Payments = () => {
   const [readingDates, setReadingDates] = useState<{ [roomNumber: string]: string }>({});
   const [selectedExportMonth, setSelectedExportMonth] = useState(new Date().toISOString().slice(0, 7));
   const [generating, setGenerating] = useState(false);
+  const [allTenants, setAllTenants] = useState<any[]>([]);
 
   const [billGeneration, setBillGeneration] = useState({
     billing_month: new Date().toISOString().slice(0, 7),
@@ -190,7 +191,8 @@ const Payments = () => {
       await Promise.all([
         fetchPayments(),
         fetchBills(),
-        fetchStats()
+        fetchStats(),
+        fetchAllTenants()
       ]);
     } finally {
       setLoading(false);
@@ -299,6 +301,19 @@ const Payments = () => {
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchAllTenants = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tenants')
+        .select('id, name, room_number, electricity_joining_reading, last_electricity_reading, monthly_rent, status');
+      if (error) throw error;
+      setAllTenants(data || []);
+      console.log('Fetched all tenants:', data);
+    } catch (error) {
+      console.error('Error fetching all tenants:', error);
     }
   };
 
@@ -425,19 +440,26 @@ const Payments = () => {
         try {
           console.log('Processing tenant:', tenant);
           
-          const electricityUnits = (tenant.last_electricity_reading || 0) - (tenant.electricity_joining_reading || 0);
+          // For new bill: use last_electricity_reading as joining reading
+          const joiningReading = tenant.last_electricity_reading || tenant.electricity_joining_reading || 0;
+          // Current reading will be set when user inputs it
+          const currentReading = tenant.last_electricity_reading || 0;
+          const electricityUnits = currentReading - joiningReading;
           const electricityAmount = electricityUnits * parseFloat(billGeneration.electricity_rate);
           const totalAmount = (tenant.monthly_rent || 0) + electricityAmount;
-          
+
           const billData = {
             tenant_id: tenant.id,
             tenant_name: tenant.name,
             room_number: tenant.room_number,
             billing_month: billGeneration.billing_month,
+            amount: totalAmount, // Add the missing amount field
             rent_amount: tenant.monthly_rent || 0,
             electricity_units: electricityUnits,
             electricity_rate: parseFloat(billGeneration.electricity_rate),
             electricity_amount: electricityAmount,
+            electricity_joining_reading: joiningReading, // This is the joining reading for this bill
+            last_electricity_reading: currentReading, // This is the current reading
             other_charges: 0,
             adjustments: 0,
             total_amount: totalAmount,
@@ -448,13 +470,13 @@ const Payments = () => {
             created_date: new Date().toISOString(),
             created_by: 'system'
           };
-          
+
           console.log('Inserting bill data:', billData);
-          
+
           const { error: insertError } = await supabase
             .from('payments')
             .insert(billData);
-          
+
           if (insertError) {
             console.error(`Error generating bill for ${tenant.name}:`, insertError);
           } else {
@@ -1062,6 +1084,53 @@ const Payments = () => {
     }
   };
 
+  const debugTenantsData = () => {
+    console.log('=== DEBUG: All Tenants Data ===');
+    console.log('allTenants:', allTenants);
+    console.log('allTenants length:', allTenants.length);
+    
+    // Check for Sheetal specifically
+    const sheetal = allTenants.find(t => t.name?.toLowerCase().includes('sheetal'));
+    console.log('Sheetal found:', sheetal);
+    
+    // Check all tenants with their joining readings
+    allTenants.forEach(tenant => {
+      console.log(`Tenant: ${tenant.name}, Room: ${tenant.room_number}, Joining Reading: ${tenant.last_electricity_reading}, ID: ${tenant.id}`);
+    });
+    
+    console.log('=== DEBUG END ===');
+  };
+
+  // Serial number generator: start from 1001
+  const getBillSerialNumber = (billId: string) => {
+    // Check if billId is a very large number that might cause scientific notation
+    const billIdNum = parseInt(billId);
+    if (billIdNum > 1000000000) {
+      console.log('Warning: Large bill ID detected:', billId, 'This might cause display issues');
+    }
+    
+    // Find the index of the bill in the filteredBills array
+    const sortedBills = [...filteredBills].sort((a, b) => {
+      const dateA = a.generated_date ? new Date(a.generated_date).getTime() : 0;
+      const dateB = b.generated_date ? new Date(b.generated_date).getTime() : 0;
+      return dateA - dateB;
+    });
+    const index = sortedBills.findIndex(b => b.id === billId);
+    const serialNumber = 1001 + (index >= 0 ? index : 0);
+    
+    // Debug logging
+    console.log('getBillSerialNumber Debug:', {
+      billId,
+      billIdAsNumber: billIdNum,
+      filteredBillsLength: filteredBills.length,
+      sortedBillsLength: sortedBills.length,
+      index,
+      serialNumber
+    });
+    
+    return serialNumber;
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
@@ -1071,31 +1140,33 @@ const Payments = () => {
             <h1 className="text-3xl font-bold text-golden-400 mb-2">Payment Management</h1>
             <p className="text-golden-300">Manage billing, payments, and financial tracking</p>
           </div>
-          <div className="mt-4 lg:mt-0 flex gap-3">
+          <div className="mt-4 lg:mt-0 flex flex-col sm:flex-row gap-3">
             <button
               onClick={() => setShowPaymentModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors text-sm sm:text-base"
             >
               <Plus className="h-4 w-4" />
-              Record Payment
+              <span className="hidden sm:inline">Record Payment</span>
+              <span className="sm:hidden">Add Payment</span>
             </button>
             
             <button
               onClick={exportMonthlyData}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors text-sm sm:text-base"
               title="Download monthly data in Excel format"
             >
               <FileSpreadsheet className="h-4 w-4" />
-              Download Excel
+              <span className="hidden sm:inline">Download Excel</span>
+              <span className="sm:hidden">Excel</span>
             </button>
             
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-golden-300">Month:</label>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+              <label className="text-sm text-golden-300 whitespace-nowrap">Month:</label>
               <input
                 type="month"
                 value={selectedExportMonth}
                 onChange={(e) => setSelectedExportMonth(e.target.value)}
-                className="px-3 py-2 bg-dark-600 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
+                className="w-full sm:w-auto px-3 py-2 bg-dark-600 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500 text-sm"
               />
             </div>
           </div>
@@ -1114,23 +1185,23 @@ const Payments = () => {
           </h3>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {/* Electricity Readings */}
           <div className="space-y-4">
             <h4 className="text-golden-300 font-medium">Current Electricity Readings</h4>
             <div className="space-y-3 max-h-60 overflow-y-auto">
               {rooms.map((room: any) => (
-                <div key={room.room_number} className="flex items-center gap-3 p-3 bg-dark-800 rounded-lg">
-                  <div className="flex-1">
-                    <div className="text-golden-100 font-medium">Room {room.room_number}</div>
-                    <div className="text-golden-300 text-sm">
+                <div key={room.room_number} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-dark-800 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-golden-100 font-medium text-sm sm:text-base">Room {room.room_number}</div>
+                    <div className="text-golden-300 text-xs sm:text-sm truncate">
                       {room.current_tenant ? `Tenant: ${room.current_tenant}` : 'No tenant'}
                     </div>
                   </div>
-                  <div className="w-32">
+                  <div className="w-full sm:w-32">
                     <input
                       type="number"
-                      placeholder="Current reading"
+                      placeholder="Reading"
                       className="w-full px-2 py-1 bg-dark-700 border border-golden-600/30 rounded text-golden-100 text-sm focus:outline-none focus:border-golden-500"
                       value={currentReadings[room.room_number] || ''}
                       onChange={(e) => setCurrentReadings({
@@ -1179,25 +1250,26 @@ const Payments = () => {
                 />
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={generateBills}
                   disabled={generating}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                 >
                   {generating ? 'Generating...' : 'Generate Bills'}
                 </button>
                 
                 <button
                   onClick={createSampleTenants}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors text-sm sm:text-base"
                   title="Create sample tenants for testing"
                 >
-                  Add Sample Tenants
+                  <span className="hidden sm:inline">Add Sample Tenants</span>
+                  <span className="sm:hidden">Sample Data</span>
                 </button>
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={() => {
                     console.log('Current rooms:', rooms);
@@ -1205,7 +1277,7 @@ const Payments = () => {
                     console.log('Current payments:', payments);
                     alert('Check browser console for data details');
                   }}
-                  className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
+                  className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors text-sm sm:text-base"
                   title="Debug current data"
                 >
                   Debug Data
@@ -1217,7 +1289,7 @@ const Payments = () => {
                     fetchData();
                     alert('Data refreshed!');
                   }}
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors"
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors text-sm sm:text-base"
                   title="Refresh all data"
                 >
                   Refresh Data
@@ -1467,7 +1539,7 @@ const Payments = () => {
       {activeTab === 'bills' && (
         <div className="space-y-6">
           <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
               <h3 className="text-lg font-semibold text-golden-400">All Bills</h3>
               <button
                 onClick={async () => {
@@ -1478,10 +1550,11 @@ const Payments = () => {
                   await Promise.all(updates);
                   alert('All electricity readings updated successfully!');
                 }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors text-sm sm:text-base"
                 title="Save all electricity readings"
               >
-                Save All Electricity
+                <span className="hidden sm:inline">Save All Electricity</span>
+                <span className="sm:hidden">Save All</span>
               </button>
             </div>
             
@@ -1512,40 +1585,41 @@ const Payments = () => {
                 {filteredBills.map((bill) => (
                   <div key={bill.id} className="p-4 bg-dark-800 rounded-lg">
                     {/* Bill Header */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className="text-golden-100 font-medium">{bill.tenant_name}</h4>
-                        <p className="text-golden-300 text-sm">Room {bill.room_number} • {bill.billing_month}</p>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-golden-100 font-medium text-sm sm:text-base truncate">{bill.tenant_name}</h4>
+                        <p className="text-golden-300 text-xs sm:text-sm">Room {bill.room_number} • {bill.billing_month}</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                         <div className="text-right">
-                          <p className="text-lg font-bold text-golden-400">{formatCurrency(bill.total_amount)}</p>
+                          <p className="text-base sm:text-lg font-bold text-golden-400">{formatCurrency(bill.total_amount)}</p>
                           <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border ${getStatusColor(bill.status)}`}>
                             {getStatusIcon(bill.status)}
-                            {bill.status}
+                            <span className="hidden sm:inline">{bill.status}</span>
+                            <span className="sm:hidden">{bill.status.charAt(0).toUpperCase()}</span>
                           </span>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1 sm:gap-2">
                           <button
                             onClick={() => openWhatsAppBill(bill)}
-                            className="p-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                            className="p-1.5 sm:p-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
                             title="Send WhatsApp"
                           >
-                            <MessageCircle className="h-4 w-4" />
+                            <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                           </button>
                           <button
                             onClick={() => viewBillTemplate(bill)}
-                            className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                            className="p-1.5 sm:p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
                             title="View Bill"
                           >
-                            <FileText className="h-4 w-4" />
+                            <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
                           </button>
                           <button
                             onClick={() => printBill(bill)}
-                            className="p-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                            className="p-1.5 sm:p-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
                             title="Print Bill"
                           >
-                            <Printer className="h-4 w-4" />
+                            <Printer className="h-3 w-3 sm:h-4 sm:w-4" />
                           </button>
                         </div>
                       </div>
@@ -1553,23 +1627,34 @@ const Payments = () => {
                     
                     {/* Electricity Input Section */}
                     <div className="bg-dark-700 p-3 rounded-lg border border-golden-600/20">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
                         {/* Joining Reading */}
                         <div>
                           <label className="block text-sm font-medium text-golden-300 mb-1">
                             Joining Reading
                           </label>
                           <input
-                            type="number"
-                            value={joiningReadings[bill.room_number] || (bill.electricity_joining_reading?.toString() || '')}
-                            onChange={(e) => {
-                              setJoiningReadings(prev => ({
-                                ...prev,
-                                [bill.room_number]: e.target.value
-                              }));
-                            }}
-                            placeholder="Joining units"
-                            className="w-full px-3 py-2 bg-dark-600 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
+                            type="text"
+                            value={(() => {
+                              // Try to find tenant by tenant_id
+                              let tenant = allTenants.find(t => t.id === bill.tenant_id);
+                              // Fallback: try to match by name and room number if not found
+                              if (!tenant) {
+                                tenant = allTenants.find(t => t.name?.toLowerCase() === bill.tenant_name?.toLowerCase() && t.room_number === bill.room_number);
+                              }
+                              // Debug log for Sheetal
+                              if (bill.tenant_name?.toLowerCase() === 'sheetal') {
+                                console.log('Sheetal bill:', bill);
+                                console.log('Sheetal tenant found:', tenant);
+                              }
+                              if (tenant && tenant.electricity_joining_reading !== undefined && tenant.electricity_joining_reading !== null) {
+                                return tenant.electricity_joining_reading.toString();
+                              }
+                              return 'Not set';
+                            })()}
+                            readOnly
+                            className="w-full px-3 py-2 bg-dark-600 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500 opacity-70 cursor-not-allowed"
+                            style={{ backgroundColor: '#222', color: '#FFD700', fontWeight: 'bold' }}
                           />
                         </div>
 
@@ -1715,7 +1800,29 @@ const Payments = () => {
                 <XCircle className="h-6 w-6" />
               </button>
             </div>
-            <BillTemplate bill={selectedBill} serialNumber={generateSerialNumber(selectedBill.id)} />
+            {(() => {
+              const serialNum = getBillSerialNumber(selectedBill.id).toString();
+              console.log('BillTemplate Debug:', {
+                billId: selectedBill.id,
+                serialNumber: serialNum,
+                bill: selectedBill
+              });
+              
+              // Create a clean bill object without the problematic ID
+              const cleanBill = {
+                ...selectedBill,
+                id: '1001' // Force the ID to be a simple number
+              };
+              
+              return (
+                <BillTemplate 
+                  bill={cleanBill} 
+                  serialNumber="1001" 
+                  receiptNumber="TEST-1001"
+                  key={`bill-template-${Date.now()}-${Math.random()}`}
+                />
+              );
+            })()}
           </div>
         </div>
       )}
@@ -1765,6 +1872,32 @@ const Payments = () => {
           </div>
         </div>
       )}
+
+      {/* Add debug buttons in the UI */}
+      <div className="flex flex-col sm:flex-row gap-2 mt-4">
+        <button
+          onClick={debugTenantsData}
+          className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors text-sm sm:text-base"
+          title="Debug tenants data"
+        >
+          Debug Tenants
+        </button>
+        
+        <button 
+          onClick={() => {
+            if (selectedBill) {
+              console.log('Selected Bill Debug:', selectedBill);
+              console.log('Serial Number for selected bill:', getBillSerialNumber(selectedBill.id));
+            } else {
+              console.log('No bill selected');
+            }
+          }} 
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors text-sm sm:text-base" 
+          title="Debug selected bill"
+        >
+          Debug Selected Bill
+        </button>
+      </div>
     </div>
   );
 };
