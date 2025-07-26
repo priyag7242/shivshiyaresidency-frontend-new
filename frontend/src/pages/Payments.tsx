@@ -1808,11 +1808,21 @@ const Payments = () => {
                 bill: selectedBill
               });
               
-              // Create a clean bill object without the problematic ID
+              // Get electricity readings from UI state
+              const joiningReading = joiningReadings[selectedBill.room_number] || selectedBill.electricity_joining_reading || 0;
+              const currentReading = currentMonthReadings[selectedBill.room_number] || selectedBill.last_electricity_reading || 0;
+              
+              // Create a clean bill object with electricity reading data
               const cleanBill = {
                 ...selectedBill,
-                id: '1001' // Force the ID to be a simple number
+                id: '1001', // Force the ID to be a simple number
+                electricity_joining_reading: parseInt(joiningReading.toString()),
+                last_electricity_reading: parseInt(currentReading.toString()),
+                electricity_units: parseInt(currentReading.toString()) - parseInt(joiningReading.toString()),
+                electricity_amount: (parseInt(currentReading.toString()) - parseInt(joiningReading.toString())) * 12
               };
+              
+              console.log('Clean bill with electricity data:', cleanBill);
               
               return (
                 <BillTemplate 
