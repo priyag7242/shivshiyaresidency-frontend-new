@@ -111,6 +111,7 @@ const Payments = () => {
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [billsSearchTerm, setBillsSearchTerm] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
@@ -569,8 +570,8 @@ const Payments = () => {
   );
 
   const filteredBills = bills.filter(bill =>
-    bill.tenant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    bill.room_number.includes(searchTerm)
+    bill.tenant_name.toLowerCase().includes(billsSearchTerm.toLowerCase()) ||
+    bill.room_number.includes(billsSearchTerm)
   );
 
   const createSampleTenants = async () => {
@@ -1482,6 +1483,25 @@ const Payments = () => {
               >
                 Save All Electricity
               </button>
+            </div>
+            
+            {/* Search Filter for Bills */}
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-golden-400" />
+                <input
+                  type="text"
+                  placeholder="Search bills by tenant name or room number..."
+                  value={billsSearchTerm}
+                  onChange={(e) => setBillsSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 placeholder-golden-400/50 focus:outline-none focus:border-golden-500"
+                />
+              </div>
+              {billsSearchTerm && (
+                <div className="mt-2 text-sm text-golden-300">
+                  Showing {filteredBills.length} of {bills.length} bills
+                </div>
+              )}
             </div>
             {loading ? (
               <div className="text-center py-8 text-golden-400">Loading...</div>
