@@ -326,6 +326,7 @@ const Payments = () => {
               tenant_name: tenant.name,
               room_number: tenant.room_number,
               billing_month: billGeneration.billing_month,
+              amount: totalAmount, // Add the missing amount field
               rent_amount: tenant.monthly_rent || 0,
               electricity_units: electricityUnits,
               electricity_rate: parseFloat(billGeneration.electricity_rate),
