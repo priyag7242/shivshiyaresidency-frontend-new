@@ -28,9 +28,11 @@ import {
   Copy,
   Info,
   ArrowUpRight,
-  Settings
+  Settings,
+  FileSpreadsheet
 } from 'lucide-react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 import BillTemplate from '../components/BillTemplate';
 import { paymentsQueries, tenantsQueries, roomsQueries } from '../lib/supabaseQueries';
 import { supabase } from '../lib/supabase';
@@ -138,6 +140,7 @@ const Payments = () => {
   const [joiningReadings, setJoiningReadings] = useState<{ [roomNumber: string]: string }>({});
   const [currentMonthReadings, setCurrentMonthReadings] = useState<{ [roomNumber: string]: string }>({});
   const [readingDates, setReadingDates] = useState<{ [roomNumber: string]: string }>({});
+  const [selectedExportMonth, setSelectedExportMonth] = useState(new Date().toISOString().slice(0, 7));
   const [generating, setGenerating] = useState(false);
 
   const [billGeneration, setBillGeneration] = useState({
@@ -933,6 +936,131 @@ const Payments = () => {
     }
   };
 
+  // Export monthly data to Excel
+  const exportMonthlyData = async () => {
+    try {
+      // Get all payments for selected month
+      const { data: monthlyPayments, error: paymentsError } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('billing_month', selectedExportMonth);
+
+      if (paymentsError) throw paymentsError;
+
+      // Get all tenants
+      const { data: allTenants, error: tenantsError } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('status', 'active');
+
+      if (tenantsError) throw tenantsError;
+
+      // Get all rooms
+      const { data: allRooms, error: roomsError } = await supabase
+        .from('rooms')
+        .select('*');
+
+      if (roomsError) throw roomsError;
+
+      const workbook = XLSX.utils.book_new();
+
+      // 1. Monthly Bills Summary Sheet
+      const billsData = (monthlyPayments || []).map(bill => ({
+        'Bill ID': bill.id,
+        'Tenant Name': bill.tenant_name,
+        'Room Number': bill.room_number,
+        'Billing Month': bill.billing_month,
+        'Rent Amount': bill.rent_amount || 0,
+        'Electricity Units': bill.electricity_units || 0,
+        'Electricity Rate': bill.electricity_rate || 12,
+        'Electricity Amount': bill.electricity_amount || 0,
+        'Other Charges': bill.other_charges || 0,
+        'Adjustments': bill.adjustments || 0,
+        'Total Amount': bill.total_amount || 0,
+        'Amount Paid': bill.amount_paid || 0,
+        'Balance Due': bill.balance_due || 0,
+        'Status': bill.status,
+        'Due Date': bill.due_date,
+        'Generated Date': bill.generated_date,
+        'Created Date': bill.created_at
+      }));
+
+      const billsWorksheet = XLSX.utils.json_to_sheet(billsData);
+      XLSX.utils.book_append_sheet(workbook, billsWorksheet, 'Monthly Bills');
+
+      // 2. Tenants Summary Sheet
+      const tenantsData = (allTenants || []).map(tenant => ({
+        'Tenant ID': tenant.id,
+        'Name': tenant.name,
+        'Mobile': tenant.mobile,
+        'Room Number': tenant.room_number,
+        'Status': tenant.status,
+        'Monthly Rent': tenant.monthly_rent || 0,
+        'Security Deposit': tenant.security_deposit || 0,
+        'Joining Date': tenant.joining_date,
+        'Last Electricity Reading': tenant.last_electricity_reading || 0,
+        'Joining Electricity Reading': tenant.electricity_joining_reading || 0,
+        'Created Date': tenant.created_at
+      }));
+
+      const tenantsWorksheet = XLSX.utils.json_to_sheet(tenantsData);
+      XLSX.utils.book_append_sheet(workbook, tenantsWorksheet, 'Tenants');
+
+      // 3. Rooms Summary Sheet
+      const roomsData = (allRooms || []).map(room => ({
+        'Room ID': room.id,
+        'Room Number': room.room_number,
+        'Status': room.status,
+        'Floor': room.floor || '',
+        'Type': room.type || '',
+        'Created Date': room.created_at
+      }));
+
+      const roomsWorksheet = XLSX.utils.json_to_sheet(roomsData);
+      XLSX.utils.book_append_sheet(workbook, roomsWorksheet, 'Rooms');
+
+      // 4. Monthly Summary Sheet
+      const totalBills = billsData.length;
+      const totalRent = billsData.reduce((sum, bill) => sum + (bill['Rent Amount'] || 0), 0);
+      const totalElectricity = billsData.reduce((sum, bill) => sum + (bill['Electricity Amount'] || 0), 0);
+      const totalAmount = billsData.reduce((sum, bill) => sum + (bill['Total Amount'] || 0), 0);
+      const totalPaid = billsData.reduce((sum, bill) => sum + (bill['Amount Paid'] || 0), 0);
+      const totalDue = billsData.reduce((sum, bill) => sum + (bill['Balance Due'] || 0), 0);
+      const pendingBills = billsData.filter(bill => bill.Status === 'pending').length;
+      const paidBills = billsData.filter(bill => bill.Status === 'paid').length;
+
+      const summaryData = [
+        { 'Metric': 'Total Bills', 'Value': totalBills },
+        { 'Metric': 'Pending Bills', 'Value': pendingBills },
+        { 'Metric': 'Paid Bills', 'Value': paidBills },
+        { 'Metric': 'Total Rent Amount', 'Value': totalRent },
+        { 'Metric': 'Total Electricity Amount', 'Value': totalElectricity },
+        { 'Metric': 'Total Bill Amount', 'Value': totalAmount },
+        { 'Metric': 'Total Amount Paid', 'Value': totalPaid },
+        { 'Metric': 'Total Balance Due', 'Value': totalDue },
+        { 'Metric': 'Collection Rate (%)', 'Value': totalAmount > 0 ? ((totalPaid / totalAmount) * 100).toFixed(2) : 0 }
+      ];
+
+      const summaryWorksheet = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Monthly Summary');
+
+      // Auto-size columns for better readability
+      workbook.Sheets['Monthly Bills'] && XLSX.utils.sheet_add_aoa(workbook.Sheets['Monthly Bills'], [['']], { origin: 'A1' });
+      workbook.Sheets['Tenants'] && XLSX.utils.sheet_add_aoa(workbook.Sheets['Tenants'], [['']], { origin: 'A1' });
+      workbook.Sheets['Rooms'] && XLSX.utils.sheet_add_aoa(workbook.Sheets['Rooms'], [['']], { origin: 'A1' });
+      workbook.Sheets['Monthly Summary'] && XLSX.utils.sheet_add_aoa(workbook.Sheets['Monthly Summary'], [['']], { origin: 'A1' });
+
+      const fileName = `Shiv_Shiva_Residency_${selectedExportMonth}_Complete_Data.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      
+      alert(`Monthly data exported successfully!\n\nFile: ${fileName}\n\nSheets included:\n- Monthly Bills\n- Tenants\n- Rooms\n- Monthly Summary`);
+      
+    } catch (error) {
+      console.error('Error exporting monthly data:', error);
+      alert('Failed to export monthly data: ' + (error as Error).message);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
@@ -945,11 +1073,30 @@ const Payments = () => {
           <div className="mt-4 lg:mt-0 flex gap-3">
             <button
               onClick={() => setShowPaymentModal(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-golden-500 to-golden-600 text-dark-900 rounded-lg hover:from-golden-600 hover:to-golden-700 transition-all duration-200 font-medium"
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors"
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-4 w-4" />
               Record Payment
             </button>
+            
+            <button
+              onClick={exportMonthlyData}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+              title="Download monthly data in Excel format"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Download Excel
+            </button>
+            
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-golden-300">Month:</label>
+              <input
+                type="month"
+                value={selectedExportMonth}
+                onChange={(e) => setSelectedExportMonth(e.target.value)}
+                className="px-3 py-2 bg-dark-600 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
+              />
+            </div>
           </div>
         </div>
       </div>
