@@ -2095,20 +2095,22 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
               const cleanBill = {
                 ...selectedBill,
                 id: '1001', // Force the ID to be a simple number
-                electricity_units: parseInt(currentReading.toString()) - parseInt(joiningReading.toString()),
-                electricity_amount: (parseInt(currentReading.toString()) - parseInt(joiningReading.toString())) * 12
+                electricity_units: Math.max(0, parseInt(currentReading.toString()) - parseInt(joiningReading.toString())),
+                electricity_amount: Math.max(0, parseInt(currentReading.toString()) - parseInt(joiningReading.toString())) * 12
               };
               
               console.log('Clean bill with electricity data:', cleanBill);
               
-              return (
-                <BillTemplate 
-                  bill={cleanBill} 
-                  serialNumber="1001" 
-                  receiptNumber="TEST-1001"
-                  key={`bill-template-${Date.now()}-${Math.random()}`}
-                />
-              );
+                         return (
+             <BillTemplate 
+               bill={cleanBill} 
+               serialNumber="1001" 
+               receiptNumber="TEST-1001"
+               joiningReading={parseInt(joiningReading.toString())}
+               currentReading={parseInt(currentReading.toString())}
+               key={`bill-template-${Date.now()}-${Math.random()}`}
+             />
+           );
             })()}
           </div>
         </div>

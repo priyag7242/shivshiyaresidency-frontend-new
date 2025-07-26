@@ -56,22 +56,24 @@ interface BillTemplateProps {
     electricity_units: number;
     electricity_rate: number;
     electricity_amount: number;
-    electricity_joining_reading?: number;
-    last_electricity_reading?: number;
     other_charges: number;
     adjustments: number;
     total_amount: number;
     due_date: string;
-    generated_date: string;
+    created_date: string;
   };
   serialNumber?: string;
   receiptNumber?: string;
+  joiningReading?: number;
+  currentReading?: number;
 }
 
 const BillTemplate: React.FC<BillTemplateProps> = ({ 
   bill, 
   serialNumber = '1001',
-  receiptNumber = 'M:1001'
+  receiptNumber = 'M:1001',
+  joiningReading,
+  currentReading
 }) => {
   
   const formatCurrency = (amount: number) => {
@@ -170,12 +172,12 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
           <tbody>
             <tr>
               <td className="border border-black p-3 font-bold bg-gray-50">Joining Reading</td>
-              <td className="border border-black p-3 text-center font-bold">{bill.electricity_joining_reading ?? '-'}</td>
+              <td className="border border-black p-3 text-center font-bold">{joiningReading ?? '-'}</td>
               <td className="border border-black p-3"></td>
             </tr>
             <tr>
               <td className="border border-black p-3 font-bold bg-gray-50">Current Reading</td>
-              <td className="border border-black p-3 text-center font-bold">{bill.last_electricity_reading ?? '-'}</td>
+              <td className="border border-black p-3 text-center font-bold">{currentReading ?? '-'}</td>
               <td className="border border-black p-3"></td>
             </tr>
             <tr>
