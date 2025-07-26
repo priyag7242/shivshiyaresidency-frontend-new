@@ -71,6 +71,8 @@ interface Bill {
   electricity_units: number;
   electricity_rate: number;
   electricity_amount: number;
+  electricity_joining_reading?: number;
+  last_electricity_reading?: number;
   other_charges: number;
   adjustments: number;
   total_amount: number;
@@ -134,6 +136,8 @@ const Payments = () => {
   const [currentReadings, setCurrentReadings] = useState<{ [key: string]: string }>({});
   const [billElectricityInputs, setBillElectricityInputs] = useState<{ [key: string]: string }>({});
   const [joiningReadings, setJoiningReadings] = useState<{ [roomNumber: string]: string }>({});
+  const [currentMonthReadings, setCurrentMonthReadings] = useState<{ [roomNumber: string]: string }>({});
+  const [readingDates, setReadingDates] = useState<{ [roomNumber: string]: string }>({});
   const [generating, setGenerating] = useState(false);
 
   const [billGeneration, setBillGeneration] = useState({
@@ -850,6 +854,85 @@ const Payments = () => {
     return unitsNum * 12;
   };
 
+  // Calculate electricity consumption based on joining and current readings
+  const calculateElectricityConsumption = (roomNumber: string) => {
+    const joiningReading = parseInt(joiningReadings[roomNumber] || '0');
+    const currentReading = parseInt(currentMonthReadings[roomNumber] || '0');
+    const consumption = currentReading - joiningReading;
+    return Math.max(0, consumption); // Don't allow negative consumption
+  };
+
+  // Update electricity reading for a room
+  const updateElectricityReading = async (roomNumber: string, reading: string, readingDate: string) => {
+    try {
+      const readingNum = parseInt(reading) || 0;
+      const consumption = calculateElectricityConsumption(roomNumber);
+      const electricityAmount = consumption * 12;
+
+      console.log(`Room ${roomNumber}: Joining=${joiningReadings[roomNumber]}, Current=${reading}, Consumption=${consumption}, Amount=₹${electricityAmount}`);
+
+      // Update tenant's last electricity reading
+      const { error: tenantError } = await supabase
+        .from('tenants')
+        .update({ 
+          last_electricity_reading: readingNum,
+          electricity_joining_reading: parseInt(joiningReadings[roomNumber] || '0')
+        })
+        .eq('room_number', roomNumber);
+
+      if (tenantError) {
+        console.error('Error updating tenant electricity reading:', tenantError);
+        alert('Failed to update electricity reading');
+        return;
+      }
+
+      // Update all bills for this room with new electricity calculation
+      const { data: roomBills, error: billsError } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('room_number', roomNumber)
+        .eq('status', 'pending');
+
+      if (billsError) {
+        console.error('Error fetching room bills:', billsError);
+        return;
+      }
+
+      // Update each bill with new electricity calculation
+      for (const bill of roomBills || []) {
+        const { error: updateError } = await supabase
+          .from('payments')
+          .update({
+            electricity_units: consumption,
+            electricity_amount: electricityAmount,
+            total_amount: (bill.rent_amount || 0) + electricityAmount
+          })
+          .eq('id', bill.id);
+
+        if (updateError) {
+          console.error(`Error updating bill ${bill.id}:`, updateError);
+        }
+      }
+
+      // Update local state
+      setCurrentMonthReadings(prev => ({
+        ...prev,
+        [roomNumber]: reading
+      }));
+      setReadingDates(prev => ({
+        ...prev,
+        [roomNumber]: readingDate
+      }));
+
+      alert(`Electricity reading updated for Room ${roomNumber}!\nConsumption: ${consumption} units\nAmount: ₹${electricityAmount}`);
+      fetchData();
+
+    } catch (error) {
+      console.error('Error updating electricity reading:', error);
+      alert('Failed to update electricity reading');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
@@ -1240,9 +1323,10 @@ const Payments = () => {
               <h3 className="text-lg font-semibold text-golden-400">All Bills</h3>
               <button
                 onClick={async () => {
-                  const updates = Object.entries(billElectricityInputs).map(([billId, units]) => 
-                    updateBillElectricity(billId, units)
-                  );
+                  const updates = Object.entries(currentMonthReadings).map(([roomNumber, reading]) => {
+                    const date = readingDates[roomNumber] || new Date().toISOString().slice(0, 10);
+                    return updateElectricityReading(roomNumber, reading, date);
+                  });
                   await Promise.all(updates);
                   alert('All electricity readings updated successfully!');
                 }}
@@ -1302,56 +1386,110 @@ const Payments = () => {
                     
                     {/* Electricity Input Section */}
                     <div className="bg-dark-700 p-3 rounded-lg border border-golden-600/20">
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                        {/* Joining Reading */}
+                        <div>
                           <label className="block text-sm font-medium text-golden-300 mb-1">
-                            Current Electricity Units
+                            Joining Reading
                           </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              value={billElectricityInputs[bill.id] || bill.electricity_units || ''}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                setBillElectricityInputs(prev => ({
-                                  ...prev,
-                                  [bill.id]: value
-                                }));
-                              }}
-                              onBlur={(e) => {
-                                const value = e.target.value;
-                                if (value && value !== bill.electricity_units?.toString()) {
-                                  updateBillElectricity(bill.id, value);
-                                }
-                              }}
-                              placeholder="Enter units"
-                              className="flex-1 px-3 py-2 bg-dark-600 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
-                            />
-                            <span className="text-golden-300 text-sm">units</span>
-                          </div>
+                          <input
+                            type="number"
+                            value={joiningReadings[bill.room_number] || (bill.electricity_joining_reading?.toString() || '')}
+                            onChange={(e) => {
+                              setJoiningReadings(prev => ({
+                                ...prev,
+                                [bill.room_number]: e.target.value
+                              }));
+                            }}
+                            placeholder="Joining units"
+                            className="w-full px-3 py-2 bg-dark-600 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
+                          />
                         </div>
-                        
+
+                        {/* Current Reading */}
+                        <div>
+                          <label className="block text-sm font-medium text-golden-300 mb-1">
+                            Current Reading
+                          </label>
+                          <input
+                            type="number"
+                            value={currentMonthReadings[bill.room_number] || (bill.last_electricity_reading?.toString() || '')}
+                            onChange={(e) => {
+                              setCurrentMonthReadings(prev => ({
+                                ...prev,
+                                [bill.room_number]: e.target.value
+                              }));
+                            }}
+                            placeholder="Current units"
+                            className="w-full px-3 py-2 bg-dark-600 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
+                          />
+                        </div>
+
+                        {/* Reading Date */}
+                        <div>
+                          <label className="block text-sm font-medium text-golden-300 mb-1">
+                            Reading Date
+                          </label>
+                          <input
+                            type="date"
+                            value={readingDates[bill.room_number] || new Date().toISOString().slice(0, 10)}
+                            onChange={(e) => {
+                              setReadingDates(prev => ({
+                                ...prev,
+                                [bill.room_number]: e.target.value
+                              }));
+                            }}
+                            className="w-full px-3 py-2 bg-dark-600 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
+                          />
+                        </div>
+
+                        {/* Consumption */}
+                        <div className="text-center">
+                          <p className="text-sm text-golden-300">Consumption</p>
+                          <p className="text-lg font-bold text-blue-400">
+                            {calculateElectricityConsumption(bill.room_number)} units
+                          </p>
+                        </div>
+
+                        {/* Rate */}
                         <div className="text-center">
                           <p className="text-sm text-golden-300">Rate</p>
                           <p className="text-lg font-bold text-golden-400">₹12/unit</p>
                         </div>
-                        
+
+                        {/* Electricity Amount */}
                         <div className="text-center">
                           <p className="text-sm text-golden-300">Electricity Amount</p>
-                          <p className="text-lg font-bold text-blue-400">
-                            ₹{calculateElectricityAmount(billElectricityInputs[bill.id] || bill.electricity_units?.toString() || '0')}
+                          <p className="text-lg font-bold text-green-400">
+                            ₹{calculateElectricityConsumption(bill.room_number) * 12}
                           </p>
                         </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => {
+                            const joining = joiningReadings[bill.room_number] || (bill.electricity_joining_reading?.toString() || '0');
+                            const current = currentMonthReadings[bill.room_number] || (bill.last_electricity_reading?.toString() || '0');
+                            const date = readingDates[bill.room_number] || new Date().toISOString().slice(0, 10);
+                            
+                            if (!current || current === '0') {
+                              alert('Please enter current reading first');
+                              return;
+                            }
+                            
+                            updateElectricityReading(bill.room_number, current, date);
+                          }}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors"
+                        >
+                          Update Reading
+                        </button>
                         
-                        <div className="text-center">
-                          <p className="text-sm text-golden-300">Rent Amount</p>
-                          <p className="text-lg font-bold text-green-400">₹{bill.rent_amount || 0}</p>
-                        </div>
-                        
-                        <div className="text-center">
-                          <p className="text-sm text-golden-300">Total Amount</p>
+                        <div className="flex-1 text-right">
+                          <p className="text-sm text-golden-300">Rent: ₹{bill.rent_amount || 0}</p>
                           <p className="text-xl font-bold text-golden-400">
-                            ₹{(bill.rent_amount || 0) + calculateElectricityAmount(billElectricityInputs[bill.id] || bill.electricity_units?.toString() || '0')}
+                            Total: ₹{(bill.rent_amount || 0) + (calculateElectricityConsumption(bill.room_number) * 12)}
                           </p>
                         </div>
                       </div>
