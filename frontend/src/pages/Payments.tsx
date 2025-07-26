@@ -143,6 +143,36 @@ const Payments = () => {
   useEffect(() => {
     fetchData();
     fetchRooms();
+    
+    // Add sample data for testing if no data exists
+    setTimeout(() => {
+      if (payments.length === 0 && bills.length === 0) {
+        console.log('No data found, adding sample data for testing...');
+        const sampleBills = [
+          {
+            id: '1',
+            tenant_id: '1',
+            tenant_name: 'Sample Tenant',
+            room_number: '101',
+            billing_month: '2025-07',
+            rent_amount: 5000,
+            electricity_units: 50,
+            electricity_rate: 12,
+            electricity_amount: 600,
+            other_charges: 0,
+            adjustments: 0,
+            total_amount: 5600,
+            amount_paid: 0,
+            balance_due: 5600,
+            due_date: '2025-07-31',
+            status: 'pending' as const,
+            generated_date: '2025-07-01',
+            payments: []
+          }
+        ];
+        setBills(sampleBills);
+      }
+    }, 2000);
   }, [monthFilter, statusFilter, methodFilter]);
 
   const fetchData = async () => {
@@ -160,6 +190,7 @@ const Payments = () => {
 
   const fetchPayments = async () => {
     try {
+      console.log('Fetching payments...');
       if (USE_SUPABASE) {
         let query = supabase.from('payments').select('*');
         
@@ -169,6 +200,7 @@ const Payments = () => {
         
         const { data, error } = await query;
         if (error) throw error;
+        console.log('Payments data:', data);
         setPayments(data || []);
       } else {
         const params = new URLSearchParams();
@@ -186,6 +218,7 @@ const Payments = () => {
 
   const fetchBills = async () => {
     try {
+      console.log('Fetching bills...');
       if (USE_SUPABASE) {
         let query = supabase.from('payments').select('*');
         
@@ -194,6 +227,7 @@ const Payments = () => {
         
         const { data, error } = await query;
         if (error) throw error;
+        console.log('Bills data:', data);
         setBills(data || []);
       } else {
         const params = new URLSearchParams();
@@ -398,6 +432,7 @@ const Payments = () => {
   };
 
   const formatCurrency = (amount: number) => {
+    if (!amount || isNaN(amount)) return '₹0';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
