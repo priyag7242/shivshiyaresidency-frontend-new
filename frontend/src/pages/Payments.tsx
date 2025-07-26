@@ -295,9 +295,36 @@ const Payments = () => {
 
   const fetchRooms = async () => {
     try {
+      console.log('Fetching rooms...');
+      
       if (USE_SUPABASE) {
-        const data = await roomsQueries.getAll();
-        setRooms(data || []);
+        // First try to get rooms with tenant info
+        const { data: roomsWithTenants, error: roomsError } = await supabase
+          .from('rooms')
+          .select(`
+            *,
+            tenants:tenants(*)
+          `);
+        
+        if (roomsError) {
+          console.error('Error fetching rooms with tenants:', roomsError);
+          // Fallback to just rooms
+          const data = await roomsQueries.getAll();
+          setRooms(data || []);
+        } else {
+          console.log('Rooms with tenants:', roomsWithTenants);
+          
+          // Transform data to include current tenant info
+          const transformedRooms = roomsWithTenants?.map(room => ({
+            ...room,
+            current_tenant: room.tenants?.[0]?.name || 'No tenant',
+            tenant_id: room.tenants?.[0]?.id || null,
+            last_electricity_reading: room.tenants?.[0]?.last_electricity_reading || 0,
+            electricity_joining_reading: room.tenants?.[0]?.electricity_joining_reading || 0
+          })) || [];
+          
+          setRooms(transformedRooms);
+        }
       } else {
         const response = await axios.get(`${apiUrl}/rooms`);
         setRooms(response.data.rooms || []);
@@ -526,28 +553,63 @@ const Payments = () => {
       
       const sampleTenants = [
         {
-          name: 'Sample Tenant 1',
+          name: 'PRACHI',
           mobile: '9876543210',
-          room_number: '101',
+          room_number: '113',
           status: 'active',
-          monthly_rent: 5000,
-          security_deposit: 10000,
-          last_electricity_reading: 100,
-          electricity_joining_reading: 50,
+          monthly_rent: 5500,
+          security_deposit: 11000,
+          last_electricity_reading: 250,
+          electricity_joining_reading: 180,
           joining_date: '2025-01-01'
         },
         {
-          name: 'Sample Tenant 2',
+          name: 'SHIVAM VARMA',
           mobile: '9876543211',
-          room_number: '102',
+          room_number: '217',
           status: 'active',
           monthly_rent: 6000,
           security_deposit: 12000,
-          last_electricity_reading: 150,
-          electricity_joining_reading: 75,
+          last_electricity_reading: 320,
+          electricity_joining_reading: 250,
+          joining_date: '2025-01-01'
+        },
+        {
+          name: 'DOLLY',
+          mobile: '9876543212',
+          room_number: '105',
+          status: 'active',
+          monthly_rent: 5000,
+          security_deposit: 10000,
+          last_electricity_reading: 180,
+          electricity_joining_reading: 120,
+          joining_date: '2025-01-01'
+        },
+        {
+          name: 'VISHAL M',
+          mobile: '9876543213',
+          room_number: '101',
+          status: 'active',
+          monthly_rent: 5200,
+          security_deposit: 10400,
+          last_electricity_reading: 200,
+          electricity_joining_reading: 150,
+          joining_date: '2025-01-01'
+        },
+        {
+          name: 'AMAN SRIVASTAV',
+          mobile: '9876543214',
+          room_number: '102',
+          status: 'active',
+          monthly_rent: 5800,
+          security_deposit: 11600,
+          last_electricity_reading: 280,
+          electricity_joining_reading: 200,
           joining_date: '2025-01-01'
         }
       ];
+      
+      let createdCount = 0;
       
       for (const tenant of sampleTenants) {
         const { error } = await supabase
@@ -557,12 +619,14 @@ const Payments = () => {
         if (error) {
           console.error('Error creating sample tenant:', error);
         } else {
-          console.log('Sample tenant created successfully');
+          createdCount++;
+          console.log(`Sample tenant ${tenant.name} created successfully`);
         }
       }
       
-      alert('Sample tenants created successfully!');
-      fetchData();
+      alert(`Created ${createdCount} sample tenants successfully!`);
+      fetchRooms(); // Refresh rooms to show new tenants
+      fetchData(); // Refresh all data
     } catch (error) {
       console.error('Error creating sample tenants:', error);
       alert('Failed to create sample tenants');
@@ -682,6 +746,33 @@ const Payments = () => {
                   title="Create sample tenants for testing"
                 >
                   Add Sample Tenants
+                </button>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    console.log('Current rooms:', rooms);
+                    console.log('Current bills:', bills);
+                    console.log('Current payments:', payments);
+                    alert('Check browser console for data details');
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition-colors"
+                  title="Debug current data"
+                >
+                  Debug Data
+                </button>
+                
+                <button
+                  onClick={() => {
+                    fetchRooms();
+                    fetchData();
+                    alert('Data refreshed!');
+                  }}
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-500 transition-colors"
+                  title="Refresh all data"
+                >
+                  Refresh Data
                 </button>
               </div>
             </div>
