@@ -321,49 +321,156 @@ const Dashboard = () => {
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Link to="/tenants" className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 transition-colors cursor-pointer">
+        <Link 
+          to="/tenants" 
+          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
+          onClick={() => console.log('Clicked Total Tenants card')}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-golden-300 text-sm font-medium">Total Tenants</p>
               <p className="text-2xl font-bold text-golden-100">{dashboardData.total_tenants}</p>
               <p className="text-green-400 text-sm">+{dashboardData.new_tenants_this_month} this month</p>
             </div>
-            <Users className="h-8 w-8 text-golden-400" />
+            <div className="flex items-center gap-2">
+              <Users className="h-8 w-8 text-golden-400 group-hover:text-golden-300 transition-colors" />
+              <ArrowUpRight className="h-4 w-4 text-golden-400/60 group-hover:text-golden-300 transition-colors" />
+            </div>
           </div>
         </Link>
 
-        <Link to="/rooms" className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 transition-colors cursor-pointer">
+        <Link 
+          to="/rooms" 
+          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
+          onClick={() => console.log('Clicked Occupancy Rate card')}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-golden-300 text-sm font-medium">Occupancy Rate</p>
               <p className="text-2xl font-bold text-golden-100">{dashboardData.occupancy_rate}%</p>
               <p className="text-golden-300 text-sm">{dashboardData.occupied_rooms}/{dashboardData.total_rooms} rooms</p>
             </div>
-            <Building className="h-8 w-8 text-golden-400" />
+            <div className="flex items-center gap-2">
+              <Building className="h-8 w-8 text-golden-400 group-hover:text-golden-300 transition-colors" />
+              <ArrowUpRight className="h-4 w-4 text-golden-400/60 group-hover:text-golden-300 transition-colors" />
+            </div>
           </div>
         </Link>
 
-        <Link to="/payments" className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 transition-colors cursor-pointer">
+        <Link 
+          to="/payments" 
+          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
+          onClick={() => console.log('Clicked Monthly Revenue card')}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-golden-300 text-sm font-medium">Monthly Revenue</p>
               <p className="text-2xl font-bold text-green-400">{formatCurrency(dashboardData.actual_revenue_this_month)}</p>
               <p className="text-golden-300 text-sm">{dashboardData.collection_rate}% collected</p>
             </div>
-            <IndianRupee className="h-8 w-8 text-green-400" />
+            <div className="flex items-center gap-2">
+              <IndianRupee className="h-8 w-8 text-green-400 group-hover:text-green-300 transition-colors" />
+              <ArrowUpRight className="h-4 w-4 text-green-400/60 group-hover:text-green-300 transition-colors" />
+            </div>
           </div>
         </Link>
 
-        <Link to="/payments" className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 transition-colors cursor-pointer">
+        <Link 
+          to="/payments" 
+          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
+          onClick={() => console.log('Clicked Pending Collections card')}
+        >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-golden-300 text-sm font-medium">Pending Collections</p>
               <p className="text-2xl font-bold text-orange-400">{formatCurrency(dashboardData.pending_collections)}</p>
               <p className="text-golden-300 text-sm">{dashboardData.current_month_stats.pending_bills} bills pending</p>
             </div>
-            <Clock className="h-8 w-8 text-orange-400" />
+            <div className="flex items-center gap-2">
+              <Clock className="h-8 w-8 text-orange-400 group-hover:text-orange-300 transition-colors" />
+              <ArrowUpRight className="h-4 w-4 text-orange-400/60 group-hover:text-orange-300 transition-colors" />
+            </div>
           </div>
         </Link>
+      </div>
+
+      {/* Additional Navigation Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Link 
+          to="/maintenance" 
+          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
+          onClick={() => console.log('Clicked Maintenance card')}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-golden-300 text-sm font-medium">Maintenance</p>
+              <p className="text-2xl font-bold text-blue-400">{dashboardData.maintenance_alerts}</p>
+              <p className="text-golden-300 text-sm">Active requests</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-8 w-8 text-blue-400 group-hover:text-blue-300 transition-colors" />
+              <ArrowUpRight className="h-4 w-4 text-blue-400/60 group-hover:text-blue-300 transition-colors" />
+            </div>
+          </div>
+        </Link>
+
+        <Link 
+          to="/visitors" 
+          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
+          onClick={() => console.log('Clicked Visitors card')}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-golden-300 text-sm font-medium">Visitors</p>
+              <p className="text-2xl font-bold text-purple-400">0</p>
+              <p className="text-golden-300 text-sm">Today's visitors</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Users className="h-8 w-8 text-purple-400 group-hover:text-purple-300 transition-colors" />
+              <ArrowUpRight className="h-4 w-4 text-purple-400/60 group-hover:text-purple-300 transition-colors" />
+            </div>
+          </div>
+        </Link>
+
+        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-golden-300 text-sm font-medium">Quick Actions</p>
+              <p className="text-2xl font-bold text-golden-400">2</p>
+              <p className="text-golden-300 text-sm">Available actions</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Settings className="h-8 w-8 text-golden-400" />
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => setShowReportsModal(true)}
+              className="flex-1 px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
+            >
+              Generate Report
+            </button>
+            <button
+              onClick={() => setShowNotificationsModal(true)}
+              className="flex-1 px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+            >
+              Send Notification
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-golden-300 text-sm font-medium">System Status</p>
+              <p className="text-2xl font-bold text-green-400">Online</p>
+              <p className="text-golden-300 text-sm">All systems operational</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-8 w-8 text-green-400" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Charts and Analytics */}

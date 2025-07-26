@@ -4,11 +4,22 @@ import { supabase } from './supabase';
 export const dashboardQueries = {
   async getOverview() {
     try {
-      // Get active tenants (status = 'active')
-      const { data: tenants } = await supabase
+      // Get all tenants (active + inactive) for total revenue calculation
+      const { data: allTenants } = await supabase
+        .from('tenants')
+        .select('*');
+
+      // Get active tenants for active count
+      const { data: activeTenants } = await supabase
         .from('tenants')
         .select('*')
         .eq('status', 'active');
+
+      // Get inactive/adjusting tenants for inactive count
+      const { data: inactiveTenants } = await supabase
+        .from('tenants')
+        .select('*')
+        .in('status', ['inactive', 'adjust']);
 
       // Get all rooms
       const { data: rooms } = await supabase
@@ -40,12 +51,13 @@ export const dashboardQueries = {
       const paidBills = paidPayments.length;
       const collectionRate = totalBills > 0 ? Math.round((paidBills / totalBills) * 100) : 0;
 
-      // Calculate total revenue potential from tenant rents
-      const totalRevenuePotential = tenants?.reduce((sum, t) => sum + Number(t.monthly_rent || 0), 0) || 0;
+      // Calculate total revenue potential from all tenants (active + inactive)
+      const totalRevenuePotential = allTenants?.reduce((sum, t) => sum + Number(t.monthly_rent || 0), 0) || 0;
 
       return {
-        total_tenants: tenants?.length || 0,
-        active_tenants: tenants?.length || 0,
+        total_tenants: allTenants?.length || 0,
+        active_tenants: activeTenants?.length || 0,
+        inactive_tenants: inactiveTenants?.length || 0,
         new_tenants_this_month: 0, // TODO: Calculate based on joining_date
         total_rooms: total,
         occupied_rooms: occupied,
@@ -203,6 +215,8 @@ export const roomsQueries = {
           // Override room's rent and deposit with calculated totals from tenants
           monthly_rent: totalMonthlyRent,
           security_deposit: totalSecurityDeposit,
+          // Update current_occupancy to match actual tenant count
+          current_occupancy: tenants?.length || 0,
           tenants: tenants?.map(tenant => ({
             id: tenant.id,
             name: tenant.name,

@@ -1,14 +1,17 @@
+redirectsOrigin = "config"
 plugins = []
 headers = []
-redirects = []
 
 [functions]
 
 [functions."*"]
 
 [build]
-publish = "/Users/priya/Shivshivaresidency"
-publishOrigin = "default"
+publish = "/Users/priya/Shivshivaresidency/frontend/dist"
+publishOrigin = "config"
+commandOrigin = "config"
+base = "/Users/priya/Shivshivaresidency/frontend"
+command = "npm run build"
 
 [build.environment]
 
@@ -23,3 +26,15 @@ publishOrigin = "default"
 [build.processing.js]
 
 [build.services]
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]

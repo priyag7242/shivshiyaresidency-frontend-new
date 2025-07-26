@@ -89,8 +89,8 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
   };
 
   // Calculate electricity consumption details
-  const currentMonthReading = bill.electricity_units + Math.floor(Math.random() * 1000) + 2000; // Mock current reading
-  const lastMonthReading = currentMonthReading - bill.electricity_units; // Calculate last month reading
+  const currentMonthReading = bill.electricity_units ? bill.electricity_units : '-';
+  const lastMonthReading = '-'; // Only show if available
   
   return (
     <div className="bill-template bg-white text-black p-8 max-w-2xl mx-auto border-2 border-gray-400 font-mono">
@@ -110,11 +110,11 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
           </div>
           <div className="text-right">
             <div className="border border-black px-3 py-1 mb-2">
-              <span className="font-bold">{receiptNumber}</span>
+              <span className="font-bold">{serialNumber?.slice(-4) ?? ''}</span>
             </div>
             <div className="text-sm">
-              <div>Sr. No. <span className="font-bold">{serialNumber}</span></div>
-              <div>Date: <span className="font-bold">{formatDate(bill.generated_date)}</span></div>
+              <div>Sr. No. <span className="font-bold">{serialNumber?.slice(-4) ?? ''}</span></div>
+              <div>Generated on: <span className="font-bold">{formatDate(bill.generated_date)}</span></div>
             </div>
           </div>
         </div>
@@ -160,22 +160,22 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
           <tbody>
             <tr>
               <td className="border border-black p-3 font-bold bg-gray-50">Current Month Unit</td>
-              <td className="border border-black p-3 text-center font-bold">{currentMonthReading}</td>
+              <td className="border border-black p-3 text-center font-bold">{bill.electricity_units ?? '-'}</td>
               <td className="border border-black p-3"></td>
             </tr>
             <tr>
               <td className="border border-black p-3 font-bold bg-gray-50">Last Month Unit</td>
-              <td className="border border-black p-3 text-center font-bold">{lastMonthReading}</td>
+              <td className="border border-black p-3 text-center font-bold">-</td>
               <td className="border border-black p-3"></td>
             </tr>
             <tr>
               <td className="border border-black p-3 font-bold bg-gray-50">Total Consume Unit</td>
-              <td className="border border-black p-3 text-center font-bold">{bill.electricity_units}</td>
-              <td className="border border-black p-3 text-center font-bold">@ ₹{bill.electricity_rate}/unit</td>
+              <td className="border border-black p-3 text-center font-bold">{bill.electricity_units ?? '-'}</td>
+              <td className="border border-black p-3 text-center font-bold">@ ₹12/unit</td>
             </tr>
             <tr>
               <td className="border border-black p-3 font-bold bg-gray-50">Total Unit Amount</td>
-              <td className="border border-black p-3 text-center font-bold">{bill.electricity_amount}</td>
+              <td className="border border-black p-3 text-center font-bold">{bill.electricity_units ? bill.electricity_units * 12 : '-'}</td>
               <td className="border border-black p-3"></td>
             </tr>
           </tbody>
@@ -212,7 +212,7 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
 
       {/* Bill Details Footer */}
       <div className="mt-6 text-xs text-gray-600 text-center">
-        <p>Bill ID: {bill.id} | Billing Period: {bill.billing_month} | Due Date: {formatDate(bill.due_date)}</p>
+        <p>Bill Month: {bill.billing_month} | Due Date: {formatDate(bill.due_date)}</p>
         <p>Generated on: {formatDate(bill.generated_date)}</p>
       </div>
     </div>

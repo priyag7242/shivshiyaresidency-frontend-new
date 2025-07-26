@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Users, Calendar, UserPlus, UserMinus, Search } from 'lucide-react';
-import axios from 'axios';
-
-const apiUrl = import.meta.env.VITE_API_URL || '';
+import { supabase } from '../lib/supabase';
 
 interface Room {
   id: string;
@@ -44,8 +42,13 @@ const RoomAllocationModal = ({ isOpen, onClose, room, onAllocationUpdate }: Room
   const fetchTenants = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${apiUrl}/tenants`);
-      setTenants(response.data.tenants || []);
+      const { data, error } = await supabase
+        .from('tenants')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setTenants(data || []);
     } catch (error) {
       console.error('Error fetching tenants:', error);
     } finally {
@@ -61,17 +64,24 @@ const RoomAllocationModal = ({ isOpen, onClose, room, onAllocationUpdate }: Room
 
     try {
       setLoading(true);
-      await axios.post(`${apiUrl}/rooms/${room.id}/allocate`, {
-        tenant_id: tenant.id,
-        tenant_name: tenant.name
-      });
+      
+      // Update tenant's room number in the tenants table
+      const { error: tenantError } = await supabase
+        .from('tenants')
+        .update({ 
+          room_number: room.room_number,
+          status: 'active'
+        })
+        .eq('id', tenant.id);
+
+      if (tenantError) throw tenantError;
       
       onAllocationUpdate();
       setSelectedTenant('');
-      // Show success message here if you have toast/notification system
+      alert('Room allocated successfully!');
     } catch (error: any) {
       console.error('Error allocating room:', error);
-      alert(error.response?.data?.error || 'Failed to allocate room');
+      alert(error.message || 'Failed to allocate room');
     } finally {
       setLoading(false);
     }
@@ -82,15 +92,23 @@ const RoomAllocationModal = ({ isOpen, onClose, room, onAllocationUpdate }: Room
 
     try {
       setLoading(true);
-      await axios.post(`${apiUrl}/rooms/${room.id}/deallocate`, {
-        tenant_id: tenantId
-      });
+      
+      // Update tenant's room number to empty and status to 'adjust' in the tenants table
+      const { error } = await supabase
+        .from('tenants')
+        .update({ 
+          room_number: '',
+          status: 'adjust'
+        })
+        .eq('id', tenantId);
+
+      if (error) throw error;
       
       onAllocationUpdate();
-      // Show success message here if you have toast/notification system
+      alert('Tenant deallocated successfully!');
     } catch (error: any) {
       console.error('Error deallocating room:', error);
-      alert(error.response?.data?.error || 'Failed to deallocate room');
+      alert(error.message || 'Failed to deallocate room');
     } finally {
       setLoading(false);
     }
