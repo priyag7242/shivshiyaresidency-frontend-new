@@ -796,6 +796,14 @@ const Payments = () => {
     }
   };
 
+  // Generate sequential serial number for bills
+  const generateSerialNumber = (billId: string) => {
+    // Extract numeric part from bill ID and format as 2-digit number
+    const numericPart = billId.replace(/\D/g, '');
+    const serialNum = parseInt(numericPart) || 1;
+    return serialNum.toString().padStart(2, '0');
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
@@ -1281,7 +1289,7 @@ const Payments = () => {
                 <XCircle className="h-6 w-6" />
               </button>
             </div>
-            <BillTemplate bill={selectedBill} />
+            <BillTemplate bill={selectedBill} serialNumber={generateSerialNumber(selectedBill.id)} />
           </div>
         </div>
       )}
@@ -1301,13 +1309,13 @@ const Payments = () => {
             <div className="bg-green-600 text-white p-4 rounded-lg">
               <h4 className="font-medium mb-2">WhatsApp Message Preview:</h4>
               <div className="text-sm whitespace-pre-wrap">
-                {`🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} (${whatsAppBill.billing_month}) is ready.\n\n📅 Due Date: ${whatsAppBill.due_date}\n💰 Total Amount: ₹${formatCurrency(whatsAppBill.total_amount)}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`}
+                {`🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} is ready.\n\n💰 Total Amount: ₹${formatCurrency(whatsAppBill.total_amount)}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`}
               </div>
             </div>
             <div className="flex gap-3 mt-4">
               <button
                 onClick={() => {
-                  const message = `🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} (${whatsAppBill.billing_month}) is ready.\n\n📅 Due Date: ${whatsAppBill.due_date}\n💰 Total Amount: ₹${formatCurrency(whatsAppBill.total_amount)}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`;
+                  const message = `🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} is ready.\n\n💰 Total Amount: ₹${formatCurrency(whatsAppBill.total_amount)}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`;
                   const encodedMessage = encodeURIComponent(message);
                   window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
                 }}
@@ -1318,7 +1326,7 @@ const Payments = () => {
               </button>
               <button
                 onClick={() => {
-                  const message = `🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} (${whatsAppBill.billing_month}) is ready.\n\n📅 Due Date: ${whatsAppBill.due_date}\n💰 Total Amount: ₹${formatCurrency(whatsAppBill.total_amount)}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`;
+                  const message = `🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} is ready.\n\n💰 Total Amount: ₹${formatCurrency(whatsAppBill.total_amount)}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`;
                   navigator.clipboard.writeText(message);
                   alert('Message copied to clipboard!');
                 }}

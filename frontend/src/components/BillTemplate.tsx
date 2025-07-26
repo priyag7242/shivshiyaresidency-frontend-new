@@ -68,7 +68,7 @@ interface BillTemplateProps {
 
 const BillTemplate: React.FC<BillTemplateProps> = ({ 
   bill, 
-  serialNumber = Math.floor(Math.random() * 9999).toString(),
+  serialNumber = '01',
   receiptNumber = `M:${Math.floor(Math.random() * 10000000000)}`
 }) => {
   
@@ -88,6 +88,13 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
     });
   };
 
+  // Get today's date for generated date
+  const today = new Date().toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit'
+  });
+
   // Calculate electricity consumption details
   const currentMonthReading = bill.electricity_units ? bill.electricity_units : '-';
   const lastMonthReading = '-'; // Only show if available
@@ -99,9 +106,9 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
       <div className="border-2 border-black mb-4">
         <div className="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-100 to-yellow-200">
           <div className="flex items-center gap-4">
-            {/* Logo placeholder - you can replace with actual logo */}
+            {/* Logo placeholder - removed SS */}
             <div className="w-16 h-16 bg-yellow-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-lg">SS</span>
+              <span className="text-white font-bold text-lg">🏠</span>
             </div>
             <div>
               <h1 className="text-2xl font-bold text-black">SHIV SHIVA RESIDENCY</h1>
@@ -110,11 +117,11 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
           </div>
           <div className="text-right">
             <div className="border border-black px-3 py-1 mb-2">
-              <span className="font-bold">{serialNumber?.slice(-4) ?? ''}</span>
+              <span className="font-bold">{serialNumber}</span>
             </div>
             <div className="text-sm">
-              <div>Sr. No. <span className="font-bold">{serialNumber?.slice(-4) ?? ''}</span></div>
-              <div>Generated on: <span className="font-bold">{formatDate(bill.generated_date)}</span></div>
+              <div>Sr. No. <span className="font-bold">{serialNumber}</span></div>
+              <div>Generated on: <span className="font-bold">{today}</span></div>
             </div>
           </div>
         </div>
@@ -210,10 +217,9 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
         </div>
       </div>
 
-      {/* Bill Details Footer */}
+      {/* Bill Details Footer - Removed all dates */}
       <div className="mt-6 text-xs text-gray-600 text-center">
-        <p>Bill Month: {bill.billing_month} | Due Date: {formatDate(bill.due_date)}</p>
-        <p>Generated on: {formatDate(bill.generated_date)}</p>
+        <p>Generated on: {today}</p>
       </div>
     </div>
   );
