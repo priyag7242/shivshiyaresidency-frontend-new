@@ -551,6 +551,13 @@ const Payments = () => {
     try {
       console.log('Creating sample tenants...');
       
+      // First check if tenants already exist
+      const { data: existingTenants } = await supabase
+        .from('tenants')
+        .select('name, room_number');
+      
+      console.log('Existing tenants:', existingTenants);
+      
       const sampleTenants = [
         {
           name: 'PRACHI',
@@ -610,26 +617,102 @@ const Payments = () => {
       ];
       
       let createdCount = 0;
+      let skippedCount = 0;
       
       for (const tenant of sampleTenants) {
+        // Check if tenant already exists
+        const exists = existingTenants?.some(t => 
+          t.name === tenant.name || t.room_number === tenant.room_number
+        );
+        
+        if (exists) {
+          console.log(`Tenant ${tenant.name} already exists, skipping...`);
+          skippedCount++;
+          continue;
+        }
+        
+        console.log('Creating tenant:', tenant);
+        
         const { error } = await supabase
           .from('tenants')
           .insert(tenant);
         
         if (error) {
-          console.error('Error creating sample tenant:', error);
+          console.error(`Error creating tenant ${tenant.name}:`, error);
         } else {
           createdCount++;
           console.log(`Sample tenant ${tenant.name} created successfully`);
         }
       }
       
-      alert(`Created ${createdCount} sample tenants successfully!`);
+      const message = `Created ${createdCount} new tenants, skipped ${skippedCount} existing ones.`;
+      alert(message);
+      console.log(message);
+      
       fetchRooms(); // Refresh rooms to show new tenants
       fetchData(); // Refresh all data
     } catch (error) {
       console.error('Error creating sample tenants:', error);
-      alert('Failed to create sample tenants');
+      alert('Failed to create sample tenants: ' + (error as Error).message);
+    }
+  };
+
+  const checkDatabaseData = async () => {
+    try {
+      console.log('=== DATABASE CHECK START ===');
+      
+      // Check all tenants
+      const { data: allTenants, error: tenantsError } = await supabase
+        .from('tenants')
+        .select('*');
+      
+      if (tenantsError) {
+        console.error('Error fetching tenants:', tenantsError);
+      } else {
+        console.log('All tenants in database:', allTenants);
+      }
+      
+      // Check active tenants
+      const { data: activeTenants, error: activeError } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('status', 'active');
+      
+      if (activeError) {
+        console.error('Error fetching active tenants:', activeError);
+      } else {
+        console.log('Active tenants:', activeTenants);
+      }
+      
+      // Check rooms
+      const { data: allRooms, error: roomsError } = await supabase
+        .from('rooms')
+        .select('*');
+      
+      if (roomsError) {
+        console.error('Error fetching rooms:', roomsError);
+      } else {
+        console.log('All rooms:', allRooms);
+      }
+      
+      // Check payments
+      const { data: allPayments, error: paymentsError } = await supabase
+        .from('payments')
+        .select('*');
+      
+      if (paymentsError) {
+        console.error('Error fetching payments:', paymentsError);
+      } else {
+        console.log('All payments:', allPayments);
+      }
+      
+      console.log('=== DATABASE CHECK END ===');
+      
+      alert('Database check complete! Check browser console for details.');
+      
+    } catch (error) {
+      console.error('Error in database check:', error);
+      alert('Error checking database: ' + (error as Error).message);
     }
   };
 
@@ -773,6 +856,34 @@ const Payments = () => {
                   title="Refresh all data"
                 >
                   Refresh Data
+                </button>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={checkDatabaseData}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors"
+                  title="Check database directly"
+                >
+                  Check Database
+                </button>
+                
+                <button
+                  onClick={() => {
+                    console.log('=== CURRENT STATE ===');
+                    console.log('Rooms state:', rooms);
+                    console.log('Bills state:', bills);
+                    console.log('Payments state:', payments);
+                    console.log('Stats state:', stats);
+                    console.log('Current readings:', currentReadings);
+                    console.log('Bill generation:', billGeneration);
+                    console.log('===================');
+                    alert('Current state logged to console');
+                  }}
+                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-500 transition-colors"
+                  title="Log current state"
+                >
+                  Log State
                 </button>
               </div>
             </div>

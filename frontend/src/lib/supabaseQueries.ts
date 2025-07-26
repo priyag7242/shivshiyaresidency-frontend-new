@@ -274,7 +274,7 @@ export const tenantsQueries = {
         *,
         rooms(room_number)
       `)
-      .eq('is_active', true)
+      .eq('status', 'active')
       .order('name');
     
     if (error) throw error;
