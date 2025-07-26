@@ -1250,6 +1250,91 @@ const Payments = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [billGeneration.billing_month]);
 
+  // Fetch active tenants specifically
+  const fetchActiveTenants = async () => {
+    try {
+      console.log('🔄 Fetching active tenants...');
+      const { data: activeTenants, error } = await supabase
+        .from('tenants')
+        .select('id, name, room_number, monthly_rent, status, joining_date')
+        .eq('status', 'active');
+      
+      if (error) throw error;
+      
+      console.log(`✅ Found ${activeTenants?.length || 0} active tenants:`, activeTenants);
+      
+      // Show results in alert
+      if (activeTenants && activeTenants.length > 0) {
+        const tenantList = activeTenants.slice(0, 10).map(t => 
+          `${t.name} (Room ${t.room_number}) - ₹${t.monthly_rent}`
+        ).join('\n');
+        
+        alert(`✅ Active Tenants Found: ${activeTenants.length}\n\nFirst 10 tenants:\n${tenantList}${activeTenants.length > 10 ? '\n... and more' : ''}`);
+      } else {
+        alert('❌ No active tenants found in database');
+      }
+      
+      return activeTenants;
+    } catch (error) {
+      console.error('❌ Error fetching active tenants:', error);
+      alert('Failed to fetch active tenants: ' + (error as Error).message);
+      return [];
+    }
+  };
+
+  // Fetch all tenants with status breakdown
+  const fetchTenantsWithStatus = async () => {
+    try {
+      console.log('🔄 Fetching all tenants with status breakdown...');
+      
+      // Get all tenants
+      const { data: allTenants, error } = await supabase
+        .from('tenants')
+        .select('id, name, room_number, monthly_rent, status, joining_date');
+      
+      if (error) throw error;
+      
+      // Group by status
+      const statusGroups = {
+        active: allTenants?.filter(t => t.status === 'active') || [],
+        inactive: allTenants?.filter(t => t.status === 'inactive') || [],
+        adjusting: allTenants?.filter(t => t.status === 'adjusting') || [],
+        exited: allTenants?.filter(t => t.status === 'exited') || [],
+        other: allTenants?.filter(t => !['active', 'inactive', 'adjusting', 'exited'].includes(t.status)) || []
+      };
+      
+      console.log('📊 Tenant status breakdown:', {
+        total: allTenants?.length || 0,
+        active: statusGroups.active.length,
+        inactive: statusGroups.inactive.length,
+        adjusting: statusGroups.adjusting.length,
+        exited: statusGroups.exited.length,
+        other: statusGroups.other.length
+      });
+      
+      // Show detailed breakdown
+      const breakdown = `📊 Tenant Database Breakdown:
+        
+Total Tenants: ${allTenants?.length || 0}
+✅ Active: ${statusGroups.active.length}
+❌ Inactive: ${statusGroups.inactive.length}
+🔄 Adjusting: ${statusGroups.adjusting.length}
+🚪 Exited: ${statusGroups.exited.length}
+❓ Other: ${statusGroups.other.length}
+
+Sample Active Tenants:
+${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number})`).join('\n')}`;
+      
+      alert(breakdown);
+      
+      return allTenants;
+    } catch (error) {
+      console.error('❌ Error fetching tenants with status:', error);
+      alert('Failed to fetch tenants: ' + (error as Error).message);
+      return [];
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
@@ -1329,6 +1414,18 @@ const Payments = () => {
               className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-500 transition-colors"
             >
               Refresh
+            </button>
+            <button
+              onClick={fetchActiveTenants}
+              className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-500 transition-colors"
+            >
+              Fetch Active
+            </button>
+            <button
+              onClick={fetchTenantsWithStatus}
+              className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-500 transition-colors"
+            >
+              All Status
             </button>
             <button
               onClick={debugTenantsData}
@@ -1457,6 +1554,24 @@ const Payments = () => {
                   title="Refresh all data"
                 >
                   Refresh Data
+                </button>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={fetchActiveTenants}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors"
+                  title="Fetch active tenants from database"
+                >
+                  Fetch Active Tenants
+                </button>
+                
+                <button
+                  onClick={fetchTenantsWithStatus}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+                  title="Show all tenants with status breakdown"
+                >
+                  All Tenants Status
                 </button>
               </div>
               
