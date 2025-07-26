@@ -73,8 +73,6 @@ interface Bill {
   electricity_units: number;
   electricity_rate: number;
   electricity_amount: number;
-  electricity_joining_reading?: number;
-  last_electricity_reading?: number;
   other_charges: number;
   adjustments: number;
   total_amount: number;
@@ -82,7 +80,8 @@ interface Bill {
   balance_due: number;
   due_date: string;
   status: 'paid' | 'partial' | 'pending' | 'overdue';
-  generated_date: string;
+  created_date: string;
+  created_by: string;
   payments: Payment[];
 }
 
@@ -176,7 +175,8 @@ const Payments = () => {
             balance_due: 5600,
             due_date: '2025-07-31',
             status: 'pending' as const,
-            generated_date: '2025-07-01',
+            created_date: '2025-07-01',
+            created_by: 'system',
             payments: []
           }
         ];
@@ -191,21 +191,22 @@ const Payments = () => {
       const newJoiningReadings: { [roomNumber: string]: string } = {};
       const newCurrentReadings: { [roomNumber: string]: string } = {};
       
-      bills.forEach(bill => {
-        if (bill.electricity_joining_reading) {
-          newJoiningReadings[bill.room_number] = bill.electricity_joining_reading.toString();
+      // Get electricity readings from tenants instead of bills
+      allTenants.forEach(tenant => {
+        if (tenant.electricity_joining_reading) {
+          newJoiningReadings[tenant.room_number] = tenant.electricity_joining_reading.toString();
         }
-        if (bill.last_electricity_reading) {
-          newCurrentReadings[bill.room_number] = bill.last_electricity_reading.toString();
+        if (tenant.last_electricity_reading) {
+          newCurrentReadings[tenant.room_number] = tenant.last_electricity_reading.toString();
         }
       });
       
       setJoiningReadings(prev => ({ ...prev, ...newJoiningReadings }));
       setCurrentMonthReadings(prev => ({ ...prev, ...newCurrentReadings }));
       
-      console.log('Populated electricity readings:', { newJoiningReadings, newCurrentReadings });
+      console.log('Populated electricity readings from tenants:', { newJoiningReadings, newCurrentReadings });
     }
-  }, [bills]);
+  }, [bills, allTenants]);
 
   const fetchData = async () => {
     try {
@@ -527,13 +528,14 @@ const Payments = () => {
         try {
           console.log(`📝 Processing tenant: ${tenant.name} (Room ${tenant.room_number})`);
           
-          // Calculate electricity
+          // Calculate electricity - use tenant's electricity data
           const joiningReading = tenant.electricity_joining_reading || 0;
           const currentReading = tenant.last_electricity_reading || joiningReading;
           const electricityUnits = Math.max(0, currentReading - joiningReading);
           const electricityAmount = electricityUnits * parseFloat(billGeneration.electricity_rate);
           const totalAmount = (tenant.monthly_rent || 0) + electricityAmount;
 
+          // Simplified bill data - only include columns that exist in the payments table
           const billData = {
             tenant_id: tenant.id,
             tenant_name: tenant.name,
@@ -544,8 +546,6 @@ const Payments = () => {
             electricity_units: electricityUnits,
             electricity_rate: parseFloat(billGeneration.electricity_rate),
             electricity_amount: electricityAmount,
-            electricity_joining_reading: joiningReading,
-            last_electricity_reading: currentReading,
             other_charges: 0,
             adjustments: 0,
             total_amount: totalAmount,
@@ -554,8 +554,7 @@ const Payments = () => {
             due_date: new Date().toISOString().split('T')[0],
             status: 'pending' as const,
             created_date: new Date().toISOString(),
-            created_by: 'system',
-            generated_date: new Date().toISOString().split('T')[0]
+            created_by: 'system'
           };
 
           console.log(`💾 Inserting bill for ${tenant.name}:`, {
@@ -1211,8 +1210,8 @@ const Payments = () => {
     
     // Find the index of the bill in the filteredBills array
     const sortedBills = [...filteredBills].sort((a, b) => {
-      const dateA = a.generated_date ? new Date(a.generated_date).getTime() : 0;
-      const dateB = b.generated_date ? new Date(b.generated_date).getTime() : 0;
+      const dateA = a.created_date ? new Date(a.created_date).getTime() : 0;
+      const dateB = b.created_date ? new Date(b.created_date).getTime() : 0;
       return dateA - dateB;
     });
     const index = sortedBills.findIndex(b => b.id === billId);
@@ -1230,6 +1229,31 @@ const Payments = () => {
     
     return serialNumber;
   };
+
+  // Auto-generate bills for the current month if none exist
+  useEffect(() => {
+    async function autoGenerateBillsIfNeeded() {
+      try {
+        // Only run if not already generating
+        if (generating) return;
+        // Check if bills exist for the current month
+        const { data: billsForMonth, error } = await supabase
+          .from('payments')
+          .select('id')
+          .eq('billing_month', billGeneration.billing_month);
+        if (error) throw error;
+        if (!billsForMonth || billsForMonth.length === 0) {
+          // No bills for this month, auto-generate
+          await createAndFetchBillsForAllTenants();
+        }
+      } catch (err) {
+        console.error('Auto bill generation error:', err);
+      }
+    }
+    autoGenerateBillsIfNeeded();
+    // Only run on mount and when billing_month changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [billGeneration.billing_month]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1810,7 +1834,7 @@ const Payments = () => {
                           </label>
                           <input
                             type="number"
-                            value={currentMonthReadings[bill.room_number] || (bill.last_electricity_reading?.toString() || '')}
+                            value={currentMonthReadings[bill.room_number] || ''}
                             onChange={(e) => {
                               setCurrentMonthReadings(prev => ({
                                 ...prev,
@@ -1867,8 +1891,8 @@ const Payments = () => {
                       <div className="flex gap-2 mt-3">
                         <button
                           onClick={() => {
-                            const joining = joiningReadings[bill.room_number] || (bill.electricity_joining_reading?.toString() || '0');
-                            const current = currentMonthReadings[bill.room_number] || (bill.last_electricity_reading?.toString() || '0');
+                            const joining = joiningReadings[bill.room_number] || '0';
+                            const current = currentMonthReadings[bill.room_number] || '0';
                             const date = readingDates[bill.room_number] || new Date().toISOString().slice(0, 10);
                             
                             if (!current || current === '0') {
@@ -1953,16 +1977,14 @@ const Payments = () => {
                 bill: selectedBill
               });
               
-              // Get electricity readings from UI state
-              const joiningReading = joiningReadings[selectedBill.room_number] || selectedBill.electricity_joining_reading || 0;
-              const currentReading = currentMonthReadings[selectedBill.room_number] || selectedBill.last_electricity_reading || 0;
+                         // Get electricity readings from UI state
+           const joiningReading = joiningReadings[selectedBill.room_number] || 0;
+           const currentReading = currentMonthReadings[selectedBill.room_number] || 0;
               
               // Create a clean bill object with electricity reading data
               const cleanBill = {
                 ...selectedBill,
                 id: '1001', // Force the ID to be a simple number
-                electricity_joining_reading: parseInt(joiningReading.toString()),
-                last_electricity_reading: parseInt(currentReading.toString()),
                 electricity_units: parseInt(currentReading.toString()) - parseInt(joiningReading.toString()),
                 electricity_amount: (parseInt(currentReading.toString()) - parseInt(joiningReading.toString())) * 12
               };
