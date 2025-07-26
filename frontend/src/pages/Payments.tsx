@@ -424,49 +424,113 @@ const Payments = () => {
     }
   };
 
-  const generateBills = async () => {
+  // Comprehensive function to create and fetch bills for all tenants
+  const createAndFetchBillsForAllTenants = async () => {
     try {
       setGenerating(true);
-      console.log('Generating bills...');
+      console.log('🔄 Starting comprehensive bill creation and fetching...');
       
-      // First, let's check if there are any tenants at all
+      // Step 1: Check if tenants exist
+      const { data: existingTenants, error: tenantsError } = await supabase
+        .from('tenants')
+        .select('*');
+      
+      if (tenantsError) throw tenantsError;
+      
+      console.log(`📊 Found ${existingTenants?.length || 0} existing tenants`);
+      
+      // Step 2: If no tenants exist, create sample tenants
+      if (!existingTenants || existingTenants.length === 0) {
+        console.log('📝 No tenants found, creating sample tenants...');
+        await createSampleTenants();
+        
+        // Fetch tenants again after creation
+        const { data: newTenants, error: newTenantsError } = await supabase
+          .from('tenants')
+          .select('*');
+        
+        if (newTenantsError) throw newTenantsError;
+        console.log(`✅ Created and found ${newTenants?.length || 0} tenants`);
+      }
+      
+      // Step 3: Generate bills for all tenants
+      console.log('💰 Generating bills for all tenants...');
+      await generateBills();
+      
+      // Step 4: Fetch all data
+      console.log('📥 Fetching all data...');
+      await fetchData();
+      
+      // Step 5: Show success message
+      const { data: finalBills } = await supabase
+        .from('payments')
+        .select('*');
+      
+      alert(`✅ Successfully created and fetched bills!\n\n📊 Summary:\n- Tenants: ${existingTenants?.length || 0}\n- Bills Generated: ${finalBills?.length || 0}\n- Current Month: ${billGeneration.billing_month}`);
+      
+    } catch (error) {
+      console.error('❌ Error in comprehensive bill creation:', error);
+      alert('Failed to create and fetch bills: ' + (error as Error).message);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Enhanced generateBills function with better error handling
+  const generateBills = async () => {
+    try {
+      console.log('🔄 Generating bills...');
+      
+      // Get all tenants (not just active ones)
       const { data: allTenants, error: allTenantsError } = await supabase
         .from('tenants')
         .select('*');
       
       if (allTenantsError) throw allTenantsError;
       
-      console.log('All tenants:', allTenants);
+      console.log(`📊 Found ${allTenants?.length || 0} total tenants`);
       
-      // Now get active tenants
-      const { data: tenants, error: tenantsError } = await supabase
-        .from('tenants')
-        .select('*')
-        .eq('status', 'active');
-      
-      if (tenantsError) throw tenantsError;
-      
-      console.log('Active tenants:', tenants);
-      
-      // If no active tenants, try to get any tenants
-      const tenantsToProcess = tenants && tenants.length > 0 ? tenants : allTenants;
-      
-      if (!tenantsToProcess || tenantsToProcess.length === 0) {
+      if (!allTenants || allTenants.length === 0) {
         alert('No tenants found in database. Please add tenants first.');
         return;
       }
       
-      let generatedCount = 0;
+      // Check if bills already exist for this month
+      const { data: existingBills, error: existingBillsError } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('billing_month', billGeneration.billing_month);
       
-      for (const tenant of tenantsToProcess) {
+      if (existingBillsError) throw existingBillsError;
+      
+      if (existingBills && existingBills.length > 0) {
+        const overwrite = confirm(`Bills for ${billGeneration.billing_month} already exist (${existingBills.length} bills). Do you want to overwrite them?`);
+        if (!overwrite) {
+          console.log('Bill generation cancelled by user');
+          return;
+        }
+        
+        // Delete existing bills for this month
+        const { error: deleteError } = await supabase
+          .from('payments')
+          .delete()
+          .eq('billing_month', billGeneration.billing_month);
+        
+        if (deleteError) throw deleteError;
+        console.log(`🗑️ Deleted ${existingBills.length} existing bills for ${billGeneration.billing_month}`);
+      }
+      
+      let generatedCount = 0;
+      const errors: string[] = [];
+      
+      for (const tenant of allTenants) {
         try {
-          console.log('Processing tenant:', tenant);
+          console.log(`📝 Processing tenant: ${tenant.name} (Room ${tenant.room_number})`);
           
-          // Joining reading is the original joining reading from tenant
+          // Calculate electricity
           const joiningReading = tenant.electricity_joining_reading || 0;
-          // Current reading is the latest reading from tenant
-          const currentReading = tenant.last_electricity_reading || 0;
-          const electricityUnits = currentReading - joiningReading;
+          const currentReading = tenant.last_electricity_reading || joiningReading;
+          const electricityUnits = Math.max(0, currentReading - joiningReading);
           const electricityAmount = electricityUnits * parseFloat(billGeneration.electricity_rate);
           const totalAmount = (tenant.monthly_rent || 0) + electricityAmount;
 
@@ -475,13 +539,13 @@ const Payments = () => {
             tenant_name: tenant.name,
             room_number: tenant.room_number,
             billing_month: billGeneration.billing_month,
-            amount: totalAmount, // Add the missing amount field
+            amount: totalAmount,
             rent_amount: tenant.monthly_rent || 0,
             electricity_units: electricityUnits,
             electricity_rate: parseFloat(billGeneration.electricity_rate),
             electricity_amount: electricityAmount,
-            electricity_joining_reading: joiningReading, // This is the joining reading for this bill
-            last_electricity_reading: currentReading, // This is the current reading
+            electricity_joining_reading: joiningReading,
+            last_electricity_reading: currentReading,
             other_charges: 0,
             adjustments: 0,
             total_amount: totalAmount,
@@ -490,34 +554,48 @@ const Payments = () => {
             due_date: new Date().toISOString().split('T')[0],
             status: 'pending' as const,
             created_date: new Date().toISOString(),
-            created_by: 'system'
+            created_by: 'system',
+            generated_date: new Date().toISOString().split('T')[0]
           };
 
-          console.log('Inserting bill data:', billData);
+          console.log(`💾 Inserting bill for ${tenant.name}:`, {
+            totalAmount,
+            electricityUnits,
+            electricityAmount,
+            joiningReading,
+            currentReading
+          });
 
           const { error: insertError } = await supabase
             .from('payments')
             .insert(billData);
 
           if (insertError) {
-            console.error(`Error generating bill for ${tenant.name}:`, insertError);
+            console.error(`❌ Error generating bill for ${tenant.name}:`, insertError);
+            errors.push(`${tenant.name}: ${insertError.message}`);
           } else {
             generatedCount++;
-            console.log(`Successfully generated bill for ${tenant.name}`);
+            console.log(`✅ Successfully generated bill for ${tenant.name}`);
           }
         } catch (error) {
-          console.error(`Error processing tenant ${tenant.name}:`, error);
+          console.error(`❌ Error processing tenant ${tenant.name}:`, error);
+          errors.push(`${tenant.name}: ${(error as Error).message}`);
         }
       }
       
-      alert(`Generated ${generatedCount} bills successfully!`);
-      fetchData();
+      // Show detailed results
+      if (errors.length > 0) {
+        alert(`⚠️ Bill generation completed with some errors:\n\n✅ Generated: ${generatedCount} bills\n❌ Errors: ${errors.length}\n\nErrors:\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? '\n... and more' : ''}`);
+      } else {
+        alert(`✅ Successfully generated ${generatedCount} bills for ${billGeneration.billing_month}!`);
+      }
+      
+      // Refresh data
+      await fetchData();
       
     } catch (error) {
-      console.error('Error generating bills:', error);
+      console.error('❌ Error generating bills:', error);
       alert('Failed to generate bills: ' + (error as Error).message);
-    } finally {
-      setGenerating(false);
     }
   };
 
@@ -1164,6 +1242,17 @@ const Payments = () => {
           </div>
           <div className="mt-4 lg:mt-0 flex flex-col sm:flex-row gap-3">
             <button
+              onClick={createAndFetchBillsForAllTenants}
+              disabled={generating}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-semibold"
+              title="Create tenants and generate bills for all"
+            >
+              <Zap className="h-4 w-4" />
+              <span className="hidden sm:inline">{generating ? 'Creating...' : 'Create & Generate Bills'}</span>
+              <span className="sm:hidden">{generating ? 'Creating...' : 'Create Bills'}</span>
+            </button>
+            
+            <button
               onClick={() => setShowPaymentModal(true)}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors text-sm sm:text-base"
             >
@@ -1197,6 +1286,40 @@ const Payments = () => {
 
       {/* Auto Reminder System */}
       <AutoReminderSystem onRefresh={fetchData} />
+
+      {/* Quick Status */}
+      <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="text-sm">
+              <span className="text-golden-300">Tenants: </span>
+              <span className="text-golden-100 font-semibold">{allTenants.length}</span>
+            </div>
+            <div className="text-sm">
+              <span className="text-golden-300">Bills: </span>
+              <span className="text-golden-100 font-semibold">{bills.length}</span>
+            </div>
+            <div className="text-sm">
+              <span className="text-golden-300">Current Month: </span>
+              <span className="text-golden-100 font-semibold">{billGeneration.billing_month}</span>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={fetchData}
+              className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-500 transition-colors"
+            >
+              Refresh
+            </button>
+            <button
+              onClick={debugTenantsData}
+              className="px-3 py-1 bg-gray-600 text-white rounded text-sm hover:bg-gray-500 transition-colors"
+            >
+              Debug
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Bill Generation Section */}
       <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 mb-6">
@@ -1274,7 +1397,7 @@ const Payments = () => {
 
               <div className="flex flex-col sm:flex-row gap-2">
                 <button
-                  onClick={generateBills}
+                  onClick={createAndFetchBillsForAllTenants}
                   disabled={generating}
                   className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                 >
