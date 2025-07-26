@@ -298,33 +298,51 @@ const Payments = () => {
       console.log('Fetching rooms...');
       
       if (USE_SUPABASE) {
-        // First try to get rooms with tenant info
-        const { data: roomsWithTenants, error: roomsError } = await supabase
+        // First get all tenants with their room numbers
+        const { data: allTenants, error: tenantsError } = await supabase
+          .from('tenants')
+          .select('*')
+          .eq('status', 'active');
+        
+        if (tenantsError) {
+          console.error('Error fetching tenants:', tenantsError);
+        }
+        
+        console.log('Active tenants:', allTenants);
+        
+        // Get all rooms
+        const { data: allRooms, error: roomsError } = await supabase
           .from('rooms')
-          .select(`
-            *,
-            tenants:tenants(*)
-          `);
+          .select('*');
         
         if (roomsError) {
-          console.error('Error fetching rooms with tenants:', roomsError);
-          // Fallback to just rooms
-          const data = await roomsQueries.getAll();
-          setRooms(data || []);
-        } else {
-          console.log('Rooms with tenants:', roomsWithTenants);
-          
-          // Transform data to include current tenant info
-          const transformedRooms = roomsWithTenants?.map(room => ({
-            ...room,
-            current_tenant: room.tenants?.[0]?.name || 'No tenant',
-            tenant_id: room.tenants?.[0]?.id || null,
-            last_electricity_reading: room.tenants?.[0]?.last_electricity_reading || 0,
-            electricity_joining_reading: room.tenants?.[0]?.electricity_joining_reading || 0
-          })) || [];
-          
-          setRooms(transformedRooms);
+          console.error('Error fetching rooms:', roomsError);
+          return;
         }
+        
+        console.log('All rooms:', allRooms);
+        
+        // Create a map of room_number to tenant
+        const tenantMap = new Map();
+        allTenants?.forEach(tenant => {
+          tenantMap.set(tenant.room_number, tenant);
+        });
+        
+        // Transform rooms to include tenant info
+        const transformedRooms = allRooms?.map(room => {
+          const tenant = tenantMap.get(room.room_number);
+          return {
+            ...room,
+            current_tenant: tenant?.name || 'No tenant',
+            tenant_id: tenant?.id || null,
+            last_electricity_reading: tenant?.last_electricity_reading || 0,
+            electricity_joining_reading: tenant?.electricity_joining_reading || 0,
+            monthly_rent: tenant?.monthly_rent || 0
+          };
+        }) || [];
+        
+        console.log('Transformed rooms:', transformedRooms);
+        setRooms(transformedRooms);
       } else {
         const response = await axios.get(`${apiUrl}/rooms`);
         setRooms(response.data.rooms || []);
@@ -558,6 +576,23 @@ const Payments = () => {
       
       console.log('Existing tenants:', existingTenants);
       
+      // First ensure rooms exist
+      const sampleRooms = ['101', '102', '105', '113', '217'];
+      for (const roomNumber of sampleRooms) {
+        const { data: existingRoom } = await supabase
+          .from('rooms')
+          .select('room_number')
+          .eq('room_number', roomNumber)
+          .single();
+        
+        if (!existingRoom) {
+          console.log(`Creating room ${roomNumber}...`);
+          await supabase
+            .from('rooms')
+            .insert({ room_number: roomNumber, status: 'occupied' });
+        }
+      }
+      
       const sampleTenants = [
         {
           name: 'PRACHI',
@@ -649,8 +684,10 @@ const Payments = () => {
       alert(message);
       console.log(message);
       
-      fetchRooms(); // Refresh rooms to show new tenants
-      fetchData(); // Refresh all data
+      // Refresh data after creating tenants
+      fetchRooms();
+      fetchData();
+      
     } catch (error) {
       console.error('Error creating sample tenants:', error);
       alert('Failed to create sample tenants: ' + (error as Error).message);
@@ -712,6 +749,49 @@ const Payments = () => {
       
     } catch (error) {
       console.error('Error in database check:', error);
+      alert('Error checking database: ' + (error as Error).message);
+    }
+  };
+
+  const quickDatabaseCheck = async () => {
+    try {
+      console.log('=== QUICK DATABASE CHECK ===');
+      
+      // Check tenants
+      const { data: tenants, error: tenantsError } = await supabase
+        .from('tenants')
+        .select('name, room_number, status, monthly_rent, last_electricity_reading');
+      
+      if (tenantsError) {
+        console.error('Error fetching tenants:', tenantsError);
+      } else {
+        console.log('Current tenants:', tenants);
+        alert(`Found ${tenants?.length || 0} tenants in database`);
+      }
+      
+      // Check rooms
+      const { data: rooms, error: roomsError } = await supabase
+        .from('rooms')
+        .select('room_number, status');
+      
+      if (roomsError) {
+        console.error('Error fetching rooms:', roomsError);
+      } else {
+        console.log('Current rooms:', rooms);
+      }
+      
+      // Check if any tenants are active
+      const activeTenants = tenants?.filter(t => t.status === 'active') || [];
+      console.log('Active tenants:', activeTenants);
+      
+      if (activeTenants.length === 0) {
+        alert('No active tenants found! Click "Add Sample Tenants" to create some.');
+      } else {
+        alert(`Found ${activeTenants.length} active tenants. You can now generate bills!`);
+      }
+      
+    } catch (error) {
+      console.error('Error in quick database check:', error);
       alert('Error checking database: ' + (error as Error).message);
     }
   };
@@ -868,6 +948,16 @@ const Payments = () => {
                   Check Database
                 </button>
                 
+                <button
+                  onClick={quickDatabaseCheck}
+                  className="flex-1 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-500 transition-colors"
+                  title="Quick database check"
+                >
+                  Quick Check
+                </button>
+              </div>
+              
+              <div className="flex gap-2">
                 <button
                   onClick={() => {
                     console.log('=== CURRENT STATE ===');
