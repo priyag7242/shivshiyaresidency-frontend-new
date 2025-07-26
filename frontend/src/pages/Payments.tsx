@@ -440,9 +440,9 @@ const Payments = () => {
         try {
           console.log('Processing tenant:', tenant);
           
-          // For new bill: use last_electricity_reading as joining reading
-          const joiningReading = tenant.last_electricity_reading || tenant.electricity_joining_reading || 0;
-          // Current reading will be set when user inputs it
+          // Joining reading is the original joining reading from tenant
+          const joiningReading = tenant.electricity_joining_reading || 0;
+          // Current reading is the latest reading from tenant
           const currentReading = tenant.last_electricity_reading || 0;
           const electricityUnits = currentReading - joiningReading;
           const electricityAmount = electricityUnits * parseFloat(billGeneration.electricity_rate);

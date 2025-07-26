@@ -56,6 +56,8 @@ interface BillTemplateProps {
     electricity_units: number;
     electricity_rate: number;
     electricity_amount: number;
+    electricity_joining_reading?: number;
+    last_electricity_reading?: number;
     other_charges: number;
     adjustments: number;
     total_amount: number;
@@ -167,13 +169,13 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
         <table className="w-full border-collapse">
           <tbody>
             <tr>
-              <td className="border border-black p-3 font-bold bg-gray-50">Current Month Unit</td>
-              <td className="border border-black p-3 text-center font-bold">{bill.electricity_units ?? '-'}</td>
+              <td className="border border-black p-3 font-bold bg-gray-50">Joining Reading</td>
+              <td className="border border-black p-3 text-center font-bold">{bill.electricity_joining_reading ?? '-'}</td>
               <td className="border border-black p-3"></td>
             </tr>
             <tr>
-              <td className="border border-black p-3 font-bold bg-gray-50">Last Month Unit</td>
-              <td className="border border-black p-3 text-center font-bold">-</td>
+              <td className="border border-black p-3 font-bold bg-gray-50">Current Reading</td>
+              <td className="border border-black p-3 text-center font-bold">{bill.last_electricity_reading ?? '-'}</td>
               <td className="border border-black p-3"></td>
             </tr>
             <tr>
@@ -183,7 +185,7 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
             </tr>
             <tr>
               <td className="border border-black p-3 font-bold bg-gray-50">Total Unit Amount</td>
-              <td className="border border-black p-3 text-center font-bold">{bill.electricity_units ? bill.electricity_units * 12 : '-'}</td>
+              <td className="border border-black p-3 text-center font-bold">{bill.electricity_amount ?? '-'}</td>
               <td className="border border-black p-3"></td>
             </tr>
           </tbody>
