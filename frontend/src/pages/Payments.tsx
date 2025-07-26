@@ -338,6 +338,16 @@ const Payments = () => {
       setGenerating(true);
       console.log('Generating bills...');
       
+      // First, let's check if there are any tenants at all
+      const { data: allTenants, error: allTenantsError } = await supabase
+        .from('tenants')
+        .select('*');
+      
+      if (allTenantsError) throw allTenantsError;
+      
+      console.log('All tenants:', allTenants);
+      
+      // Now get active tenants
       const { data: tenants, error: tenantsError } = await supabase
         .from('tenants')
         .select('*')
@@ -345,40 +355,57 @@ const Payments = () => {
       
       if (tenantsError) throw tenantsError;
       
+      console.log('Active tenants:', tenants);
+      
+      // If no active tenants, try to get any tenants
+      const tenantsToProcess = tenants && tenants.length > 0 ? tenants : allTenants;
+      
+      if (!tenantsToProcess || tenantsToProcess.length === 0) {
+        alert('No tenants found in database. Please add tenants first.');
+        return;
+      }
+      
       let generatedCount = 0;
       
-      for (const tenant of tenants || []) {
+      for (const tenant of tenantsToProcess) {
         try {
+          console.log('Processing tenant:', tenant);
+          
           const electricityUnits = (tenant.last_electricity_reading || 0) - (tenant.electricity_joining_reading || 0);
           const electricityAmount = electricityUnits * parseFloat(billGeneration.electricity_rate);
           const totalAmount = (tenant.monthly_rent || 0) + electricityAmount;
           
+          const billData = {
+            tenant_id: tenant.id,
+            tenant_name: tenant.name,
+            room_number: tenant.room_number,
+            billing_month: billGeneration.billing_month,
+            rent_amount: tenant.monthly_rent || 0,
+            electricity_units: electricityUnits,
+            electricity_rate: parseFloat(billGeneration.electricity_rate),
+            electricity_amount: electricityAmount,
+            other_charges: 0,
+            adjustments: 0,
+            total_amount: totalAmount,
+            amount_paid: 0,
+            balance_due: totalAmount,
+            due_date: new Date().toISOString().split('T')[0],
+            status: 'pending' as const,
+            created_date: new Date().toISOString(),
+            created_by: 'system'
+          };
+          
+          console.log('Inserting bill data:', billData);
+          
           const { error: insertError } = await supabase
             .from('payments')
-            .insert({
-              tenant_id: tenant.id,
-              tenant_name: tenant.name,
-              room_number: tenant.room_number,
-              billing_month: billGeneration.billing_month,
-              rent_amount: tenant.monthly_rent || 0,
-              electricity_units: electricityUnits,
-              electricity_rate: parseFloat(billGeneration.electricity_rate),
-              electricity_amount: electricityAmount,
-              other_charges: 0,
-              adjustments: 0,
-              total_amount: totalAmount,
-              amount_paid: 0,
-              balance_due: totalAmount,
-              due_date: new Date().toISOString().split('T')[0],
-              status: 'pending',
-              created_date: new Date().toISOString(),
-              created_by: 'system'
-            });
+            .insert(billData);
           
           if (insertError) {
             console.error(`Error generating bill for ${tenant.name}:`, insertError);
           } else {
             generatedCount++;
+            console.log(`Successfully generated bill for ${tenant.name}`);
           }
         } catch (error) {
           console.error(`Error processing tenant ${tenant.name}:`, error);
@@ -390,7 +417,7 @@ const Payments = () => {
       
     } catch (error) {
       console.error('Error generating bills:', error);
-      alert('Failed to generate bills');
+      alert('Failed to generate bills: ' + (error as Error).message);
     } finally {
       setGenerating(false);
     }
@@ -493,6 +520,55 @@ const Payments = () => {
     bill.room_number.includes(searchTerm)
   );
 
+  const createSampleTenants = async () => {
+    try {
+      console.log('Creating sample tenants...');
+      
+      const sampleTenants = [
+        {
+          name: 'Sample Tenant 1',
+          mobile: '9876543210',
+          room_number: '101',
+          status: 'active',
+          monthly_rent: 5000,
+          security_deposit: 10000,
+          last_electricity_reading: 100,
+          electricity_joining_reading: 50,
+          joining_date: '2025-01-01'
+        },
+        {
+          name: 'Sample Tenant 2',
+          mobile: '9876543211',
+          room_number: '102',
+          status: 'active',
+          monthly_rent: 6000,
+          security_deposit: 12000,
+          last_electricity_reading: 150,
+          electricity_joining_reading: 75,
+          joining_date: '2025-01-01'
+        }
+      ];
+      
+      for (const tenant of sampleTenants) {
+        const { error } = await supabase
+          .from('tenants')
+          .insert(tenant);
+        
+        if (error) {
+          console.error('Error creating sample tenant:', error);
+        } else {
+          console.log('Sample tenant created successfully');
+        }
+      }
+      
+      alert('Sample tenants created successfully!');
+      fetchData();
+    } catch (error) {
+      console.error('Error creating sample tenants:', error);
+      alert('Failed to create sample tenants');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
@@ -590,6 +666,24 @@ const Payments = () => {
                   placeholder="Rate per unit (default: ₹12)"
                 />
               </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={generateBills}
+                  disabled={generating}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {generating ? 'Generating...' : 'Generate Bills'}
+                </button>
+                
+                <button
+                  onClick={createSampleTenants}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+                  title="Create sample tenants for testing"
+                >
+                  Add Sample Tenants
+                </button>
+              </div>
             </div>
 
             <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
@@ -601,21 +695,6 @@ const Payments = () => {
                 <li>• When tenant changes room, update joining reading</li>
               </ul>
             </div>
-
-            <button
-              onClick={generateBills}
-              disabled={!billGeneration.billing_month || generating}
-              className="w-full px-4 py-2 bg-gradient-to-r from-golden-500 to-golden-600 text-dark-900 rounded-lg hover:from-golden-600 hover:to-golden-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {generating ? (
-                <div className="flex items-center gap-2 justify-center">
-                  <div className="w-4 h-4 border-2 border-dark-900/30 border-t-dark-900 rounded-full animate-spin"></div>
-                  Generating Bills...
-                </div>
-              ) : (
-                'Generate Bills'
-              )}
-            </button>
           </div>
         </div>
       </div>
