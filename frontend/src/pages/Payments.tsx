@@ -1,130 +1,184 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  Plus, 
   Search, 
+  Plus, 
   Filter, 
-  Download, 
-  Eye, 
-  Phone, 
-  Calendar,
-  DollarSign,
-  Users,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
+  IndianRupee, 
+  Calendar, 
+  CheckCircle, 
+  AlertCircle, 
   Clock,
-  ArrowUpRight,
+  Download,
+  FileText,
+  User,
+  Home,
+  CreditCard,
+  TrendingUp,
+  TrendingDown,
+  RefreshCw,
+  XCircle,
+  Smartphone,
+  Building2,
+  DollarSign,
+  Zap,
+  Receipt,
+  MessageCircle,
+  Printer,
+  Phone,
+  Copy,
   Info,
-  FileText
+  ArrowUpRight,
+  Settings
 } from 'lucide-react';
+import axios from 'axios';
+import BillTemplate from '../components/BillTemplate';
+import { paymentsQueries, tenantsQueries, roomsQueries } from '../lib/supabaseQueries';
 import { supabase } from '../lib/supabase';
-import { roomsQueries, paymentsQueries } from '../lib/supabaseQueries';
-import { useAuth } from '../contexts/AuthContext';
-// import AutoReminderSystem from '../components/AutoReminderSystem';
-import PaymentModal from '../components/PaymentModal';
-import BillDownload from '../components/BillDownload';
+import AutoReminderSystem from '../components/AutoReminderSystem';
+
+const apiUrl = import.meta.env.VITE_API_URL || '';
+const USE_SUPABASE = true;
 
 interface Payment {
   id: string;
   tenant_id: string;
   tenant_name: string;
   room_number: string;
+  payment_date: string;
   billing_month: string;
-  amount: number;
-  payment_date?: string;
-  payment_method?: string;
+  rent_amount: number;
+  electricity_amount: number;
+  other_charges: number;
+  adjustments: number;
+  total_amount: number;
+  amount_paid: number;
+  payment_method: 'cash' | 'upi' | 'bank_transfer' | 'card';
   transaction_id?: string;
-  status: 'pending' | 'paid' | 'overdue' | 'partial';
-  remarks?: string;
-  created_at: string;
-  created_by?: string;
-  due_date?: string;
+  notes?: string;
+  status: 'paid' | 'partial' | 'pending' | 'overdue';
+  due_date: string;
+  created_date: string;
+  created_by: string;
+}
+
+interface Bill {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  room_number: string;
+  billing_month: string;
+  rent_amount: number;
+  electricity_units: number;
+  electricity_rate: number;
+  electricity_amount: number;
+  other_charges: number;
+  adjustments: number;
+  total_amount: number;
+  amount_paid: number;
+  balance_due: number;
+  due_date: string;
+  status: 'paid' | 'partial' | 'pending' | 'overdue';
+  generated_date: string;
+  payments: Payment[];
 }
 
 interface PaymentStats {
-  total: number;
-  pending: number;
-  paid: number;
-  overdue: number;
-  partial: number;
-  totalAmount: number;
-  collectedAmount: number;
-  pendingAmount: number;
-  overdueAmount: number;
+  total_collected: number;
+  this_month_collected: number;
+  this_year_collected: number;
+  pending_amount: number;
+  overdue_amount: number;
+  total_bills: number;
+  paid_bills: number;
+  pending_bills: number;
+  overdue_bills: number;
+  payment_methods: {
+    cash: number;
+    upi: number;
+    bank_transfer: number;
+    card: number;
+  };
+  monthly_collection: { [key: string]: number };
 }
 
-interface Room {
-  id: string;
-  room_number: string;
-  floor: number;
-  type: string;
-  capacity: number;
-  current_occupancy: number;
-  monthly_rent: number;
-  security_deposit: number;
-  status: string;
-  tenants: {
-    id: string;
-    name: string;
-    allocated_date: string;
-    monthly_rent?: number;
-    security_deposit?: number;
-  }[];
-}
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: 0,
-  }).format(amount);
-};
-
-const Payments: React.FC = () => {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+const Payments = () => {
+  const [activeTab, setActiveTab] = useState('overview');
   const [payments, setPayments] = useState<Payment[]>([]);
-  const [bills, setBills] = useState<Payment[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [stats, setStats] = useState<PaymentStats>({
-    total: 0,
-    pending: 0,
-    paid: 0,
-    overdue: 0,
-    partial: 0,
-    totalAmount: 0,
-    collectedAmount: 0,
-    pendingAmount: 0,
-    overdueAmount: 0
-  });
+  const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
-  const [showBillDownload, setShowBillDownload] = useState(false);
-  const [selectedBillForDownload, setSelectedBillForDownload] = useState<Payment | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
-  const [generatingBills, setGeneratingBills] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [showWhatsAppBill, setShowWhatsAppBill] = useState(false);
+  const [whatsAppBill, setWhatsAppBill] = useState<any>(null);
+  const [showBillTemplate, setShowBillTemplate] = useState(false);
+  const [selectedBill, setSelectedBill] = useState<any>(null);
+  const [stats, setStats] = useState<PaymentStats>({
+    total_collected: 0,
+    this_month_collected: 0,
+    this_year_collected: 0,
+    pending_amount: 0,
+    overdue_amount: 0,
+    total_bills: 0,
+    paid_bills: 0,
+    pending_bills: 0,
+    overdue_bills: 0,
+    payment_methods: { cash: 0, upi: 0, bank_transfer: 0, card: 0 },
+    monthly_collection: {}
+  });
+
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [currentReadings, setCurrentReadings] = useState<{ [roomNumber: string]: string }>({});
+  const [joiningReadings, setJoiningReadings] = useState<{ [roomNumber: string]: string }>({});
+  const [generating, setGenerating] = useState(false);
+
+  const [billGeneration, setBillGeneration] = useState({
+    billing_month: new Date().toISOString().slice(0, 7),
+    electricity_rate: '12'
+  });
 
   useEffect(() => {
-    fetchPayments();
-    fetchBills();
-    fetchStats();
+    fetchData();
     fetchRooms();
-  }, []);
+  }, [monthFilter, statusFilter, methodFilter]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        fetchPayments(),
+        fetchBills(),
+        fetchStats()
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchPayments = async () => {
     try {
-      const { data, error } = await supabase
-        .from('payments')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setPayments(data || []);
+      if (USE_SUPABASE) {
+        let query = supabase.from('payments').select('*');
+        
+        if (monthFilter) query = query.eq('billing_month', monthFilter);
+        if (statusFilter) query = query.eq('status', statusFilter);
+        if (methodFilter) query = query.eq('payment_method', methodFilter);
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        setPayments(data || []);
+      } else {
+        const params = new URLSearchParams();
+        if (monthFilter) params.append('billing_month', monthFilter);
+        if (statusFilter) params.append('status', statusFilter);
+        if (methodFilter) params.append('payment_method', methodFilter);
+        
+        const response = await axios.get(`${apiUrl}/payments?${params}`);
+        setPayments(response.data.payments || []);
+      }
     } catch (error) {
       console.error('Error fetching payments:', error);
     }
@@ -132,14 +186,23 @@ const Payments: React.FC = () => {
 
   const fetchBills = async () => {
     try {
-      const { data, error } = await supabase
-        .from('payments')
-        .select('*')
-        .in('status', ['pending', 'overdue'])
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setBills(data || []);
+      if (USE_SUPABASE) {
+        let query = supabase.from('payments').select('*');
+        
+        if (monthFilter) query = query.eq('billing_month', monthFilter);
+        if (statusFilter) query = query.eq('status', statusFilter);
+        
+        const { data, error } = await query;
+        if (error) throw error;
+        setBills(data || []);
+      } else {
+        const params = new URLSearchParams();
+        if (monthFilter) params.append('billing_month', monthFilter);
+        if (statusFilter) params.append('status', statusFilter);
+        
+        const response = await axios.get(`${apiUrl}/bills?${params}`);
+        setBills(response.data.bills || []);
+      }
     } catch (error) {
       console.error('Error fetching bills:', error);
     }
@@ -147,238 +210,155 @@ const Payments: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from('payments')
-        .select('*');
-
-      if (error) throw error;
-
-      const payments = data || [];
-      const total = payments.length;
-      const pending = payments.filter(p => p.status === 'pending').length;
-      const paid = payments.filter(p => p.status === 'paid').length;
-      const overdue = payments.filter(p => p.status === 'overdue').length;
-      const partial = payments.filter(p => p.status === 'partial').length;
-
-      const totalAmount = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-      const collectedAmount = payments
-        .filter(p => p.status === 'paid')
-        .reduce((sum, p) => sum + (p.amount || 0), 0);
-      const pendingAmount = payments
-        .filter(p => p.status === 'pending')
-        .reduce((sum, p) => sum + (p.amount || 0), 0);
-      const overdueAmount = payments
-        .filter(p => p.status === 'overdue')
-        .reduce((sum, p) => sum + (p.amount || 0), 0);
-
-      setStats({
-        total,
-        pending,
-        paid,
-        overdue,
-        partial,
-        totalAmount,
-        collectedAmount,
-        pendingAmount,
-        overdueAmount
-      });
+      if (USE_SUPABASE) {
+        const { data: paymentsData, error: paymentsError } = await supabase
+          .from('payments')
+          .select('*');
+        
+        if (paymentsError) throw paymentsError;
+        
+        const payments = paymentsData || [];
+        const today = new Date();
+        const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+        const currentYear = today.getFullYear().toString();
+        
+        const stats: PaymentStats = {
+          total_collected: payments.reduce((sum, p) => sum + (p.amount_paid || 0), 0),
+          this_month_collected: payments
+            .filter(p => p.billing_month === currentMonth)
+            .reduce((sum, p) => sum + (p.amount_paid || 0), 0),
+          this_year_collected: payments
+            .filter(p => p.billing_month?.startsWith(currentYear))
+            .reduce((sum, p) => sum + (p.amount_paid || 0), 0),
+          pending_amount: payments
+            .filter(p => p.status === 'pending')
+            .reduce((sum, p) => sum + (p.total_amount - (p.amount_paid || 0)), 0),
+          overdue_amount: payments
+            .filter(p => p.status === 'overdue')
+            .reduce((sum, p) => sum + (p.total_amount - (p.amount_paid || 0)), 0),
+          total_bills: payments.length,
+          paid_bills: payments.filter(p => p.status === 'paid').length,
+          pending_bills: payments.filter(p => p.status === 'pending').length,
+          overdue_bills: payments.filter(p => p.status === 'overdue').length,
+          payment_methods: {
+            cash: payments.filter(p => p.payment_method === 'cash').length,
+            upi: payments.filter(p => p.payment_method === 'upi').length,
+            bank_transfer: payments.filter(p => p.payment_method === 'bank_transfer').length,
+            card: payments.filter(p => p.payment_method === 'card').length
+          },
+          monthly_collection: {}
+        };
+        
+        setStats(stats);
+      } else {
+        const response = await axios.get(`${apiUrl}/payments/stats`);
+        setStats(response.data.stats);
+      }
     } catch (error) {
       console.error('Error fetching stats:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const fetchRooms = async () => {
     try {
-      const roomsData = await roomsQueries.getAll();
-      setRooms(roomsData || []);
+      if (USE_SUPABASE) {
+        const data = await roomsQueries.getAll();
+        setRooms(data || []);
+      } else {
+        const response = await axios.get(`${apiUrl}/rooms`);
+        setRooms(response.data.rooms || []);
+      }
     } catch (error) {
       console.error('Error fetching rooms:', error);
     }
   };
 
-  const generateBills = async () => {
+  const updateElectricityReadings = async () => {
     try {
-      setGeneratingBills(true);
-      console.log('🔧 Starting bill generation...');
-
-      // Get current month and next month
-      const now = new Date();
-      const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-      const nextMonth = now.getFullYear() + '-' + String(now.getMonth() + 2).padStart(2, '0');
-
-      console.log(`📅 Current month: ${currentMonth}, Next month: ${nextMonth}`);
-
-      // Fetch all active tenants
-      const { data: tenants, error: tenantError } = await supabase
-        .from('tenants')
-        .select('*')
-        .eq('status', 'active');
-
-      if (tenantError) throw tenantError;
-
-      console.log(`👥 Found ${tenants?.length || 0} active tenants`);
-
-      if (!tenants || tenants.length === 0) {
-        alert('No active tenants found to generate bills for.');
-        return;
-      }
-
-      // Check if bills already exist for current month
-      const { data: existingBills, error: checkError } = await supabase
-        .from('payments')
-        .select('tenant_id')
-        .eq('billing_month', currentMonth);
-
-      if (checkError) throw checkError;
-
-      const existingBillCount = existingBills?.length || 0;
-      console.log(`📊 Found ${existingBillCount} existing bills for ${currentMonth}`);
-
-      // If bills exist for current month, ask user what to do
-      if (existingBillCount > 0) {
-        const userChoice = confirm(
-          `Bills already exist for ${currentMonth} (${existingBillCount} bills).\n\n` +
-          `Click OK to generate bills for ${nextMonth} (next month)\n` +
-          `Click Cancel to regenerate bills for ${currentMonth} (will replace existing)`
-        );
-
-        if (userChoice) {
-          // Generate for next month
-          await generateBillsForMonth(tenants, nextMonth);
-        } else {
-          // Regenerate for current month
-          await generateBillsForMonth(tenants, currentMonth, true);
+      console.log('Updating electricity readings...');
+      
+      for (const [roomNumber, reading] of Object.entries(currentReadings)) {
+        if (reading) {
+          const { error } = await supabase
+            .from('tenants')
+            .update({ last_electricity_reading: parseInt(reading) })
+            .eq('room_number', roomNumber);
+          
+          if (error) {
+            console.error(`Error updating reading for room ${roomNumber}:`, error);
+          }
         }
-      } else {
-        // No existing bills, generate for current month
-        await generateBillsForMonth(tenants, currentMonth);
       }
-
+      
+      alert('Electricity readings updated successfully!');
+      setCurrentReadings({});
+      fetchRooms();
     } catch (error) {
-      console.error('❌ Error generating bills:', error);
-      alert('Failed to generate bills. Please check the console for details.');
-    } finally {
-      setGeneratingBills(false);
+      console.error('Error updating electricity readings:', error);
+      alert('Failed to update electricity readings');
     }
   };
 
-  const generateBillsForMonth = async (tenants: any[], month: string, replaceExisting: boolean = false) => {
+  const generateBills = async () => {
     try {
-      console.log(`🔧 Generating bills for ${month}${replaceExisting ? ' (replacing existing)' : ''}`);
-
-      if (replaceExisting) {
-        // Delete existing bills for this month
-        const { error: deleteError } = await supabase
-          .from('payments')
-          .delete()
-          .eq('billing_month', month);
-
-        if (deleteError) throw deleteError;
-        console.log(`🗑️ Deleted existing bills for ${month}`);
-      }
-
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const tenant of tenants) {
+      setGenerating(true);
+      console.log('Generating bills...');
+      
+      const { data: tenants, error: tenantsError } = await supabase
+        .from('tenants')
+        .select('*')
+        .eq('status', 'active');
+      
+      if (tenantsError) throw tenantsError;
+      
+      let generatedCount = 0;
+      
+      for (const tenant of tenants || []) {
         try {
-          console.log(`📝 Processing tenant: ${tenant.name} (Room ${tenant.room_number})`);
-
-          // Check if bill already exists for this month (if not replacing)
-          if (!replaceExisting) {
-            const { data: existingBill, error: checkError } = await supabase
-              .from('payments')
-              .select('id')
-              .eq('tenant_id', tenant.id)
-              .eq('billing_month', month)
-              .single();
-
-            if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
-              throw checkError;
-            }
-
-            if (existingBill) {
-              console.log(`⏭️ Bill already exists for ${tenant.name} in ${month}, skipping...`);
-              continue;
-            }
-          }
-
-          // Calculate due date based on tenant joining date
-          let dueDate;
-          if (tenant.joining_date) {
-            const joiningDate = new Date(tenant.joining_date);
-            const [year, monthStr] = month.split('-');
-            const targetMonth = parseInt(monthStr);
-            const targetYear = parseInt(year);
-            
-            // Set due date to same day of month as joining date
-            dueDate = new Date(targetYear, targetMonth - 1, joiningDate.getDate());
-            
-            // Handle edge cases (e.g., 31st in February)
-            if (dueDate.getMonth() !== targetMonth - 1) {
-              dueDate = new Date(targetYear, targetMonth, 0); // Last day of month
-            }
-            
-            // Format as YYYY-MM-DD in local timezone
-            const yearStr = dueDate.getFullYear();
-            const monthStr2 = String(dueDate.getMonth() + 1).padStart(2, '0');
-            const dayStr = String(dueDate.getDate()).padStart(2, '0');
-            dueDate = `${yearStr}-${monthStr2}-${dayStr}`;
-          } else {
-            // Fallback: use end of month if no joining date
-            const [year, monthStr] = month.split('-');
-            const lastDay = new Date(parseInt(year), parseInt(monthStr), 0);
-            const yearStr = lastDay.getFullYear();
-            const monthStr2 = String(lastDay.getMonth() + 1).padStart(2, '0');
-            const dayStr = String(lastDay.getDate()).padStart(2, '0');
-            dueDate = `${yearStr}-${monthStr2}-${dayStr}`;
-          }
-
-          console.log(`📅 Due date for ${tenant.name}: ${dueDate}`);
-
-          // Create bill record with due date
-          const billData = {
-            tenant_id: tenant.id,
-            tenant_name: tenant.name,
-            room_number: tenant.room_number,
-            billing_month: month,
-            amount: tenant.monthly_rent || 0,
-            status: 'pending',
-            remarks: `Monthly rent for ${month} (Due: ${dueDate})`,
-            due_date: dueDate // Store as YYYY-MM-DD
-          };
-
+          const electricityUnits = (tenant.last_electricity_reading || 0) - (tenant.electricity_joining_reading || 0);
+          const electricityAmount = electricityUnits * parseFloat(billGeneration.electricity_rate);
+          const totalAmount = (tenant.monthly_rent || 0) + electricityAmount;
+          
           const { error: insertError } = await supabase
             .from('payments')
-            .insert([billData]);
-
+            .insert({
+              tenant_id: tenant.id,
+              tenant_name: tenant.name,
+              room_number: tenant.room_number,
+              billing_month: billGeneration.billing_month,
+              rent_amount: tenant.monthly_rent || 0,
+              electricity_units: electricityUnits,
+              electricity_rate: parseFloat(billGeneration.electricity_rate),
+              electricity_amount: electricityAmount,
+              other_charges: 0,
+              adjustments: 0,
+              total_amount: totalAmount,
+              amount_paid: 0,
+              balance_due: totalAmount,
+              due_date: new Date().toISOString().split('T')[0],
+              status: 'pending',
+              created_date: new Date().toISOString(),
+              created_by: 'system'
+            });
+          
           if (insertError) {
-            console.error(`❌ Error creating bill for ${tenant.name}:`, insertError);
-            errorCount++;
+            console.error(`Error generating bill for ${tenant.name}:`, insertError);
           } else {
-            console.log(`✅ Created bill for ${tenant.name}: ₹${tenant.monthly_rent}`);
-            successCount++;
+            generatedCount++;
           }
         } catch (error) {
-          console.error(`❌ Error processing tenant ${tenant.name}:`, error);
-          errorCount++;
+          console.error(`Error processing tenant ${tenant.name}:`, error);
         }
       }
-
-      console.log(`📊 Bill generation complete: ${successCount} successful, ${errorCount} failed`);
       
-      if (successCount > 0) {
-        alert(`Successfully generated ${successCount} bills for ${month}${errorCount > 0 ? ` (${errorCount} failed)` : ''}`);
-        handleRefresh(); // Refresh the bills list
-      } else {
-        alert('No bills were generated. Please check the console for details.');
-      }
-
+      alert(`Generated ${generatedCount} bills successfully!`);
+      fetchData();
+      
     } catch (error) {
-      console.error('❌ Error in generateBillsForMonth:', error);
-      throw error;
+      console.error('Error generating bills:', error);
+      alert('Failed to generate bills');
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -386,114 +366,57 @@ const Payments: React.FC = () => {
     try {
       const { error } = await supabase
         .from('payments')
-        .update({
-          status: 'paid',
-          payment_method: paymentData.payment_method,
-          payment_date: paymentData.payment_date,
-          transaction_id: paymentData.transaction_id,
-          remarks: paymentData.notes
-        })
-        .eq('id', paymentData.bill_id);
-
+        .insert(paymentData);
+      
       if (error) throw error;
-
+      
       alert('Payment recorded successfully!');
-      fetchPayments();
-      fetchBills();
-      fetchStats();
+      setShowPaymentModal(false);
+      fetchData();
     } catch (error) {
       console.error('Error recording payment:', error);
       alert('Failed to record payment');
     }
   };
 
-  const filteredPayments = payments.filter(payment => {
-    const matchesSearch = payment.tenant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         payment.room_number.includes(searchTerm);
-    const matchesStatus = !statusFilter || payment.status === statusFilter;
-    const matchesMonth = !monthFilter || payment.billing_month === monthFilter;
-    const matchesMethod = !methodFilter || payment.payment_method === methodFilter;
-    
-    return matchesSearch && matchesStatus && matchesMonth && matchesMethod;
-  });
+  const openWhatsAppBill = (bill: any) => {
+    setWhatsAppBill(bill);
+    setShowWhatsAppBill(true);
+  };
 
-  const filteredBills = bills.filter(bill => {
-    const matchesSearch = bill.tenant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         bill.room_number.includes(searchTerm);
-    const matchesStatus = !statusFilter || bill.status === statusFilter;
-    const matchesMonth = !monthFilter || bill.billing_month === monthFilter;
-    
-    // Date filtering logic
-    let matchesDate = true;
-    if (dateFilter) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      let billDueDate;
-      if (bill.due_date) {
-        billDueDate = new Date(bill.due_date);
-      } else {
-        // Calculate due date from billing month (end of month)
-        const [year, month] = bill.billing_month.split('-');
-        billDueDate = new Date(parseInt(year), parseInt(month), 0);
-      }
-      billDueDate.setHours(0, 0, 0, 0);
-      
-      switch (dateFilter) {
-        case 'today':
-          matchesDate = billDueDate.getTime() === today.getTime();
-          break;
-        case 'tomorrow':
-          matchesDate = billDueDate.getTime() === tomorrow.getTime();
-          break;
-        case 'this-week':
-          const weekStart = new Date(today);
-          weekStart.setDate(today.getDate() - today.getDay());
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekStart.getDate() + 6);
-          matchesDate = billDueDate >= weekStart && billDueDate <= weekEnd;
-          break;
-        case 'next-week':
-          const nextWeekStart = new Date(today);
-          nextWeekStart.setDate(today.getDate() + (7 - today.getDay()));
-          const nextWeekEnd = new Date(nextWeekStart);
-          nextWeekEnd.setDate(nextWeekStart.getDate() + 6);
-          matchesDate = billDueDate >= nextWeekStart && billDueDate <= nextWeekEnd;
-          break;
-        case 'overdue':
-          matchesDate = billDueDate < today;
-          break;
-        case 'upcoming':
-          matchesDate = billDueDate >= today;
-          break;
-        default:
-          // Custom date filter (YYYY-MM-DD format)
-          if (dateFilter.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            const filterDate = new Date(dateFilter);
-            filterDate.setHours(0, 0, 0, 0);
-            matchesDate = billDueDate.getTime() === filterDate.getTime();
-          }
-      }
-    }
-    
-    return matchesSearch && matchesStatus && matchesMonth && matchesDate;
-  });
+  const viewBillTemplate = (bill: any) => {
+    setSelectedBill(bill);
+    setShowBillTemplate(true);
+  };
+
+  const printBill = (bill: any) => {
+    setSelectedBill(bill);
+    setShowBillTemplate(true);
+    setTimeout(() => {
+      window.print();
+    }, 100);
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid':
-        return 'text-green-400 bg-green-400/10';
-      case 'pending':
-        return 'text-yellow-400 bg-yellow-400/10';
-      case 'overdue':
-        return 'text-red-400 bg-red-400/10';
+        return 'text-green-400 bg-green-400/10 border-green-400/30';
       case 'partial':
-        return 'text-orange-400 bg-orange-400/10';
+        return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30';
+      case 'pending':
+        return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
+      case 'overdue':
+        return 'text-red-400 bg-red-400/10 border-red-400/30';
       default:
-        return 'text-gray-400 bg-gray-400/10';
+        return 'text-golden-400 bg-golden-400/10 border-golden-400/30';
     }
   };
 
@@ -501,394 +424,509 @@ const Payments: React.FC = () => {
     switch (status) {
       case 'paid':
         return <CheckCircle className="h-4 w-4" />;
-      case 'pending':
-        return <Clock className="h-4 w-4" />;
-      case 'overdue':
-        return <AlertCircle className="h-4 w-4" />;
       case 'partial':
-        return <DollarSign className="h-4 w-4" />;
-      default:
         return <Clock className="h-4 w-4" />;
+      case 'pending':
+        return <AlertCircle className="h-4 w-4" />;
+      case 'overdue':
+        return <XCircle className="h-4 w-4" />;
+      default:
+        return <FileText className="h-4 w-4" />;
     }
   };
 
-  const handleRefresh = () => {
-    fetchPayments();
-    fetchBills();
-    fetchStats();
+  const getPaymentMethodIcon = (method: string) => {
+    switch (method) {
+      case 'upi':
+        return <Smartphone className="h-4 w-4" />;
+      case 'bank_transfer':
+        return <Building2 className="h-4 w-4" />;
+      case 'card':
+        return <CreditCard className="h-4 w-4" />;
+      default:
+        return <DollarSign className="h-4 w-4" />;
+    }
   };
 
+  const filteredPayments = payments.filter(payment =>
+    payment.tenant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    payment.room_number.includes(searchTerm)
+  );
+
+  const filteredBills = bills.filter(bill =>
+    bill.tenant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    bill.room_number.includes(searchTerm)
+  );
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Automatic Payment Reminder System */}
-      {/* <AutoReminderSystem onRefresh={handleRefresh} /> */}
-
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-golden-400">Payments & Billing</h1>
-          <p className="text-golden-300">Manage rent payments, generate bills, and track collections</p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={generateBills}
-            disabled={generatingBills}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-          >
-            {generatingBills ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                Generating...
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4" />
-                Generate Bills
-              </>
-            )}
-          </button>
-          <button
-            onClick={() => setShowPaymentModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-golden-600 text-white rounded-lg hover:bg-golden-700 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            Record Payment
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div 
-          onClick={() => setStatusFilter('')}
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 cursor-pointer hover:border-golden-500 transition-all duration-200 group"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm">Total Bills</p>
-              <p className="text-2xl font-bold text-golden-400">{stats.total}</p>
-            </div>
-            <div className="text-golden-400 group-hover:text-golden-300">
-              <ArrowUpRight className="h-5 w-5" />
-            </div>
+      <div className="mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-golden-400 mb-2">Payment Management</h1>
+            <p className="text-golden-300">Manage billing, payments, and financial tracking</p>
           </div>
-        </div>
-
-        <div 
-          onClick={() => setStatusFilter('pending')}
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 cursor-pointer hover:border-golden-500 transition-all duration-200 group"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm">Pending</p>
-              <p className="text-2xl font-bold text-yellow-400">{stats.pending}</p>
-            </div>
-            <div className="text-golden-400 group-hover:text-golden-300">
-              <ArrowUpRight className="h-5 w-5" />
-            </div>
-          </div>
-        </div>
-
-        <div 
-          onClick={() => setStatusFilter('paid')}
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 cursor-pointer hover:border-golden-500 transition-all duration-200 group"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm">Collected</p>
-              <p className="text-2xl font-bold text-green-400">{formatCurrency(stats.collectedAmount)}</p>
-            </div>
-            <div className="text-golden-400 group-hover:text-golden-300">
-              <ArrowUpRight className="h-5 w-5" />
-            </div>
-          </div>
-        </div>
-
-        <div 
-          onClick={() => setStatusFilter('overdue')}
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 cursor-pointer hover:border-golden-500 transition-all duration-200 group"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm">Overdue</p>
-              <p className="text-2xl font-bold text-red-400">{formatCurrency(stats.overdueAmount)}</p>
-            </div>
-            <div className="text-golden-400 group-hover:text-golden-300">
-              <ArrowUpRight className="h-5 w-5" />
-            </div>
+          <div className="mt-4 lg:mt-0 flex gap-3">
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-golden-500 to-golden-600 text-dark-900 rounded-lg hover:from-golden-600 hover:to-golden-700 transition-all duration-200 font-medium"
+            >
+              <Plus className="h-5 w-5" />
+              Record Payment
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 mb-8">
-        <div className="flex flex-wrap gap-4">
-          <div className="flex-1 min-w-[200px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-golden-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Search by tenant name or room number..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
-              />
+      {/* Auto Reminder System */}
+      <AutoReminderSystem onRefresh={fetchData} />
+
+      {/* Bill Generation Section */}
+      <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-golden-400 flex items-center gap-2">
+            <Zap className="h-5 w-5" />
+            Bill Generation & Electricity Management
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Electricity Readings */}
+          <div className="space-y-4">
+            <h4 className="text-golden-300 font-medium">Current Electricity Readings</h4>
+            <div className="space-y-3 max-h-60 overflow-y-auto">
+              {rooms.map((room: any) => (
+                <div key={room.room_number} className="flex items-center gap-3 p-3 bg-dark-800 rounded-lg">
+                  <div className="flex-1">
+                    <div className="text-golden-100 font-medium">Room {room.room_number}</div>
+                    <div className="text-golden-300 text-sm">
+                      {room.current_tenant ? `Tenant: ${room.current_tenant}` : 'No tenant'}
+                    </div>
+                  </div>
+                  <div className="w-32">
+                    <input
+                      type="number"
+                      placeholder="Current reading"
+                      className="w-full px-2 py-1 bg-dark-700 border border-golden-600/30 rounded text-golden-100 text-sm focus:outline-none focus:border-golden-500"
+                      value={currentReadings[room.room_number] || ''}
+                      onChange={(e) => setCurrentReadings({
+                        ...currentReadings,
+                        [room.room_number]: e.target.value
+                      })}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
+            
+            <button
+              onClick={updateElectricityReadings}
+              disabled={Object.keys(currentReadings).length === 0}
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Update Electricity Readings
+            </button>
           </div>
 
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
-          >
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="paid">Paid</option>
-            <option value="overdue">Overdue</option>
-            <option value="partial">Partial</option>
-          </select>
+          {/* Bill Generation */}
+          <div className="space-y-4">
+            <h4 className="text-golden-300 font-medium">Generate Monthly Bills</h4>
+            
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-golden-300 mb-2">Billing Month</label>
+                <input
+                  type="month"
+                  value={billGeneration.billing_month}
+                  onChange={(e) => setBillGeneration({ ...billGeneration, billing_month: e.target.value })}
+                  className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
+                />
+              </div>
 
-          <select
-            value={monthFilter}
-            onChange={(e) => setMonthFilter(e.target.value)}
-            className="px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
-          >
-            <option value="">All Months</option>
-            <option value="2025-01">January 2025</option>
-            <option value="2025-02">February 2025</option>
-            <option value="2025-03">March 2025</option>
-            <option value="2025-04">April 2025</option>
-            <option value="2025-05">May 2025</option>
-            <option value="2025-06">June 2025</option>
-            <option value="2025-07">July 2025</option>
-            <option value="2025-08">August 2025</option>
-            <option value="2025-09">September 2025</option>
-            <option value="2025-10">October 2025</option>
-            <option value="2025-11">November 2025</option>
-            <option value="2025-12">December 2025</option>
-          </select>
+              <div>
+                <label className="block text-sm font-medium text-golden-300 mb-2">Electricity Rate (₹/unit)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={billGeneration.electricity_rate}
+                  onChange={(e) => setBillGeneration({ ...billGeneration, electricity_rate: e.target.value })}
+                  className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
+                  placeholder="Rate per unit (default: ₹12)"
+                />
+              </div>
+            </div>
 
-          <select
-            value={methodFilter}
-            onChange={(e) => setMethodFilter(e.target.value)}
-            className="px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
-          >
-            <option value="">All Methods</option>
-            <option value="cash">Cash</option>
-            <option value="upi">UPI</option>
-            <option value="bank_transfer">Bank Transfer</option>
-            <option value="cheque">Cheque</option>
-          </select>
+            <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <h5 className="text-blue-400 font-medium text-sm mb-2">💡 Electricity Sharing Logic:</h5>
+              <ul className="text-blue-300 text-xs space-y-1">
+                <li>• Room-wise consumption = Current Reading - Joining Reading</li>
+                <li>• Cost splits equally among tenants in same room</li>
+                <li>• Rate: ₹{billGeneration.electricity_rate}/unit</li>
+                <li>• When tenant changes room, update joining reading</li>
+              </ul>
+            </div>
 
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
-          >
-            <option value="">All Dates</option>
-            <option value="today">Today</option>
-            <option value="tomorrow">Tomorrow</option>
-            <option value="this-week">This Week</option>
-            <option value="next-week">Next Week</option>
-            <option value="overdue">Overdue</option>
-            <option value="upcoming">Upcoming</option>
-          </select>
-
-          <input
-            type="date"
-            value={dateFilter.match(/^\d{4}-\d{2}-\d{2}$/) ? dateFilter : ''}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
-            placeholder="Custom Date"
-          />
-
-          <button
-            onClick={() => {
-              setSearchTerm('');
-              setStatusFilter('');
-              setMonthFilter('');
-              setMethodFilter('');
-              setDateFilter('');
-            }}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Clear Filters
-          </button>
-        </div>
-      </div>
-
-      {/* Bills Table */}
-      <div className="bg-dark-900 border border-golden-600/20 rounded-lg overflow-hidden">
-        <div className="p-6 border-b border-golden-600/20">
-          <h2 className="text-xl font-semibold text-golden-400">Pending Bills</h2>
-          <p className="text-golden-300 text-sm">Bills that need to be paid</p>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-dark-800 border-b border-golden-600/20">
-              <tr>
-                <th className="text-left py-3 px-4 font-medium text-golden-400">Room & Tenant</th>
-                <th className="text-left py-3 px-4 font-medium text-golden-400">Bill Month</th>
-                <th className="text-left py-3 px-4 font-medium text-golden-400">Due Date</th>
-                <th className="text-left py-3 px-4 font-medium text-golden-400">Amount</th>
-                <th className="text-left py-3 px-4 font-medium text-golden-400">Status</th>
-                <th className="text-left py-3 px-4 font-medium text-golden-400">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-golden-600/10">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-8 text-golden-400">
-                    Loading bills...
-                  </td>
-                </tr>
-              ) : filteredBills.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-8 text-golden-400/60">
-                    No pending bills found
-                  </td>
-                </tr>
+            <button
+              onClick={generateBills}
+              disabled={!billGeneration.billing_month || generating}
+              className="w-full px-4 py-2 bg-gradient-to-r from-golden-500 to-golden-600 text-dark-900 rounded-lg hover:from-golden-600 hover:to-golden-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {generating ? (
+                <div className="flex items-center gap-2 justify-center">
+                  <div className="w-4 h-4 border-2 border-dark-900/30 border-t-dark-900 rounded-full animate-spin"></div>
+                  Generating Bills...
+                </div>
               ) : (
-                filteredBills.map((bill) => (
-                  <tr key={bill.id} className="hover:bg-dark-800/50">
-                    <td className="py-3 px-4">
-                      <div>
-                        <p className="font-medium text-golden-100">Room {bill.room_number}</p>
-                        <p className="text-sm text-golden-300">{bill.tenant_name}</p>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="text-golden-300">{bill.billing_month}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-golden-400" />
-                        <span className="text-golden-300">
-                          {bill.due_date ? 
-                            new Date(bill.due_date).toLocaleDateString('en-IN') :
-                            (() => {
-                              const [year, month] = bill.billing_month.split('-');
-                              const dueDate = new Date(parseInt(year), parseInt(month), 0);
-                              return dueDate.toLocaleDateString('en-IN');
-                            })()
-                          }
+                'Generate Bills'
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div 
+          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
+          onClick={() => {
+            setStatusFilter('');
+            setMonthFilter('');
+            setMethodFilter('');
+            setSearchTerm('');
+            console.log('Clicked Total Collected card - showing all payments');
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-golden-300 text-sm font-medium">Total Collected</p>
+              <p className="text-2xl font-bold text-green-400">{formatCurrency(stats.total_collected)}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-8 w-8 text-green-400 group-hover:text-green-300 transition-colors" />
+              <ArrowUpRight className="h-4 w-4 text-green-400/60 group-hover:text-green-300 transition-colors" />
+            </div>
+          </div>
+        </div>
+
+        <div 
+          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
+          onClick={() => {
+            setStatusFilter('');
+            setMonthFilter(new Date().toISOString().slice(0, 7));
+            setMethodFilter('');
+            setSearchTerm('');
+            console.log('Clicked This Month card - filtering to current month');
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-golden-300 text-sm font-medium">This Month</p>
+              <p className="text-2xl font-bold text-blue-400">{formatCurrency(stats.this_month_collected)}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-8 w-8 text-blue-400 group-hover:text-blue-300 transition-colors" />
+              <ArrowUpRight className="h-4 w-4 text-blue-400/60 group-hover:text-blue-300 transition-colors" />
+            </div>
+          </div>
+        </div>
+
+        <div 
+          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
+          onClick={() => {
+            setStatusFilter('pending');
+            setMonthFilter('');
+            setMethodFilter('');
+            setSearchTerm('');
+            console.log('Clicked Pending Amount card - filtering to pending payments');
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-golden-300 text-sm font-medium">Pending Amount</p>
+              <p className="text-2xl font-bold text-orange-400">{formatCurrency(stats.pending_amount)}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-8 w-8 text-orange-400 group-hover:text-orange-300 transition-colors" />
+              <ArrowUpRight className="h-4 w-4 text-orange-400/60 group-hover:text-orange-300 transition-colors" />
+            </div>
+          </div>
+        </div>
+
+        <div 
+          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
+          onClick={() => {
+            setStatusFilter('overdue');
+            setMonthFilter('');
+            setMethodFilter('');
+            setSearchTerm('');
+            console.log('Clicked Overdue Amount card - filtering to overdue payments');
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-golden-300 text-sm font-medium">Overdue Amount</p>
+              <p className="text-2xl font-bold text-red-400">{formatCurrency(stats.overdue_amount)}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-8 w-8 text-red-400 group-hover:text-red-300 transition-colors" />
+              <ArrowUpRight className="h-4 w-4 text-red-400/60 group-hover:text-red-300 transition-colors" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment Method Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Payment Methods
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            {Object.entries(stats.payment_methods).map(([method, count]) => (
+              <div key={method} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {getPaymentMethodIcon(method)}
+                  <span className="text-golden-300 capitalize">{method.replace('_', ' ')}</span>
+                </div>
+                <span className="text-golden-100 font-medium">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Bill Status
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-400">{stats.paid_bills}</div>
+              <div className="text-sm text-golden-300">Paid Bills</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-400">{stats.pending_bills}</div>
+              <div className="text-sm text-golden-300">Pending Bills</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-400">{stats.total_bills - stats.paid_bills - stats.pending_bills - stats.overdue_bills}</div>
+              <div className="text-sm text-golden-300">Partial Paid</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-red-400">{stats.overdue_bills}</div>
+              <div className="text-sm text-golden-300">Overdue Bills</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-golden-600/20 mb-6">
+        {[
+          { id: 'overview', label: 'Overview', icon: TrendingUp },
+          { id: 'bills', label: 'Bills', icon: FileText },
+          { id: 'payments', label: 'Payment History', icon: Receipt }
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`flex items-center gap-2 px-6 py-3 border-b-2 transition-colors ${
+              activeTab === id
+                ? 'border-golden-500 text-golden-400'
+                : 'border-transparent text-golden-300 hover:text-golden-400'
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-golden-400 mb-4">Recent Payments</h3>
+            {loading ? (
+              <div className="text-center py-8 text-golden-400">Loading...</div>
+            ) : filteredPayments.length === 0 ? (
+              <div className="text-center py-8 text-golden-400/60">No payments found</div>
+            ) : (
+              <div className="space-y-4">
+                {filteredPayments.slice(0, 5).map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between p-4 bg-dark-800 rounded-lg">
+                    <div>
+                      <h4 className="text-golden-100 font-medium">{payment.tenant_name}</h4>
+                      <p className="text-golden-300 text-sm">Room {payment.room_number}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-green-400">{formatCurrency(payment.amount_paid)}</p>
+                      <p className="text-sm text-golden-300">{payment.payment_date}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'bills' && (
+        <div className="space-y-6">
+          <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-golden-400 mb-4">All Bills</h3>
+            {loading ? (
+              <div className="text-center py-8 text-golden-400">Loading...</div>
+            ) : filteredBills.length === 0 ? (
+              <div className="text-center py-8 text-golden-400/60">No bills found</div>
+            ) : (
+              <div className="space-y-4">
+                {filteredBills.map((bill) => (
+                  <div key={bill.id} className="flex items-center justify-between p-4 bg-dark-800 rounded-lg">
+                    <div>
+                      <h4 className="text-golden-100 font-medium">{bill.tenant_name}</h4>
+                      <p className="text-golden-300 text-sm">Room {bill.room_number} • {bill.billing_month}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-golden-400">{formatCurrency(bill.total_amount)}</p>
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border ${getStatusColor(bill.status)}`}>
+                          {getStatusIcon(bill.status)}
+                          {bill.status}
                         </span>
                       </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div>
-                        <p className="font-medium text-golden-100">{formatCurrency(bill.amount)}</p>
-                        <p className="text-sm text-golden-300">
-                          {bill.remarks || 'Monthly rent'}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(bill.status)}`}>
-                        {getStatusIcon(bill.status)}
-                        {bill.status.charAt(0).toUpperCase() + bill.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => {
-                            setSelectedPayment(bill);
-                            setShowPaymentModal(true);
-                          }}
-                          className="flex items-center gap-1 px-2 py-1 text-blue-400 border border-blue-600/30 rounded text-sm hover:bg-blue-600/10 transition-colors"
+                          onClick={() => openWhatsAppBill(bill)}
+                          className="p-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                          title="Send WhatsApp"
                         >
-                          <DollarSign className="h-3 w-3" />
-                          Pay
+                          <MessageCircle className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={async () => {
-                            // Fetch tenant mobile number first
-                            try {
-                              const { data: tenant, error } = await supabase
-                                .from('tenants')
-                                .select('mobile')
-                                .eq('id', bill.tenant_id)
-                                .single();
-
-                              if (error) {
-                                console.error('Error fetching tenant mobile:', error);
-                                alert('Could not fetch tenant mobile number');
-                                return;
-                              }
-
-                              if (!tenant?.mobile) {
-                                alert('Tenant mobile number not found');
-                                return;
-                              }
-
-                              // Calculate due date (use stored due_date or fallback to end of month)
-                              let dueDateStr;
-                              if (bill.due_date) {
-                                dueDateStr = new Date(bill.due_date).toLocaleDateString('en-IN');
-                              } else {
-                                const [year, month] = bill.billing_month.split('-');
-                                const dueDate = new Date(parseInt(year), parseInt(month), 0);
-                                dueDateStr = dueDate.toLocaleDateString('en-IN');
-                              }
-
-                              // WhatsApp reminder functionality
-                              const message = `🏠 *Shiv Shiva Residency - Payment Reminder*\n\nDear ${bill.tenant_name},\n\nYour rent payment of *₹${formatCurrency(bill.amount)}* for Room ${bill.room_number} for ${bill.billing_month} is pending.\n\n📅 Due Date: ${dueDateStr}\n💰 Amount: ₹${formatCurrency(bill.amount)}\n\nPlease ensure timely payment to avoid any late fees.\n\nThank you,\nShiv Shiva Residency Team`;
-                              const encodedMessage = encodeURIComponent(message);
-                              window.open(`https://wa.me/91${tenant.mobile}?text=${encodedMessage}`, '_blank');
-                            } catch (error) {
-                              console.error('Error in WhatsApp reminder:', error);
-                              alert('Error sending WhatsApp reminder');
-                            }
-                          }}
-                          className="flex items-center gap-1 px-2 py-1 text-green-400 border border-green-600/30 rounded text-sm hover:bg-green-600/10 transition-colors"
+                          onClick={() => viewBillTemplate(bill)}
+                          className="p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                          title="View Bill"
                         >
-                          <Phone className="h-3 w-3" />
-                          WhatsApp
+                          <FileText className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => {
-                            setSelectedBillForDownload(bill);
-                            setShowBillDownload(true);
-                          }}
-                          className="flex items-center gap-1 px-2 py-1 text-purple-400 border border-purple-600/30 rounded text-sm hover:bg-purple-600/10 transition-colors"
+                          onClick={() => printBill(bill)}
+                          className="p-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                          title="Print Bill"
                         >
-                          <FileText className="h-3 w-3" />
-                          Download
+                          <Printer className="h-4 w-4" />
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Payment Modal */}
-      <PaymentModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        payment={selectedPayment}
-        onPaymentRecorded={recordPayment}
-        rooms={rooms}
-        isAdmin={isAdmin}
-      />
+      {activeTab === 'payments' && (
+        <div className="space-y-6">
+          <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-golden-400 mb-4">Payment History</h3>
+            {loading ? (
+              <div className="text-center py-8 text-golden-400">Loading...</div>
+            ) : filteredPayments.length === 0 ? (
+              <div className="text-center py-8 text-golden-400/60">No payments found</div>
+            ) : (
+              <div className="space-y-4">
+                {filteredPayments.map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between p-4 bg-dark-800 rounded-lg">
+                    <div>
+                      <h4 className="text-golden-100 font-medium">{payment.tenant_name}</h4>
+                      <p className="text-golden-300 text-sm">Room {payment.room_number} • {payment.payment_date}</p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-green-400">{formatCurrency(payment.amount_paid)}</p>
+                        <div className="flex items-center gap-2">
+                          {getPaymentMethodIcon(payment.payment_method)}
+                          <span className="text-sm text-golden-300 capitalize">{payment.payment_method.replace('_', ' ')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
-      {/* Bill Download Modal */}
-      {showBillDownload && selectedBillForDownload && (
-        <BillDownload
-          bill={selectedBillForDownload}
-          onClose={() => {
-            setShowBillDownload(false);
-            setSelectedBillForDownload(null);
-          }}
-        />
+      {/* Modals */}
+      {showBillTemplate && selectedBill && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-golden-400">Bill Template</h3>
+              <button
+                onClick={() => setShowBillTemplate(false)}
+                className="text-golden-400 hover:text-golden-300"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+            </div>
+            <BillTemplate bill={selectedBill} />
+          </div>
+        </div>
+      )}
+
+      {showWhatsAppBill && whatsAppBill && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-golden-400">WhatsApp Bill Preview</h3>
+              <button
+                onClick={() => setShowWhatsAppBill(false)}
+                className="text-golden-400 hover:text-golden-300"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="bg-green-600 text-white p-4 rounded-lg">
+              <h4 className="font-medium mb-2">WhatsApp Message Preview:</h4>
+              <div className="text-sm whitespace-pre-wrap">
+                {`🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} (${whatsAppBill.billing_month}) is ready.\n\n📅 Due Date: ${whatsAppBill.due_date}\n💰 Total Amount: ₹${formatCurrency(whatsAppBill.total_amount)}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`}
+              </div>
+            </div>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => {
+                  const message = `🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} (${whatsAppBill.billing_month}) is ready.\n\n📅 Due Date: ${whatsAppBill.due_date}\n💰 Total Amount: ₹${formatCurrency(whatsAppBill.total_amount)}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`;
+                  const encodedMessage = encodeURIComponent(message);
+                  window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Send WhatsApp
+              </button>
+              <button
+                onClick={() => {
+                  const message = `🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} (${whatsAppBill.billing_month}) is ready.\n\n📅 Due Date: ${whatsAppBill.due_date}\n💰 Total Amount: ₹${formatCurrency(whatsAppBill.total_amount)}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`;
+                  navigator.clipboard.writeText(message);
+                  alert('Message copied to clipboard!');
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Copy className="h-4 w-4" />
+                Copy Message
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
 };
 
-export default Payments;
+export default Payments; 
