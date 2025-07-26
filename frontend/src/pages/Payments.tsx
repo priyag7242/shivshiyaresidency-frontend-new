@@ -1366,6 +1366,144 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
     }
   };
 
+  // Check for duplicate tenants
+  const checkDuplicateTenants = async () => {
+    try {
+      console.log('🔍 Checking for duplicate tenants...');
+      
+      const { data: allTenants, error } = await supabase
+        .from('tenants')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      
+      if (!allTenants || allTenants.length === 0) {
+        alert('No tenants found in database.');
+        return;
+      }
+      
+      // Find duplicates by name and room number
+      const duplicates: { [key: string]: any[] } = {};
+      
+      allTenants.forEach(tenant => {
+        const key = `${tenant.name}-${tenant.room_number}`;
+        if (!duplicates[key]) {
+          duplicates[key] = [];
+        }
+        duplicates[key].push(tenant);
+      });
+      
+      // Filter only duplicates (more than 1 entry)
+      const duplicateGroups = Object.values(duplicates).filter(group => group.length > 1);
+      
+      if (duplicateGroups.length === 0) {
+        alert('✅ No duplicate tenants found! All tenants are unique.');
+        return;
+      }
+      
+      // Create detailed report
+      let report = `🔍 DUPLICATE TENANTS FOUND: ${duplicateGroups.length} groups\n\n`;
+      
+      duplicateGroups.forEach((group, index) => {
+        const firstTenant = group[0];
+        report += `📋 Group ${index + 1}: ${firstTenant.name} (Room ${firstTenant.room_number})\n`;
+        report += `   Found ${group.length} duplicate entries:\n\n`;
+        
+        group.forEach((tenant, tenantIndex) => {
+          report += `   ${tenantIndex + 1}. ID: ${tenant.id}\n`;
+          report += `      Name: ${tenant.name}\n`;
+          report += `      Room: ${tenant.room_number}\n`;
+          report += `      Mobile: ${tenant.mobile || 'N/A'}\n`;
+          report += `      Status: ${tenant.status || 'N/A'}\n`;
+          report += `      Joining Date: ${tenant.joining_date || 'N/A'}\n`;
+          report += `      Rent: ₹${tenant.monthly_rent || 0}\n`;
+          report += `      Joining Reading: ${tenant.electricity_joining_reading || 'N/A'}\n`;
+          report += `      Last Reading: ${tenant.last_electricity_reading || 'N/A'}\n`;
+          report += `      Created: ${tenant.created_at || 'N/A'}\n\n`;
+        });
+        report += `   ---\n\n`;
+      });
+      
+      report += `📊 SUMMARY:\n`;
+      report += `• Total tenants: ${allTenants.length}\n`;
+      report += `• Duplicate groups: ${duplicateGroups.length}\n`;
+      report += `• Duplicate entries: ${duplicateGroups.reduce((sum, group) => sum + group.length, 0)}\n`;
+      report += `• Unique tenants: ${allTenants.length - duplicateGroups.reduce((sum, group) => sum + (group.length - 1), 0)}\n\n`;
+      report += `💡 RECOMMENDATION: Keep the most recent/complete entry and delete the others.`;
+      
+      console.log('Duplicate tenants report:', report);
+      alert(report);
+      
+      // Also log to console for detailed inspection
+      console.log('All tenants:', allTenants);
+      console.log('Duplicate groups:', duplicateGroups);
+      
+    } catch (error) {
+      console.error('Error checking duplicate tenants:', error);
+      alert('Error checking duplicate tenants: ' + (error as Error).message);
+    }
+  };
+
+  // Remove duplicate tenants (keep the most recent one)
+  const removeDuplicateTenants = async () => {
+    try {
+      const confirmed = confirm('⚠️ This will remove duplicate tenants, keeping only the most recent entry for each name-room combination. Are you sure you want to proceed?');
+      if (!confirmed) return;
+      
+      console.log('🗑️ Removing duplicate tenants...');
+      
+      const { data: allTenants, error } = await supabase
+        .from('tenants')
+        .select('*')
+        .order('created_at', { ascending: false }); // Most recent first
+      
+      if (error) throw error;
+      
+      if (!allTenants || allTenants.length === 0) {
+        alert('No tenants found in database.');
+        return;
+      }
+      
+      // Find duplicates and keep only the most recent
+      const seen = new Set<string>();
+      const toDelete: string[] = [];
+      
+      allTenants.forEach(tenant => {
+        const key = `${tenant.name}-${tenant.room_number}`;
+        if (seen.has(key)) {
+          toDelete.push(tenant.id);
+        } else {
+          seen.add(key);
+        }
+      });
+      
+      if (toDelete.length === 0) {
+        alert('✅ No duplicate tenants to remove!');
+        return;
+      }
+      
+      console.log(`🗑️ Deleting ${toDelete.length} duplicate tenants:`, toDelete);
+      
+      // Delete duplicates
+      const { error: deleteError } = await supabase
+        .from('tenants')
+        .delete()
+        .in('id', toDelete);
+      
+      if (deleteError) throw deleteError;
+      
+      alert(`✅ Successfully removed ${toDelete.length} duplicate tenants!\n\nRemaining unique tenants: ${allTenants.length - toDelete.length}`);
+      
+      // Refresh data
+      await fetchData();
+      
+    } catch (error) {
+      console.error('Error removing duplicate tenants:', error);
+      alert('Error removing duplicate tenants: ' + (error as Error).message);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
@@ -2208,7 +2346,7 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
         </div>
       )}
 
-      {/* Add debug buttons in the UI */}
+      {/* Add debug and maintenance buttons in the UI */}
       <div className="flex flex-col sm:flex-row gap-2 mt-4">
         <button
           onClick={debugTenantsData}
@@ -2231,6 +2369,22 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
           title="Debug selected bill"
         >
           Debug Selected Bill
+        </button>
+
+        <button
+          onClick={checkDuplicateTenants}
+          className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-500 transition-colors text-sm sm:text-base"
+          title="Check for duplicate tenants"
+        >
+          🔍 Check Duplicates
+        </button>
+
+        <button
+          onClick={removeDuplicateTenants}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-500 transition-colors text-sm sm:text-base"
+          title="Remove duplicate tenants (keeps most recent)"
+        >
+          🗑️ Remove Duplicates
         </button>
       </div>
     </div>
