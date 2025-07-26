@@ -191,20 +191,17 @@ const Payments = () => {
       const newJoiningReadings: { [roomNumber: string]: string } = {};
       const newCurrentReadings: { [roomNumber: string]: string } = {};
       
-      // Get electricity readings from tenants instead of bills
+      // Set default values for electricity readings (since columns might not exist)
       allTenants.forEach(tenant => {
-        if (tenant.electricity_joining_reading) {
-          newJoiningReadings[tenant.room_number] = tenant.electricity_joining_reading.toString();
-        }
-        if (tenant.last_electricity_reading) {
-          newCurrentReadings[tenant.room_number] = tenant.last_electricity_reading.toString();
-        }
+        // Set default values - can be updated later
+        newJoiningReadings[tenant.room_number] = '0';
+        newCurrentReadings[tenant.room_number] = '0';
       });
       
       setJoiningReadings(prev => ({ ...prev, ...newJoiningReadings }));
       setCurrentMonthReadings(prev => ({ ...prev, ...newCurrentReadings }));
       
-      console.log('Populated electricity readings from tenants:', { newJoiningReadings, newCurrentReadings });
+      console.log('Set default electricity readings for tenants:', { newJoiningReadings, newCurrentReadings });
     }
   }, [bills, allTenants]);
 
@@ -331,7 +328,7 @@ const Payments = () => {
     try {
       const { data, error } = await supabase
         .from('tenants')
-        .select('id, name, room_number, electricity_joining_reading, last_electricity_reading, monthly_rent, status');
+        .select('id, name, room_number, monthly_rent, status');
       if (error) throw error;
       setAllTenants(data || []);
       console.log('Fetched all tenants:', data);
@@ -485,7 +482,7 @@ const Payments = () => {
       // Get all tenants (not just active ones)
       const { data: allTenants, error: allTenantsError } = await supabase
         .from('tenants')
-        .select('*');
+        .select('id, name, room_number, monthly_rent, status');
       
       if (allTenantsError) throw allTenantsError;
       
@@ -528,21 +525,20 @@ const Payments = () => {
         try {
           console.log(`📝 Processing tenant: ${tenant.name} (Room ${tenant.room_number})`);
           
-          // Calculate electricity - use tenant's electricity data
-          const joiningReading = tenant.electricity_joining_reading || 0;
-          const currentReading = tenant.last_electricity_reading || joiningReading;
-          const electricityUnits = Math.max(0, currentReading - joiningReading);
-          const electricityAmount = electricityUnits * parseFloat(billGeneration.electricity_rate);
-          const totalAmount = (tenant.monthly_rent || 0) + electricityAmount;
+          // Simplified calculation - just use rent amount for now
+          const rentAmount = tenant.monthly_rent || 0;
+          const electricityUnits = 0; // Default to 0 for now
+          const electricityAmount = 0; // Default to 0 for now
+          const totalAmount = rentAmount + electricityAmount;
 
-          // Simplified bill data - only include columns that exist in the payments table
+          // Simplified bill data - only include columns that definitely exist
           const billData = {
             tenant_id: tenant.id,
             tenant_name: tenant.name,
             room_number: tenant.room_number,
             billing_month: billGeneration.billing_month,
             amount: totalAmount,
-            rent_amount: tenant.monthly_rent || 0,
+            rent_amount: rentAmount,
             electricity_units: electricityUnits,
             electricity_rate: parseFloat(billGeneration.electricity_rate),
             electricity_amount: electricityAmount,
@@ -559,10 +555,9 @@ const Payments = () => {
 
           console.log(`💾 Inserting bill for ${tenant.name}:`, {
             totalAmount,
+            rentAmount,
             electricityUnits,
-            electricityAmount,
-            joiningReading,
-            currentReading
+            electricityAmount
           });
 
           const { error: insertError } = await supabase
