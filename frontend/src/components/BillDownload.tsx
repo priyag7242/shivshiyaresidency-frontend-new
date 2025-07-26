@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { Download, FileText, MessageCircle, Share2 } from 'lucide-react';
+import { Download, MessageCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { uploadPDFToCloudinary } from '../lib/cloudinary';
 
 interface BillData {
   id: string;
@@ -82,102 +81,6 @@ const BillDownload: React.FC<BillDownloadProps> = ({ bill, onClose }) => {
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Error generating PDF. Please try again.');
-    }
-  };
-
-  const generatePDFBlob = async (): Promise<Blob> => {
-    try {
-      const billElement = document.getElementById('bill-content');
-      if (!billElement) throw new Error('Bill content not found');
-  
-      const canvas = await html2canvas(billElement, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
-  
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-  
-      let position = 0;
-  
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-  
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-  
-      // Convert PDF to blob
-      const pdfBlob = pdf.output('blob');
-      return pdfBlob;
-    } catch (error) {
-      console.error('Error generating PDF blob:', error);
-      throw new Error('Failed to generate PDF');
-    }
-  };
-  
-  const sharePDFViaWhatsApp = async () => {
-    try {
-      setSendingWhatsApp(true);
-
-      // Check if Cloudinary is configured
-      const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-      const apiKey = import.meta.env.VITE_CLOUDINARY_API_KEY;
-      const apiSecret = import.meta.env.VITE_CLOUDINARY_API_SECRET;
-
-      if (!cloudName || !apiKey || !apiSecret || 
-          cloudName === 'your-cloud-name' || 
-          apiKey === 'your-api-key' || 
-          apiSecret === 'your-api-secret') {
-        alert('Cloudinary is not configured. Please set up Cloudinary environment variables for PDF sharing.\n\nTo configure:\n1. Sign up at cloudinary.com\n2. Get your cloud name, API key, and API secret\n3. Add them to your .env file:\nVITE_CLOUDINARY_CLOUD_NAME=your-cloud-name\nVITE_CLOUDINARY_API_KEY=your-api-key\nVITE_CLOUDINARY_API_SECRET=your-api-secret');
-        return;
-      }
-
-      // Fetch tenant mobile number
-      const { data: tenant, error } = await supabase
-        .from('tenants')
-        .select('mobile')
-        .eq('id', bill.tenant_id)
-        .single();
-
-      if (error || !tenant?.mobile) {
-        alert('Tenant mobile number not found');
-        return;
-      }
-
-      // Generate PDF blob
-      const pdfBlob = await generatePDFBlob();
-      
-      // Create filename
-      const fileName = `Bill_${bill.tenant_name}_Room${bill.room_number}_${bill.billing_month}.pdf`;
-      
-      // Upload to Cloudinary
-      const uploadResult = await uploadPDFToCloudinary(pdfBlob, fileName);
-      
-      // Create WhatsApp message with PDF link
-      const message = `🏠 *Shiv Shiva Residency - Payment Bill*\n\nDear ${bill.tenant_name},\n\nYour rent payment bill for Room ${bill.room_number} for ${bill.billing_month} is ready.\n\n📄 *Download Bill PDF:* ${uploadResult.secure_url}\n\n💰 Amount: ${formatCurrency(bill.amount)}\n📅 Due Date: ${calculateDueDate(bill.billing_month)}\n\nPlease ensure timely payment to avoid any late fees.\n\nThank you,\nShiv Shiva Residency Team`;
-
-      const encodedMessage = encodeURIComponent(message);
-      window.open(`https://wa.me/91${tenant.mobile}?text=${encodedMessage}`, '_blank');
-
-      // Show success message
-      alert('PDF uploaded and WhatsApp message sent successfully! The tenant can download the PDF directly from the link.');
-
-    } catch (error) {
-      console.error('Error sharing PDF via WhatsApp:', error);
-      alert('Error sharing PDF. Please check your Cloudinary configuration.');
-    } finally {
-      setSendingWhatsApp(false);
     }
   };
 
@@ -260,14 +163,6 @@ const BillDownload: React.FC<BillDownloadProps> = ({ bill, onClose }) => {
             >
               <MessageCircle className="h-4 w-4" />
               {sendingWhatsApp ? 'Sending...' : 'Send WhatsApp'}
-            </button>
-            <button
-              onClick={sharePDFViaWhatsApp}
-              disabled={sendingWhatsApp}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-            >
-              <Share2 className="h-4 w-4" />
-              {sendingWhatsApp ? 'Uploading...' : 'Share PDF via WhatsApp'}
             </button>
             <button
               onClick={onClose}
