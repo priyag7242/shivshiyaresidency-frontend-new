@@ -100,8 +100,9 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
   });
 
   // Calculate electricity consumption details
-  const currentMonthReading = bill.electricity_units ? bill.electricity_units : '-';
-  const lastMonthReading = '-'; // Only show if available
+  const currentMonthReading = currentReading || bill.electricity_units || '-';
+  const lastMonthReading = joiningReading || '-';
+  const consumption = currentReading && joiningReading ? currentReading - joiningReading : bill.electricity_units || '-';
   
   return (
     <div className="bill-template bg-white text-black p-8 max-w-2xl mx-auto border-2 border-gray-400 font-mono">
@@ -153,10 +154,10 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
             <tr>
               <td className="border border-black p-3 text-center font-bold text-lg">{bill.room_number}</td>
               <td className="border border-black p-3 font-bold text-lg">{bill.tenant_name}</td>
-              <td className="border border-black p-3 text-center font-bold">{bill.rent_amount}</td>
+              <td className="border border-black p-3 text-center font-bold">{formatCurrency(bill.rent_amount)}</td>
               <td className="border border-black p-3 text-center font-bold">-</td>
               <td className="border border-black p-3 text-center font-bold">-</td>
-              <td className="border border-black p-3 text-center font-bold text-lg">{bill.rent_amount}</td>
+              <td className="border border-black p-3 text-center font-bold text-lg">{formatCurrency(bill.rent_amount)}</td>
             </tr>
           </tbody>
         </table>
@@ -172,22 +173,22 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
           <tbody>
             <tr>
               <td className="border border-black p-3 font-bold bg-gray-50">Joining Reading</td>
-              <td className="border border-black p-3 text-center font-bold">{joiningReading ?? '-'}</td>
+              <td className="border border-black p-3 text-center font-bold">{lastMonthReading}</td>
               <td className="border border-black p-3"></td>
             </tr>
             <tr>
               <td className="border border-black p-3 font-bold bg-gray-50">Current Reading</td>
-              <td className="border border-black p-3 text-center font-bold">{currentReading ?? '-'}</td>
+              <td className="border border-black p-3 text-center font-bold">{currentMonthReading}</td>
               <td className="border border-black p-3"></td>
             </tr>
             <tr>
               <td className="border border-black p-3 font-bold bg-gray-50">Total Consume Unit</td>
-              <td className="border border-black p-3 text-center font-bold">{bill.electricity_units ?? '-'}</td>
-              <td className="border border-black p-3 text-center font-bold">@ ₹12/unit</td>
+              <td className="border border-black p-3 text-center font-bold">{consumption}</td>
+              <td className="border border-black p-3 text-center font-bold">@ ₹{bill.electricity_rate || 12}/unit</td>
             </tr>
             <tr>
               <td className="border border-black p-3 font-bold bg-gray-50">Total Unit Amount</td>
-              <td className="border border-black p-3 text-center font-bold">{bill.electricity_amount ?? '-'}</td>
+              <td className="border border-black p-3 text-center font-bold">{formatCurrency(bill.electricity_amount || 0)}</td>
               <td className="border border-black p-3"></td>
             </tr>
           </tbody>
@@ -198,7 +199,7 @@ const BillTemplate: React.FC<BillTemplateProps> = ({
       <div className="border-2 border-black mb-4">
         <div className="flex justify-between items-center p-4 bg-yellow-100">
           <span className="text-xl font-bold">Grand Total</span>
-          <span className="text-2xl font-bold">₹ {(bill.rent_amount || 0) + (bill.electricity_amount || 0)}</span>
+          <span className="text-2xl font-bold">{formatCurrency((bill.rent_amount || 0) + (bill.electricity_amount || 0))}</span>
         </div>
       </div>
 

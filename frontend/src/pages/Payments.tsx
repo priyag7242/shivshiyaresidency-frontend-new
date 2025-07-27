@@ -143,6 +143,8 @@ const Payments = () => {
   const [selectedExportMonth, setSelectedExportMonth] = useState(new Date().toISOString().slice(0, 7));
   const [generating, setGenerating] = useState(false);
   const [allTenants, setAllTenants] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [billGeneration, setBillGeneration] = useState({
     billing_month: new Date().toISOString().slice(0, 7),
@@ -209,12 +211,16 @@ const Payments = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setError(null);
       await Promise.all([
         fetchPayments(),
         fetchBills(),
         fetchStats(),
         fetchAllTenants()
       ]);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setError('Failed to load data. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -636,8 +642,13 @@ const Payments = () => {
     setSelectedBill(bill);
     setShowBillTemplate(true);
     setTimeout(() => {
-      window.print();
-    }, 100);
+      try {
+        window.print();
+      } catch (error) {
+        console.error('Print error:', error);
+        alert('Print failed. Please try using browser print (Ctrl+P)');
+      }
+    }, 1000);
   };
 
   const formatCurrency = (amount: number) => {
@@ -935,10 +946,14 @@ const Payments = () => {
 
   // Generate sequential serial number for bills
   const generateSerialNumber = (billId: string) => {
-    // Extract numeric part from bill ID and format as 2-digit number
-    const numericPart = billId.replace(/\D/g, '');
-    const serialNum = parseInt(numericPart) || 1;
-    return serialNum.toString().padStart(2, '0');
+    // Generate a unique serial number based on bill ID and current date
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+    return `SSR${year}${month}${day}${random}`;
   };
 
   // Update electricity for individual bill
@@ -1506,6 +1521,32 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Error Alert */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-900/50 border border-red-500/30 rounded-lg">
+          <div className="flex items-center gap-2">
+            <XCircle className="h-5 w-5 text-red-400" />
+            <span className="text-red-300">{error}</span>
+            <button
+              onClick={() => setError(null)}
+              className="ml-auto text-red-400 hover:text-red-300"
+            >
+              <XCircle className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-dark-800 p-6 rounded-lg flex items-center gap-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-golden-500"></div>
+            <span className="text-golden-300">Loading data...</span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
