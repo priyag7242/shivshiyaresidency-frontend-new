@@ -751,7 +751,7 @@ const Dashboard = () => {
               </button>
         </div>
 
-        {/* Quick Actions */}
+            {/* Quick Actions */}
             <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
               <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4 sm:mb-6">Quick Actions</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -762,7 +762,7 @@ const Dashboard = () => {
                 >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-all duration-300 group-hover:scale-110">
                     <UserPlus className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-              </div>
+                  </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Add Tenant</span>
                 </button>
                 
@@ -773,7 +773,7 @@ const Dashboard = () => {
                 >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-all duration-300 group-hover:scale-110">
                     <Receipt className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-              </div>
+                  </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Record Payment</span>
                 </button>
                 
@@ -784,34 +784,80 @@ const Dashboard = () => {
                 >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-all duration-300 group-hover:scale-110">
                     <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
-              </div>
+                  </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Add Room</span>
                 </button>
-
-            <button 
+                
+                <button 
                   onClick={() => setShowMaintenanceModal(true)}
                   className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
                   style={{ animationDelay: '0.4s' }}
-            >
+                >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-all duration-300 group-hover:scale-110">
                     <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
-              </div>
+                  </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Maintenance</span>
-            </button>
-
-            <button 
+                </button>
+                
+                <button 
                   onClick={() => setShowReportModal(true)}
                   className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn col-span-2 sm:col-span-1"
                   style={{ animationDelay: '0.5s' }}
-            >
+                >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-100 rounded-full flex items-center justify-center group-hover:bg-indigo-200 transition-all duration-300 group-hover:scale-110">
                     <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600" />
-              </div>
+                  </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Overview</span>
-            </button>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300 stat-card">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4 sm:mb-6">Quick Stats</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-all duration-300 group-hover:scale-110">
+                    <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs sm:text-sm font-medium text-gray-700">Total Tenants</div>
+                    <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.totalTenants}</div>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-all duration-300 group-hover:scale-110">
+                    <Building className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs sm:text-sm font-medium text-gray-700">Occupancy Rate</div>
+                    <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.occupancyRate}%</div>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-all duration-300 group-hover:scale-110">
+                    <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs sm:text-sm font-medium text-gray-700">Maintenance</div>
+                    <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.activeMaintenanceRequests}</div>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-all duration-300 group-hover:scale-110">
+                    <UserCheck className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs sm:text-sm font-medium text-gray-700">Today's Visitors</div>
+                    <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.todayVisitors}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
           {/* Right Column - Stats Cards */}
           <div className="space-y-6">
@@ -838,7 +884,7 @@ const Dashboard = () => {
                       <span className="hidden sm:inline">REMIND TO PAY</span>
                       <span className="sm:hidden">REMIND</span>
                     </button>
-    </div>
+                  </div>
                 </div>
                 
                 <button className="w-full bg-gray-900 text-white py-2 sm:py-3 rounded-lg mt-4 sm:mt-6 font-medium hover:bg-gray-800 transition-all duration-300 text-sm sm:text-base hover-lift">
@@ -858,9 +904,9 @@ const Dashboard = () => {
                     <div className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 animate-countUp">{stats.vacantBeds} / {stats.totalBeds}</div>
                     <button className="bg-gray-900 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium mt-2 sm:mt-3 hover:bg-gray-800 transition-all duration-300 hover-lift">
                       VIEW
-          </button>
-        </div>
-
+                    </button>
+                  </div>
+                  
                   {/* Notice Period */}
                   <div className="text-center">
                     <div className="text-gray-600 text-xs sm:text-sm font-medium">Notice Period</div>
@@ -871,57 +917,11 @@ const Dashboard = () => {
                     </button>
                   </div>
                 </div>
+              </div>
             </div>
           </div>
-
-            {/* Additional Stats */}
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300 stat-card">
-              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4 sm:mb-6">Quick Stats</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-all duration-300 group-hover:scale-110">
-                    <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-            </div>
-                  <div className="text-center">
-                    <div className="text-xs sm:text-sm font-medium text-gray-700">Total Tenants</div>
-                    <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.totalTenants}</div>
-            </div>
-          </div>
-
-                <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-all duration-300 group-hover:scale-110">
-                    <Building className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
-          </div>
-                  <div className="text-center">
-                    <div className="text-xs sm:text-sm font-medium text-gray-700">Occupancy Rate</div>
-                    <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.occupancyRate}%</div>
         </div>
       </div>
-                
-                <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-all duration-300 group-hover:scale-110">
-                    <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs sm:text-sm font-medium text-gray-700">Maintenance</div>
-                    <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.activeMaintenanceRequests}</div>
-                  </div>
-        </div>
-
-                <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-all duration-300 group-hover:scale-110">
-                    <UserCheck className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xs sm:text-sm font-medium text-gray-700">Today's Visitors</div>
-                    <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.todayVisitors}</div>
-            </div>
-          </div>
-                  </div>
-            </div>
-          </div>
-            </div>
-          </div>
 
       {/* Modals */}
       <TenantModal 
