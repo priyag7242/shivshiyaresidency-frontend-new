@@ -709,6 +709,27 @@ const Dashboard = () => {
         .stat-card:nth-child(4) { animation-delay: 0.4s; }
       `}</style>
 
+      {/* Top Navigation Bar */}
+      <div className="bg-gray-900 text-yellow-500 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="text-sm sm:text-base font-medium">
+            Welcome back, Administrator
+          </div>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <button className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-500 rounded-full flex items-center justify-center hover:bg-yellow-400 transition-all duration-300">
+              <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900" />
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-500 rounded-full flex items-center justify-center">
+                <User className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900" />
+              </div>
+              <span className="text-sm sm:text-base font-medium">admin</span>
+              <ChevronDown className="h-4 w-4 text-yellow-500" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
