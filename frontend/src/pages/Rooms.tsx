@@ -584,10 +584,6 @@ const Rooms = () => {
                       {/* Basic Room Info */}
                       <div className="space-y-2 text-sm text-gray-600 mb-3">
                         <div className="flex items-center gap-2">
-                          <Layers className="h-4 w-4" />
-                          <span>Floor {room.roomNumber.charAt(0) === 'G' ? 'Ground' : room.roomNumber.charAt(0)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <Users className="h-4 w-4" />
                           <span>{room.occupiedBeds}/{room.totalBeds} Occupied</span>
                         </div>
@@ -774,326 +770,171 @@ const Rooms = () => {
 // Room Details Modal Component
 interface RoomDetailsModalProps {
   isOpen: boolean;
-  room: Room;
+  room: any; // Changed from Room to any to match the new data structure
   onClose: () => void;
 }
 
 const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
-  if (!isOpen) return null;
+  if (!isOpen || !room) return null;
+
+  const totalMonthlyRent = room.totalRent || 0;
+  const totalSecurityDeposit = room.totalSecurityPaid || 0;
+  const occupancyRate = room.totalBeds > 0 ? Math.round((room.occupiedBeds / room.totalBeds) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-900 border border-golden-600/20 rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-golden-600/20">
-          <div>
-            <h2 className="text-xl font-semibold text-golden-400">Room Details</h2>
-            <p className="text-golden-300 text-sm">Complete information about Room {room.room_number}</p>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="bg-gray-900 text-white p-6 rounded-t-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Room Details</h2>
+              <p className="text-gray-300 mt-1">Complete information about Room {room.roomNumber}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-golden-300 hover:text-golden-100 transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Room Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-dark-800 border border-golden-600/30 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                {getStatusIcon(room.status)}
-                <span className="text-sm font-medium text-golden-300">Status</span>
+          {/* Status Overview */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Overview</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{room.occupiedBeds}/{room.totalBeds}</div>
+                <div className="text-gray-600">Occupancy</div>
               </div>
-              <div className={`text-lg font-semibold capitalize ${getStatusColor(room.status).split(' ')[0]}`}>
-                {room.status}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{formatCurrency(totalMonthlyRent)}</div>
+                <div className="text-gray-600">Total Monthly Rent</div>
               </div>
-            </div>
-
-            <div className="bg-dark-800 border border-golden-600/30 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="h-4 w-4 text-golden-400" />
-                <span className="text-sm font-medium text-golden-300">Occupancy</span>
-              </div>
-              <div className="text-lg font-semibold text-golden-100">
-                {room.current_occupancy}/{room.capacity}
-              </div>
-            </div>
-
-            <div className="bg-dark-800 border border-golden-600/30 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <IndianRupee className="h-4 w-4 text-golden-400" />
-                <span className="text-sm font-medium text-golden-300">Total Monthly Rent</span>
-              </div>
-              <div className="text-lg font-semibold text-golden-100">
-                {formatCurrency(room.monthly_rent)}
-              </div>
-              <div className="text-xs text-golden-400 mt-1">
-                Auto-calculated from tenants
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{occupancyRate}%</div>
+                <div className="text-gray-600">Occupancy Rate</div>
               </div>
             </div>
           </div>
 
           {/* Room Information */}
-          <div className="bg-dark-800 border border-golden-600/30 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Building className="h-5 w-5" />
               Room Information
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="text-sm font-medium text-golden-300">Room Number</label>
-                <div className="text-golden-100 font-medium mt-1">{room.room_number}</div>
+                <label className="text-sm font-medium text-gray-600">Room Number</label>
+                <div className="text-gray-900 font-medium mt-1">{room.roomNumber}</div>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-golden-300">Floor</label>
-                <div className="text-golden-100 font-medium mt-1">Floor {room.floor} {room.floor === 0 ? '(Ground)' : ''}</div>
+                <label className="text-sm font-medium text-gray-600">Room Type</label>
+                <div className="text-gray-900 font-medium mt-1 capitalize">{room.roomType}</div>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-golden-300">Room Type</label>
-                <div className="text-golden-100 font-medium mt-1 capitalize">{room.type}</div>
+                <label className="text-sm font-medium text-gray-600">Capacity</label>
+                <div className="text-gray-900 font-medium mt-1">{room.totalBeds} person(s)</div>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-golden-300">Capacity</label>
-                <div className="text-golden-100 font-medium mt-1">{room.capacity} person(s)</div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-golden-300">Total Security Deposit</label>
-                <div className="text-golden-100 font-medium mt-1">{formatCurrency(room.security_deposit)}</div>
-                <div className="text-xs text-golden-400 mt-1">Auto-calculated from tenants</div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-golden-300">Created Date</label>
-                <div className="text-golden-100 font-medium mt-1">
-                  {new Date(room.created_date).toLocaleDateString()}
-                </div>
+                <label className="text-sm font-medium text-gray-600">Total Security Deposit</label>
+                <div className="text-gray-900 font-medium mt-1">{formatCurrency(totalSecurityDeposit)}</div>
+                <div className="text-xs text-gray-500 mt-1">Auto-calculated from tenants</div>
               </div>
             </div>
-
-            {room.description && (
-              <div className="mt-4">
-                <label className="text-sm font-medium text-golden-300">Description</label>
-                <div className="text-golden-100 mt-1">{room.description}</div>
-              </div>
-            )}
-          </div>
-
-          {/* Amenities */}
-          <div className="bg-dark-800 border border-golden-600/30 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Amenities
-            </h3>
-            
-            {room.amenities && room.amenities.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {room.amenities.map((amenity, index) => (
-                  <div key={index} className="flex items-center gap-2 text-golden-100">
-                    <CheckCircle className="h-4 w-4 text-green-400" />
-                    {amenity}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-golden-400">No amenities listed</div>
-            )}
           </div>
 
           {/* Current Tenants */}
-          <div className="bg-dark-800 border border-golden-600/30 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <Users className="h-5 w-5" />
               Current Tenants
             </h3>
             
             {room.tenants && room.tenants.length > 0 ? (
               <div className="space-y-3">
-                {room.tenants.map((tenant, index) => (
-                  <div key={index} className="bg-dark-700 rounded-lg p-4 border border-golden-600/20">
+                {room.tenants.map((tenant: any, index: number) => (
+                  <div key={index} className="bg-white rounded-lg p-4 border border-gray-200">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        <div className="text-golden-100 font-medium text-lg">{tenant.name}</div>
+                        <div className="text-gray-900 font-medium text-lg">{tenant.name}</div>
                       </div>
-                      <div className="text-golden-400 text-sm">ID: {tenant.id}</div>
+                      <div className="text-gray-500 text-sm">Tenant #{index + 1} in Room</div>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                       <div>
-                        <span className="text-golden-400">Allocated Date:</span>
-                        <span className="text-golden-100 ml-2">
-                          {new Date(tenant.allocated_date).toLocaleDateString()}
+                        <span className="text-gray-600">Phone:</span>
+                        <span className="text-gray-900 ml-2">{tenant.phoneNo || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Joining Date:</span>
+                        <span className="text-gray-900 ml-2">{tenant.joiningDate || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Monthly Rent:</span>
+                        <span className="text-gray-900 ml-2 font-medium">
+                          {formatCurrency(tenant.rent)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-golden-400">Status:</span>
-                        <span className="text-green-400 ml-2">Active</span>
-                      </div>
-                      <div>
-                        <span className="text-golden-400">Monthly Rent:</span>
-                        <span className="text-golden-100 ml-2 font-medium">
-                          {formatCurrency(tenant.monthly_rent)}
+                        <span className="text-gray-600">Security Deposit:</span>
+                        <span className="text-gray-900 ml-2 font-medium">
+                          {formatCurrency(tenant.securityPaid)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-golden-400">Security Deposit:</span>
-                        <span className="text-golden-100 ml-2 font-medium">
-                          {formatCurrency(tenant.security_deposit)}
+                        <span className="text-gray-600">Rent Status:</span>
+                        <span className={`ml-2 font-medium ${tenant.rentUnpaid > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {tenant.rentUnpaid > 0 ? 'Unpaid' : 'Paid'}
                         </span>
                       </div>
-                    </div>
-                    
-                    <div className="mt-3 pt-3 border-t border-golden-600/20">
-                      <div className="flex items-center gap-2 text-golden-300 text-sm">
-                        <Users className="h-4 w-4" />
-                        <span>Tenant #{index + 1} in Room {room.room_number}</span>
+                      <div>
+                        <span className="text-gray-600">Electricity:</span>
+                        <span className={`ml-2 font-medium ${tenant.electricityPaid ? 'text-green-600' : 'text-red-600'}`}>
+                          {tenant.electricityPaid ? 'Paid' : 'Unpaid'}
+                        </span>
                       </div>
                     </div>
                   </div>
                 ))}
-                
-                <div className="mt-4 p-3 bg-dark-700/50 rounded-lg border border-golden-600/20">
-                  <div className="text-center text-golden-400 text-sm">
-                    <div className="font-medium mb-1">Occupancy Summary</div>
-                    <div className="text-golden-100">
-                      {room.tenants.length} of {room.capacity} spots occupied
-                    </div>
-                    {room.capacity > room.tenants.length && (
-                      <div className="text-green-400 text-xs mt-1">
-                        {room.capacity - room.tenants.length} spot(s) available
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Financial Summary */}
-                <div className="mt-4 p-4 bg-gradient-to-r from-golden-600/10 to-golden-500/10 rounded-lg border border-golden-600/30">
-                  <div className="text-center text-golden-400 text-sm mb-3">
-                    <div className="font-medium text-lg">Room Financial Summary</div>
-                    <div className="text-golden-300 text-xs">Automatically calculated from tenant data</div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <div className="text-golden-300 text-xs">Total Monthly Rent</div>
-                      <div className="text-golden-100 font-bold text-lg">
-                        {formatCurrency(room.monthly_rent)}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-golden-300 text-xs">Total Security Deposit</div>
-                      <div className="text-golden-100 font-bold text-lg">
-                        {formatCurrency(room.security_deposit)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-golden-600/20 text-center">
-                    <div className="text-golden-400 text-xs">
-                      Based on {room.tenants.length} active tenant{room.tenants.length !== 1 ? 's' : ''}
-                    </div>
-                  </div>
-                </div>
               </div>
             ) : (
-              <div className="text-center py-8">
-                <div className="text-golden-400 mb-2">No tenants currently allocated</div>
-                <div className="text-golden-600 text-sm">
-                  This room is available for new tenants
-                </div>
-                {room.status === 'occupied' && room.current_occupancy > 0 && (
-                  <div className="text-orange-400 text-sm mt-2">
-                    ⚠️ Data inconsistency: Room shows occupied but no tenant details found
-                  </div>
-                )}
+              <div className="text-gray-500 text-center py-8">
+                <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                <p>No tenants currently allocated to this room</p>
               </div>
             )}
           </div>
 
-          {/* Maintenance Information */}
-          <div className="bg-dark-800 border border-golden-600/30 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
-              <Wrench className="h-5 w-5" />
-              Maintenance Status
-            </h3>
+          {/* Financial Summary */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Room Financial Summary</h3>
+            <p className="text-gray-600 text-sm mb-4">Automatically calculated from tenant data</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="text-sm font-medium text-golden-300">Status</label>
-                <div className={`font-medium mt-1 ${getMaintenanceStatusColor(room.maintenance_status)}`}>
-                  {room.maintenance_status === 'none' ? 'No maintenance' : room.maintenance_status?.replace('_', ' ')}
-                </div>
+                <div className="text-2xl font-bold text-green-600">{formatCurrency(totalMonthlyRent)}</div>
+                <div className="text-gray-600">Total Monthly Rent</div>
               </div>
-
-              {room.maintenance_type && (
-                <div>
-                  <label className="text-sm font-medium text-golden-300">Type</label>
-                  <div className="text-golden-100 font-medium mt-1 capitalize">{room.maintenance_type}</div>
-                </div>
-              )}
-
-              {room.maintenance_scheduled_date && (
-                <div>
-                  <label className="text-sm font-medium text-golden-300">Scheduled Date</label>
-                  <div className="text-golden-100 font-medium mt-1">
-                    {new Date(room.maintenance_scheduled_date).toLocaleDateString()}
-                  </div>
-                </div>
-              )}
-
-              {room.maintenance_completed_date && (
-                <div>
-                  <label className="text-sm font-medium text-golden-300">Completed Date</label>
-                  <div className="text-golden-100 font-medium mt-1">
-                    {new Date(room.maintenance_completed_date).toLocaleDateString()}
-                  </div>
-                </div>
-              )}
-
-              {room.maintenance_cost && (
-                <div>
-                  <label className="text-sm font-medium text-golden-300">Cost</label>
-                  <div className="text-golden-100 font-medium mt-1">{formatCurrency(room.maintenance_cost)}</div>
-                </div>
-              )}
+              <div>
+                <div className="text-2xl font-bold text-blue-600">{formatCurrency(totalSecurityDeposit)}</div>
+                <div className="text-gray-600">Total Security Deposit</div>
+              </div>
             </div>
-
-            {room.maintenance_description && (
-              <div className="mt-4">
-                <label className="text-sm font-medium text-golden-300">Description</label>
-                <div className="text-golden-100 mt-1">{room.maintenance_description}</div>
-              </div>
-            )}
+            
+            <div className="mt-4 text-sm text-gray-500">
+              Based on {room.tenants?.length || 0} active tenants
+            </div>
           </div>
-
-          {/* Images */}
-          {room.images && room.images.length > 0 && (
-            <div className="bg-dark-800 border border-golden-600/30 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
-                <Camera className="h-5 w-5" />
-                Room Photos ({room.images.length})
-              </h3>
-              
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {room.images.map((image, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={image.url}
-                      alt={image.caption || `Room ${room.room_number} photo ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg"
-                    />
-                    {image.caption && (
-                      <div className="text-xs text-golden-400 mt-1">{image.caption}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
