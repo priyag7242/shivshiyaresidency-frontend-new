@@ -16,7 +16,25 @@ import {
   FileText,
   Layers,
   UserMinus,
-  ArrowUpRight
+  ArrowUpRight,
+  X,
+  Building,
+  Home,
+  Activity,
+  TrendingUp,
+  Settings,
+  Bell,
+  User,
+  ChevronDown,
+  Eye,
+  Mail,
+  MapPin,
+  Wifi,
+  Zap,
+  Shield,
+  Star,
+  AlertTriangle,
+  CheckCircle
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import TenantForm from '../components/TenantForm';
@@ -49,6 +67,54 @@ interface Tenant {
   adjust_rent_from_security: boolean;
 }
 
+interface TenantStats {
+  total: number;
+  active: number;
+  inactive: number;
+  adjusting: number;
+  withFood: number;
+  newTenants: number;
+  totalRent: number;
+  totalDeposits: number;
+  activeRent: number;
+  inactiveRent: number;
+  noticeGiven: number;
+  pendingSecurity: number;
+}
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'active':
+      return 'bg-green-100 text-green-800';
+    case 'inactive':
+      return 'bg-red-100 text-red-800';
+    case 'adjust':
+      return 'bg-yellow-100 text-yellow-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const getCategoryColor = (category: string) => {
+  switch (category) {
+    case 'new':
+      return 'bg-blue-100 text-blue-800';
+    case 'existing':
+      return 'bg-purple-100 text-purple-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
+
 const Tenants = () => {
   console.log('Tenants component rendering');
   
@@ -59,7 +125,8 @@ const Tenants = () => {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
-  const [stats, setStats] = useState({
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [stats, setStats] = useState<TenantStats>({
     total: 0,
     active: 0,
     inactive: 0,
@@ -69,7 +136,9 @@ const Tenants = () => {
     totalRent: 0,
     totalDeposits: 0,
     activeRent: 0,
-    inactiveRent: 0
+    inactiveRent: 0,
+    noticeGiven: 0,
+    pendingSecurity: 0
   });
 
   useEffect(() => {
@@ -98,14 +167,10 @@ const Tenants = () => {
         await autoImportData();
       } else {
         console.log('✅ Using existing tenant data');
-        // Data exists, just fetch it
-        fetchTenants();
-        fetchStats();
+        setTenants(existingData);
       }
     } catch (error) {
-      console.error('❌ Failed to check existing data:', error);
-      // Try to import data anyway
-      await autoImportData();
+      console.error('❌ Error initializing data:', error);
     } finally {
       setLoading(false);
     }
@@ -113,631 +178,732 @@ const Tenants = () => {
 
   const autoImportData = async () => {
     try {
-      console.log('🔄 Checking if tenant data needs to be imported...');
-      // Check if data already exists
-      const { data, error } = await supabase.from('tenants').select('*');
-      if (error) throw error;
-      const existingData = data || [];
-
-      if (existingData.length === 0) {
-        console.log('📥 No tenants found, importing complete data...');
-        // Import the complete tenant data
-        const { data: importedData, error: importError } = await supabase
-          .from('tenants')
-          .insert(completeTenantsData)
-          .select();
-        
-        if (importError) throw importError;
-        console.log('✅ Complete tenant database imported:', importedData?.length || 0, 'tenants');
-      } else {
-        console.log('✅ Tenant data already exists:', existingData.length, 'tenants');
+      console.log('📥 Starting auto-import of tenant data...');
+      
+      // Import the complete data
+      const { data, error } = await supabase
+        .from('tenants')
+        .insert(completeTenantsData)
+        .select();
+      
+      if (error) {
+        console.error('❌ Error importing data:', error);
+        throw error;
       }
       
-      // Always fetch the current data
-      fetchTenants();
-      fetchStats();
-    } catch (error) {
-      console.error('❌ Error in autoImportData:', error);
-      // Fallback: Use local data for testing responsiveness
-      console.log('🔄 Falling back to local data...');
-      setTenants(completeTenantsData as Tenant[]);
-      const activeTenants = completeTenantsData.filter(t => t.status === 'active');
-      const inactiveTenants = completeTenantsData.filter(t => t.status === 'inactive' || t.status === 'adjust');
+      console.log('✅ Successfully imported', data?.length, 'tenants');
+      setTenants(data || []);
       
-      setStats({
-        total: completeTenantsData.length,
-        active: activeTenants.length,
-        inactive: inactiveTenants.length,
-        adjusting: completeTenantsData.filter(t => t.status === 'adjust').length,
-        withFood: completeTenantsData.filter(t => t.has_food).length,
-        newTenants: completeTenantsData.filter(t => t.category === 'new').length,
-        totalRent: completeTenantsData.reduce((sum, t) => sum + t.monthly_rent, 0),
-        totalDeposits: completeTenantsData.reduce((sum, t) => sum + t.security_deposit, 0),
-        activeRent: activeTenants.reduce((sum, t) => sum + t.monthly_rent, 0),
-        inactiveRent: inactiveTenants.reduce((sum, t) => sum + t.monthly_rent, 0)
-      });
-      setLoading(false);
+    } catch (error) {
+      console.error('❌ Error in auto-import:', error);
     }
   };
 
   const fetchTenants = async () => {
     try {
-      setLoading(true);
       let query = supabase.from('tenants').select('*');
       
       if (searchTerm) {
         query = query.or(`name.ilike.%${searchTerm}%,mobile.ilike.%${searchTerm}%,room_number.ilike.%${searchTerm}%`);
       }
+      
       if (statusFilter) {
         query = query.eq('status', statusFilter);
       }
+      
       if (categoryFilter) {
         query = query.eq('category', categoryFilter);
       }
-
+      
       const { data, error } = await query;
       if (error) throw error;
-      console.log('Fetched tenants:', data?.length || 0);
+      
       setTenants(data || []);
     } catch (error) {
-      console.error('Failed to fetch tenants:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching tenants:', error);
     }
   };
 
   const fetchStats = async () => {
     try {
-      console.log('📊 Fetching tenant stats...');
       const { data, error } = await supabase.from('tenants').select('*');
       if (error) throw error;
+      
       const tenantsData = data || [];
-      
-      const activeTenants = tenantsData.filter(t => t.status === 'active');
-      const inactiveTenants = tenantsData.filter(t => t.status === 'inactive' || t.status === 'adjust');
-      
-      const stats = {
-        total: tenantsData.length,
-        active: activeTenants.length,
-        inactive: inactiveTenants.length,
-        adjusting: tenantsData.filter(t => t.status === 'adjust').length,
-        withFood: tenantsData.filter(t => t.has_food).length,
-        newTenants: tenantsData.filter(t => t.category === 'new').length,
-        totalRent: tenantsData.reduce((sum, t) => sum + (t.monthly_rent || 0), 0), // Include all tenants (active + inactive)
-        totalDeposits: tenantsData.reduce((sum, t) => sum + (t.security_deposit || 0), 0), // Include all tenants
-        activeRent: activeTenants.reduce((sum, t) => sum + (t.monthly_rent || 0), 0), // Only active tenants
-        inactiveRent: inactiveTenants.reduce((sum, t) => sum + (t.monthly_rent || 0), 0) // Only inactive tenants
-      };
-      
-      console.log('📈 Stats calculated:', stats);
-      console.log('📈 Active tenants:', activeTenants.length);
-      console.log('📈 Inactive tenants:', inactiveTenants.length);
-      console.log('📈 Total tenants:', tenantsData.length);
-      
-      // Debug: Show all unique status values
-      const uniqueStatuses = [...new Set(tenantsData.map(t => t.status))];
-      console.log('📈 Unique statuses found:', uniqueStatuses);
-      
-      // Debug: Show sample tenant data
-      if (tenantsData.length > 0) {
-        console.log('📈 Sample tenant:', {
-          name: tenantsData[0].name,
-          status: tenantsData[0].status,
-          room: tenantsData[0].room_number,
-          rent: tenantsData[0].monthly_rent
-        });
-      }
-      setStats(stats);
+      const total = tenantsData.length;
+      const active = tenantsData.filter(t => t.status === 'active').length;
+      const inactive = tenantsData.filter(t => t.status === 'inactive').length;
+      const adjusting = tenantsData.filter(t => t.status === 'adjust').length;
+      const withFood = tenantsData.filter(t => t.has_food).length;
+      const newTenants = tenantsData.filter(t => t.category === 'new').length;
+      const totalRent = tenantsData.reduce((sum, t) => sum + (t.monthly_rent || 0), 0);
+      const totalDeposits = tenantsData.reduce((sum, t) => sum + (t.security_deposit || 0), 0);
+      const activeRent = tenantsData.filter(t => t.status === 'active').reduce((sum, t) => sum + (t.monthly_rent || 0), 0);
+      const inactiveRent = tenantsData.filter(t => t.status === 'inactive').reduce((sum, t) => sum + (t.monthly_rent || 0), 0);
+      const noticeGiven = tenantsData.filter(t => t.notice_given).length;
+      const pendingSecurity = tenantsData.filter(t => t.security_deposit_balance > 0).length;
+
+      setStats({
+        total,
+        active,
+        inactive,
+        adjusting,
+        withFood,
+        newTenants,
+        totalRent,
+        totalDeposits,
+        activeRent,
+        inactiveRent,
+        noticeGiven,
+        pendingSecurity
+      });
     } catch (error) {
-      console.error('❌ Failed to fetch stats:', error);
+      console.error('Error fetching stats:', error);
     }
   };
 
   const deleteTenant = async (tenantId: string, tenantName: string) => {
-    if (!confirm(`Are you sure you want to delete ${tenantName}? This action cannot be undone.`)) {
-      return;
-    }
-    try {
-      const { error } = await supabase.from('tenants').delete().eq('id', tenantId);
-      if (error) throw error;
-      fetchTenants();
-      fetchStats();
-    } catch (error) {
-      console.error('Error deleting tenant:', error);
-      alert('Failed to delete tenant');
+    if (window.confirm(`Are you sure you want to delete tenant "${tenantName}"?`)) {
+      try {
+        const { error } = await supabase
+          .from('tenants')
+          .delete()
+          .eq('id', tenantId);
+        
+        if (error) throw error;
+        
+        console.log('✅ Tenant deleted successfully');
+        fetchTenants();
+        fetchStats();
+      } catch (error) {
+        console.error('Error deleting tenant:', error);
+        alert('Failed to delete tenant');
+      }
     }
   };
 
   const markTenantInactive = async (tenantId: string, tenantName: string) => {
-    const departureDate = prompt(`Enter departure date for ${tenantName} (YYYY-MM-DD):`, new Date().toISOString().split('T')[0]);
-    if (!departureDate) return;
-    
-    try {
-      const { error } = await supabase
-        .from('tenants')
-        .update({ 
-          status: 'inactive',
-          departure_date: departureDate,
-          notice_given: true,
-          notice_date: new Date().toISOString().split('T')[0]
-        })
-        .eq('id', tenantId);
-      
-      if (error) throw error;
-      
-      alert(`${tenantName} has been marked as inactive with departure date: ${departureDate}`);
-      fetchTenants();
-      fetchStats();
-    } catch (error) {
-      console.error('Error marking tenant as inactive:', error);
-      alert('Failed to mark tenant as inactive');
+    if (window.confirm(`Are you sure you want to mark tenant "${tenantName}" as inactive?`)) {
+      try {
+        const { error } = await supabase
+          .from('tenants')
+          .update({ 
+            status: 'inactive',
+            departure_date: new Date().toISOString().split('T')[0]
+          })
+          .eq('id', tenantId);
+        
+        if (error) throw error;
+        
+        console.log('✅ Tenant marked as inactive');
+        fetchTenants();
+        fetchStats();
+      } catch (error) {
+        console.error('Error updating tenant status:', error);
+        alert('Failed to update tenant status');
+      }
     }
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(amount);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'text-green-400 bg-green-400/10 border-green-400/30';
-      case 'adjust':
-        return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
+        return 'bg-green-100 text-green-800';
       case 'inactive':
-        return 'text-red-400 bg-red-400/10 border-red-400/30';
+        return 'bg-red-100 text-red-800';
+      case 'adjust':
+        return 'bg-yellow-100 text-yellow-800';
       default:
-        return 'text-golden-400 bg-golden-400/10 border-golden-400/30';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'new':
-        return 'text-blue-400 bg-blue-400/10 border-blue-400/30';
+        return 'bg-blue-100 text-blue-800';
       case 'existing':
-        return 'text-purple-400 bg-purple-400/10 border-purple-400/30';
+        return 'bg-purple-100 text-purple-800';
       default:
-        return 'text-golden-400 bg-golden-400/10 border-golden-400/30';
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  // Helper function to extract floor from room number
   const getFloorFromRoomNumber = (roomNumber: string): number => {
-    const num = parseInt(roomNumber);
-    if (isNaN(num)) return 0;
-    if (num < 100) return 0; // Ground floor (001, 002, etc.)
-    return Math.floor(num / 100); // 101 -> 1, 201 -> 2, etc.
+    if (roomNumber.startsWith('G')) return 0;
+    const firstChar = roomNumber.charAt(0);
+    return parseInt(firstChar) || 0;
+  };
+
+  const getTenantStatusIcon = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <UserCheck className="h-4 w-4 text-green-500" />;
+      case 'inactive':
+        return <UserMinus className="h-4 w-4 text-red-500" />;
+      case 'adjust':
+        return <Clock className="h-4 w-4 text-yellow-500" />;
+      default:
+        return <User className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getTenantPriorityIcon = (tenant: Tenant) => {
+    if (tenant.notice_given) return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+    if (tenant.security_deposit_balance > 0) return <Shield className="h-4 w-4 text-red-500" />;
+    return <CheckCircle className="h-4 w-4 text-green-500" />;
   };
 
   const filteredTenants = tenants.filter(tenant => {
     const matchesSearch = tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          tenant.mobile.includes(searchTerm) ||
-                         tenant.room_number.includes(searchTerm);
+                         tenant.room_number.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = !statusFilter || tenant.status === statusFilter;
     const matchesCategory = !categoryFilter || tenant.category === categoryFilter;
     
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
-  console.log('🔍 Filtered tenants:', filteredTenants.length, 'of', tenants.length, 'total');
-  console.log('🔍 Search term:', searchTerm);
-  console.log('🔍 Status filter:', statusFilter);
-  console.log('🔍 Category filter:', categoryFilter);
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-golden-400 mb-2">Tenant Management</h1>
-            <p className="text-golden-300">
-              {stats.total > 0 ? `Managing ${stats.total} tenants` : 'Loading tenant data...'}
-            </p>
-          </div>
-          <div className="mt-4 lg:mt-0">
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-golden-500 to-golden-600 text-dark-900 rounded-lg hover:from-golden-600 hover:to-golden-700 transition-all duration-200 font-medium"
-            >
-              <Plus className="h-5 w-5" />
-              Add New Tenant
-            </button>
-          </div>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading tenants...</p>
         </div>
       </div>
+    );
+  }
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div 
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
-          onClick={() => {
-            setStatusFilter('');
-            setCategoryFilter('');
-            setSearchTerm('');
-            console.log('Clicked Total Tenants card - showing all tenants');
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm font-medium">Total Tenants</p>
-              <p className="text-2xl font-bold text-golden-100">{stats.total}</p>
-              <p className="text-blue-400 text-sm">{stats.active} active</p>
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Custom Animations */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bounceIn {
+          0% { opacity: 0; transform: scale(0.3); }
+          50% { opacity: 1; transform: scale(1.05); }
+          70% { transform: scale(0.9); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        @keyframes drawPath {
+          from { stroke-dashoffset: 1000; }
+          to { stroke-dashoffset: 0; }
+        }
+        @keyframes countUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.6s ease-out; }
+        .animate-slideUp { animation: slideUp 0.8s ease-out; }
+        .animate-bounceIn { animation: bounceIn 0.8s ease-out; }
+        .animate-drawPath { animation: drawPath 2s ease-out forwards; }
+        .animate-countUp { animation: countUp 0.5s ease-out; }
+      `}</style>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Main Content Area */}
+          <div className="lg:col-span-3 space-y-8">
+            {/* Tenant Overview */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-fadeIn">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Tenant Overview</h2>
+                  <p className="text-gray-600 mt-1">Complete overview of all tenants and their status</p>
+                </div>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:scale-105"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Tenant
+                </button>
+              </div>
+
+              {/* Overview Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-100 text-sm">Total Tenants</p>
+                      <p className="text-2xl font-bold">{stats.total}</p>
+                    </div>
+                    <Users className="h-8 w-8 text-blue-200" />
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-100 text-sm">Active</p>
+                      <p className="text-2xl font-bold">{stats.active}</p>
+                    </div>
+                    <UserCheck className="h-8 w-8 text-green-200" />
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-yellow-100 text-sm">Monthly Revenue</p>
+                      <p className="text-2xl font-bold">{formatCurrency(stats.totalRent)}</p>
+                    </div>
+                    <IndianRupee className="h-8 w-8 text-yellow-200" />
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-purple-100 text-sm">Security Deposits</p>
+                      <p className="text-2xl font-bold">{formatCurrency(stats.totalDeposits)}</p>
+                    </div>
+                    <Shield className="h-8 w-8 text-purple-200" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Search and Filters */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    placeholder="Search tenants..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                  />
+                </div>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                >
+                  <option value="">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="adjust">Adjusting</option>
+                </select>
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                >
+                  <option value="">All Categories</option>
+                  <option value="new">New</option>
+                  <option value="existing">Existing</option>
+                </select>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-8 w-8 text-golden-400 group-hover:text-golden-300 transition-colors" />
-              <ArrowUpRight className="h-4 w-4 text-golden-400/60 group-hover:text-golden-300 transition-colors" />
+
+            {/* Tenant List */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-slideUp">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Tenant List</h3>
+                <p className="text-gray-600">{filteredTenants.length} tenants found</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredTenants.map((tenant, index) => (
+                  <div 
+                    key={tenant.id} 
+                    className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-105 animate-bounceIn"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                          <User className="h-5 w-5 text-yellow-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-900">{tenant.name}</h4>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(tenant.status)}`}>
+                            {tenant.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getTenantPriorityIcon(tenant)}
+                        <button className="p-1 text-gray-400 hover:text-gray-600">
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Tenant Details */}
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium">🏠</span>
+                        </div>
+                        <span>Room: {tenant.room_number}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium">📱</span>
+                        </div>
+                        <span>Phone: {tenant.mobile}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium">💰</span>
+                        </div>
+                        <span>Rent: <span className="text-orange-600 font-medium">{formatCurrency(tenant.monthly_rent)}</span></span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium">🛡️</span>
+                        </div>
+                        <span>Security: <span className="text-orange-600 font-medium">{formatCurrency(tenant.security_deposit)}</span></span>
+                      </div>
+                    </div>
+
+                    {/* Additional Info */}
+                    <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Joining Date:</span>
+                        <span className="font-semibold text-gray-900">{tenant.joining_date}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm mt-1">
+                        <span className="text-gray-600">Category:</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(tenant.category || '')}`}>
+                          {tenant.category || 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedTenant(tenant);
+                          setShowDetailsModal(true);
+                        }}
+                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        View Details
+                      </button>
+                      <button className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                        EDIT
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div 
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
-          onClick={() => {
-            setStatusFilter('');
-            setCategoryFilter('');
-            setSearchTerm('');
-            console.log('Clicked Monthly Revenue card - showing all tenants');
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm font-medium">Monthly Revenue</p>
-              <p className="text-2xl font-bold text-green-400">{formatCurrency(stats.totalRent)}</p>
-              <div className="text-golden-300 text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span>Active:</span>
-                  <span className="text-green-400">{formatCurrency(stats.activeRent)}</span>
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Quick Actions */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Activity className="h-5 w-5 text-yellow-600" />
+                Quick Actions
+              </h3>
+              <div className="space-y-3">
+                <button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
+                  <Plus className="h-4 w-4" />
+                  Add New Tenant
+                </button>
+                <button className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
+                  <FileText className="h-4 w-4" />
+                  Generate Report
+                </button>
+                <button className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
+                  <Bell className="h-4 w-4" />
+                  Send Notifications
+                </button>
+                <button className="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
+                  <Calendar className="h-4 w-4" />
+                  Schedule Viewing
+                </button>
+              </div>
+            </div>
+
+            {/* Tenant Statistics */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-yellow-600" />
+                Tenant Statistics
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Active Tenants</span>
+                  <span className="font-semibold text-green-600">{stats.active}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Inactive:</span>
-                  <span className="text-orange-400">{formatCurrency(stats.inactiveRent)}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Inactive Tenants</span>
+                  <span className="font-semibold text-red-600">{stats.inactive}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600">Adjusting</span>
+                  <span className="font-semibold text-yellow-600">{stats.adjusting}</span>
+                </div>
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-medium text-gray-900 mb-3">Categories</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">New Tenants</span>
+                      <span className="font-semibold">{stats.newTenants}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">With Food</span>
+                      <span className="font-semibold">{stats.withFood}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <IndianRupee className="h-8 w-8 text-green-400 group-hover:text-green-300 transition-colors" />
-              <ArrowUpRight className="h-4 w-4 text-green-400/60 group-hover:text-green-300 transition-colors" />
-            </div>
-          </div>
-        </div>
 
-        <div 
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
-          onClick={() => {
-            setStatusFilter('');
-            setCategoryFilter('');
-            setSearchTerm('');
-            console.log('Clicked Security Deposits card - showing all tenants');
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm font-medium">Security Deposits</p>
-              <p className="text-2xl font-bold text-blue-400">{formatCurrency(stats.totalDeposits)}</p>
-              <p className="text-golden-300 text-sm">Total secured</p>
+            {/* Status Overview */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Settings className="h-5 w-5 text-yellow-600" />
+                Status Overview
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-gray-600">Active</span>
+                  </div>
+                  <span className="font-semibold">{stats.active}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                    <span className="text-gray-600">Inactive</span>
+                  </div>
+                  <span className="font-semibold">{stats.inactive}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <span className="text-gray-600">Adjusting</span>
+                  </div>
+                  <span className="font-semibold">{stats.adjusting}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                    <span className="text-gray-600">Notice Given</span>
+                  </div>
+                  <span className="font-semibold">{stats.noticeGiven}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <FileText className="h-8 w-8 text-blue-400 group-hover:text-blue-300 transition-colors" />
-              <ArrowUpRight className="h-4 w-4 text-blue-400/60 group-hover:text-blue-300 transition-colors" />
-            </div>
-          </div>
-        </div>
 
-        <div 
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
-          onClick={() => {
-            setStatusFilter('inactive');
-            setCategoryFilter('');
-            setSearchTerm('');
-            console.log('Clicked Inactive Tenants card - filtering to inactive tenants');
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm font-medium">Inactive Tenants</p>
-              <p className="text-2xl font-bold text-orange-400">{stats.inactive}</p>
-              <p className="text-golden-300 text-sm">Adjusting/Exited</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <UserCheck className="h-8 w-8 text-orange-400 group-hover:text-orange-300 transition-colors" />
-              <ArrowUpRight className="h-4 w-4 text-orange-400/60 group-hover:text-orange-300 transition-colors" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Additional Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div 
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
-          onClick={() => {
-            setStatusFilter('');
-            setCategoryFilter('');
-            setSearchTerm('');
-            console.log('Clicked With Food card - showing all tenants');
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm font-medium">With Food</p>
-              <p className="text-2xl font-bold text-orange-400">{stats.withFood}</p>
-              <p className="text-golden-300 text-sm">Food service</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <UserCheck className="h-8 w-8 text-orange-400 group-hover:text-orange-300 transition-colors" />
-              <ArrowUpRight className="h-4 w-4 text-orange-400/60 group-hover:text-orange-300 transition-colors" />
-            </div>
-          </div>
-        </div>
-
-        <div 
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
-          onClick={() => {
-            setStatusFilter('');
-            setCategoryFilter('new');
-            setSearchTerm('');
-            console.log('Clicked New Tenants card - filtering to new tenants');
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm font-medium">New Tenants</p>
-              <p className="text-2xl font-bold text-blue-400">{stats.newTenants}</p>
-              <p className="text-golden-300 text-sm">This month</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-8 w-8 text-blue-400 group-hover:text-blue-300 transition-colors" />
-              <ArrowUpRight className="h-4 w-4 text-blue-400/60 group-hover:text-blue-300 transition-colors" />
+            {/* Recent Activity */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-yellow-600" />
+                Recent Activity
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">New tenant registered</p>
+                    <p className="text-xs text-gray-500">Room 101 - 2 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Rent payment received</p>
+                    <p className="text-xs text-gray-500">Room 205 - 4 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Notice period started</p>
+                    <p className="text-xs text-gray-500">Room 312 - 6 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Security deposit paid</p>
+                    <p className="text-xs text-gray-500">Room 118 - 1 day ago</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 mb-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-golden-400" />
-            <input
-              type="text"
-              placeholder="Search tenants by name, mobile, or room..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 placeholder-golden-400/50 focus:outline-none focus:border-golden-500"
-            />
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-wrap gap-3">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
-            >
-              <option value="">All Status</option>
-              <option value="active">Active</option>
-              <option value="adjust">Adjusting</option>
-              <option value="inactive">Inactive</option>
-            </select>
-
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
-            >
-              <option value="">All Categories</option>
-              <option value="new">New Tenant</option>
-              <option value="existing">Existing Tenant</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Tenants Table */}
-      <div className="bg-dark-900 border border-golden-600/20 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-dark-800 border-b border-golden-600/20">
-              <tr>
-                <th className="text-left py-3 px-4 font-medium text-golden-400">Tenant Details</th>
-                <th className="text-left py-3 px-4 font-medium text-golden-400">Room & Rent</th>
-                <th className="text-left py-3 px-4 font-medium text-golden-400">Status & Category</th>
-                <th className="text-left py-3 px-4 font-medium text-golden-400">Joining Date</th>
-                <th className="text-left py-3 px-4 font-medium text-golden-400">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-golden-600/10">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-8 text-golden-400">Loading tenants...</td>
-                </tr>
-              ) : filteredTenants.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-8 text-golden-400/60">No tenants found</td>
-                </tr>
-              ) : (
-                (() => {
-                  // Group tenants by floor
-                  const tenantsByFloor = filteredTenants.reduce((acc, tenant) => {
-                    const floor = getFloorFromRoomNumber(tenant.room_number);
-                    if (!acc[floor]) {
-                      acc[floor] = [];
-                    }
-                    acc[floor].push(tenant);
-                    return acc;
-                  }, {} as { [key: number]: Tenant[] });
-
-                  // Sort floors and tenants within each floor
-                  const sortedFloors = Object.keys(tenantsByFloor).sort((a, b) => parseInt(a) - parseInt(b));
-                  
-                  return sortedFloors.map(floorNum => {
-                    const floor = parseInt(floorNum);
-                    const floorTenants = tenantsByFloor[floor].sort((a, b) => 
-                      parseInt(a.room_number) - parseInt(b.room_number)
-                    );
-                    
-                    return (
-                      <React.Fragment key={floor}>
-                        {/* Floor Header */}
-                        <tr className="bg-dark-800/50 border-b border-golden-600/30">
-                          <td colSpan={5} className="py-4 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-lg bg-golden-600/20">
-                                <Layers className="h-5 w-5 text-golden-400" />
-                              </div>
-                              <div>
-                                <h3 className="text-lg font-semibold text-golden-400">
-                                  Floor {floor} {floor === 0 ? '(Ground Floor)' : ''}
-                                </h3>
-                                <p className="text-sm text-golden-300">
-                                  {floorTenants.length} tenant{floorTenants.length !== 1 ? 's' : ''} • 
-                                  {floorTenants.filter(t => t.status === 'active').length} active • 
-                                  {floorTenants.filter(t => t.status === 'inactive').length} inactive
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                        
-                        {/* Tenants in this floor */}
-                        {floorTenants.map((tenant) => (
-                          <tr key={tenant.id} className="hover:bg-dark-800/50 transition-colors">
-                            <td className="py-3 px-4">
-                              <div className="font-medium text-golden-100">{tenant.name}</div>
-                              <div className="flex items-center gap-1 text-golden-300 text-sm">
-                                <Phone className="h-3 w-3" />
-                                {tenant.mobile}
-                              </div>
-                              {tenant.has_food && (
-                                <div className="text-orange-400 text-xs mt-1">🍽️ Food Service</div>
-                              )}
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-1 text-golden-100 font-medium">
-                                <DoorOpen className="h-4 w-4" />
-                                Room {tenant.room_number}
-                              </div>
-                              <div className="text-green-400 text-sm">{formatCurrency(tenant.monthly_rent)}/month</div>
-                              <div className="text-golden-400 text-xs">Deposit: {formatCurrency(tenant.security_deposit)}</div>
-                              
-                              {/* Show paid amount and balance */}
-                              {tenant.security_deposit === 0 ? (
-                                <div className="text-blue-400 text-xs mt-1">💰 No deposit required</div>
-                              ) : tenant.security_deposit_paid !== undefined && tenant.security_deposit_paid !== tenant.security_deposit ? (
-                                <div className="text-xs mt-1">
-                                  <div className="text-blue-400">Paid: {formatCurrency(tenant.security_deposit_paid)}</div>
-                                  <div className={`font-semibold ${tenant.security_deposit_balance > 0 ? 'text-orange-400' : 'text-green-400'}`}>
-                                    Balance: {formatCurrency(tenant.security_deposit_balance)}
-                                  </div>
-                                  {tenant.security_balance_due_date && (
-                                    <div className="text-orange-300 text-xs">
-                                      Due: {new Date(tenant.security_balance_due_date).toLocaleDateString()}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="text-green-400 text-xs mt-1">✓ Full deposit paid</div>
-                              )}
-                              
-                              {/* Show security adjustments */}
-                              {tenant.security_adjustment !== 0 && (
-                                <div className={`text-xs font-semibold mt-1 ${tenant.security_adjustment > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                  Adjustment: {tenant.security_adjustment > 0 ? '+' : ''}{formatCurrency(tenant.security_adjustment)}
-                                </div>
-                              )}
-                              
-                              {/* Show rent adjustment option */}
-                              {tenant.adjust_rent_from_security && (
-                                <div className="text-purple-400 text-xs mt-1">🔄 Rent adjustment enabled</div>
-                              )}
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="space-y-1">
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs border ${getStatusColor(tenant.status)}`}>
-                                  {tenant.status}
-                                </span>
-                                {tenant.category && (
-                                  <div>
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs border ${getCategoryColor(tenant.category)}`}>
-                                      {tenant.category}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-1 text-golden-100">
-                                <Calendar className="h-4 w-4" />
-                                {new Date(tenant.joining_date).toLocaleDateString()}
-                              </div>
-                              <div className="text-golden-400 text-xs">
-                                {Math.floor((Date.now() - new Date(tenant.joining_date).getTime()) / (1000 * 60 * 60 * 24))} days
-                              </div>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => {
-                                    setSelectedTenant(tenant);
-                                    setShowAddModal(true);
-                                  }}
-                                  className="p-2 text-golden-400 hover:text-golden-100 hover:bg-golden-600/10 rounded-lg transition-colors"
-                                  title="Edit Tenant"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </button>
-                                {tenant.status === 'active' && (
-                                  <button
-                                    onClick={() => markTenantInactive(tenant.id, tenant.name)}
-                                    className="p-2 text-orange-400 hover:text-orange-300 hover:bg-orange-600/10 rounded-lg transition-colors"
-                                    title="Mark as Inactive"
-                                  >
-                                    <UserMinus className="h-4 w-4" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => deleteTenant(tenant.id, tenant.name)}
-                                  className="p-2 text-red-400 hover:text-red-300 hover:bg-red-600/10 rounded-lg transition-colors"
-                                  title="Delete Tenant"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </React.Fragment>
-                    );
-                  });
-                })()
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Add/Edit Tenant Modal */}
+      {/* Modals */}
       {showAddModal && (
         <TenantForm
           isOpen={showAddModal}
-          onClose={() => {
-            setShowAddModal(false);
-            setSelectedTenant(null);
-          }}
+          onClose={() => setShowAddModal(false)}
           onSubmit={() => {
+            setShowAddModal(false);
             fetchTenants();
             fetchStats();
           }}
-          tenant={selectedTenant}
         />
       )}
+
+      {showDetailsModal && selectedTenant && (
+        <TenantDetailsModal
+          isOpen={showDetailsModal}
+          tenant={selectedTenant}
+          onClose={() => {
+            setShowDetailsModal(false);
+            setSelectedTenant(null);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// Tenant Details Modal Component
+interface TenantDetailsModalProps {
+  isOpen: boolean;
+  tenant: Tenant;
+  onClose: () => void;
+}
+
+const TenantDetailsModal = ({ isOpen, tenant, onClose }: TenantDetailsModalProps) => {
+  if (!isOpen || !tenant) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="bg-gray-900 text-white p-6 rounded-t-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">Tenant Details</h2>
+              <p className="text-gray-300 mt-1">Complete information about {tenant.name}</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Status Overview */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Overview</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{tenant.room_number}</div>
+                <div className="text-gray-600">Room Number</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{formatCurrency(tenant.monthly_rent)}</div>
+                <div className="text-gray-600">Monthly Rent</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{formatCurrency(tenant.security_deposit)}</div>
+                <div className="text-gray-600">Security Deposit</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Personal Information */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Personal Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-sm font-medium text-gray-600">Full Name</label>
+                <div className="text-gray-900 font-medium mt-1">{tenant.name}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Mobile Number</label>
+                <div className="text-gray-900 font-medium mt-1">{tenant.mobile}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Room Number</label>
+                <div className="text-gray-900 font-medium mt-1">{tenant.room_number}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Status</label>
+                <div className="mt-1">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(tenant.status)}`}>
+                    {tenant.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Financial Information */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-sm font-medium text-gray-600">Monthly Rent</label>
+                <div className="text-gray-900 font-medium mt-1">{formatCurrency(tenant.monthly_rent)}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Security Deposit</label>
+                <div className="text-gray-900 font-medium mt-1">{formatCurrency(tenant.security_deposit)}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Joining Date</label>
+                <div className="text-gray-900 font-medium mt-1">{tenant.joining_date}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Category</label>
+                <div className="mt-1">
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getCategoryColor(tenant.category || '')}`}>
+                    {tenant.category || 'N/A'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Details */}
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-sm font-medium text-gray-600">Food Service</label>
+                <div className="text-gray-900 font-medium mt-1">{tenant.has_food ? 'Yes' : 'No'}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600">Notice Given</label>
+                <div className="text-gray-900 font-medium mt-1">{tenant.notice_given ? 'Yes' : 'No'}</div>
+              </div>
+              {tenant.notice_date && (
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Notice Date</label>
+                  <div className="text-gray-900 font-medium mt-1">{tenant.notice_date}</div>
+                </div>
+              )}
+              {tenant.departure_date && (
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Departure Date</label>
+                  <div className="text-gray-900 font-medium mt-1">{tenant.departure_date}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
