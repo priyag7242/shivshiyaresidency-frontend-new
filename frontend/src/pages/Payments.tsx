@@ -4,8 +4,8 @@ import {
   Plus, 
   Filter, 
   IndianRupee, 
-  Calendar, 
-  CheckCircle, 
+  Calendar,
+  CheckCircle,
   AlertCircle, 
   Clock,
   Download,
@@ -237,9 +237,9 @@ const Payments = () => {
         if (methodFilter) query = query.eq('payment_method', methodFilter);
         
         const { data, error } = await query;
-        if (error) throw error;
+      if (error) throw error;
         console.log('Payments data:', data);
-        setPayments(data || []);
+      setPayments(data || []);
       } else {
         const params = new URLSearchParams();
         if (monthFilter) params.append('billing_month', monthFilter);
@@ -264,9 +264,9 @@ const Payments = () => {
         if (statusFilter) query = query.eq('status', statusFilter);
         
         const { data, error } = await query;
-        if (error) throw error;
+      if (error) throw error;
         console.log('Bills data:', data);
-        setBills(data || []);
+      setBills(data || []);
       } else {
         const params = new URLSearchParams();
         if (monthFilter) params.append('billing_month', monthFilter);
@@ -284,9 +284,9 @@ const Payments = () => {
     try {
       if (USE_SUPABASE) {
         const { data: paymentsData, error: paymentsError } = await supabase
-          .from('payments')
-          .select('*');
-        
+        .from('payments')
+        .select('*');
+
         if (paymentsError) throw paymentsError;
         
         const payments = paymentsData || [];
@@ -303,10 +303,10 @@ const Payments = () => {
             .filter(p => p.billing_month?.startsWith(currentYear))
             .reduce((sum, p) => sum + (p.amount_paid || 0), 0),
           pending_amount: payments
-            .filter(p => p.status === 'pending')
+        .filter(p => p.status === 'pending')
             .reduce((sum, p) => sum + (p.total_amount - (p.amount_paid || 0)), 0),
           overdue_amount: payments
-            .filter(p => p.status === 'overdue')
+        .filter(p => p.status === 'overdue')
             .reduce((sum, p) => sum + (p.total_amount - (p.amount_paid || 0)), 0),
           total_bills: payments.length,
           paid_bills: payments.filter(p => p.status === 'paid').length,
@@ -362,10 +362,10 @@ const Payments = () => {
       if (USE_SUPABASE) {
         // First get all tenants with their room numbers
         const { data: allTenants, error: tenantsError } = await supabase
-          .from('tenants')
-          .select('*')
-          .eq('status', 'active');
-        
+        .from('tenants')
+        .select('*')
+        .eq('status', 'active');
+
         if (tenantsError) {
           console.error('Error fetching tenants:', tenantsError);
         }
@@ -379,9 +379,9 @@ const Payments = () => {
         
         if (roomsError) {
           console.error('Error fetching rooms:', roomsError);
-          return;
-        }
-        
+        return;
+      }
+
         console.log('All rooms:', allRooms);
         
         // Create a map of room_number to tenant
@@ -405,7 +405,7 @@ const Payments = () => {
         
         console.log('Transformed rooms:', transformedRooms);
         setRooms(transformedRooms);
-      } else {
+        } else {
         const response = await axios.get(`${apiUrl}/rooms`);
         setRooms(response.data.rooms || []);
       }
@@ -479,7 +479,7 @@ const Payments = () => {
       
       // Step 5: Show success message
       const { data: finalBills } = await supabase
-        .from('payments')
+              .from('payments')
         .select('*');
       
       alert(`✅ Successfully created and fetched bills!\n\n📊 Summary:\n- Tenants: ${existingTenants?.length || 0}\n- Bills Generated: ${finalBills?.length || 0}\n- Current Month: ${billGeneration.billing_month}`);
@@ -601,7 +601,7 @@ const Payments = () => {
       } else {
         alert(`✅ Successfully generated ${generatedCount} bills for ${billGeneration.billing_month}!`);
       }
-      
+
       // Refresh data
       await fetchData();
       
@@ -616,9 +616,9 @@ const Payments = () => {
       const { error } = await supabase
         .from('payments')
         .insert(paymentData);
-      
+
       if (error) throw error;
-      
+
       alert('Payment recorded successfully!');
       setShowPaymentModal(false);
       fetchData();
@@ -1550,12 +1550,12 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
       {/* Header */}
       <div className="mb-8">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-          <div>
+        <div>
             <h1 className="text-3xl font-bold text-golden-400 mb-2">Payment Management</h1>
             <p className="text-golden-300">Manage billing, payments, and financial tracking</p>
-          </div>
+        </div>
           <div className="mt-4 lg:mt-0 flex flex-col sm:flex-row gap-3">
-            <button
+          <button
               onClick={createAndFetchBillsForAllTenants}
               disabled={generating}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base font-semibold"
@@ -1564,16 +1564,16 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
               <Zap className="h-4 w-4" />
               <span className="hidden sm:inline">{generating ? 'Creating...' : 'Create & Generate Bills'}</span>
               <span className="sm:hidden">{generating ? 'Creating...' : 'Create Bills'}</span>
-            </button>
+          </button>
             
-            <button
-              onClick={() => setShowPaymentModal(true)}
+          <button
+            onClick={() => setShowPaymentModal(true)}
               className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors text-sm sm:text-base"
-            >
-              <Plus className="h-4 w-4" />
+          >
+            <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Record Payment</span>
               <span className="sm:hidden">Add Payment</span>
-            </button>
+          </button>
             
             <button
               onClick={exportMonthlyData}
@@ -2049,20 +2049,20 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
             
             {/* Search Filter for Bills */}
             <div className="mb-4">
-              <div className="relative">
+            <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-golden-400" />
-                <input
-                  type="text"
+              <input
+                type="text"
                   placeholder="Search bills by tenant name or room number..."
                   value={billsSearchTerm}
                   onChange={(e) => setBillsSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 placeholder-golden-400/50 focus:outline-none focus:border-golden-500"
-                />
-              </div>
+              />
+            </div>
               {billsSearchTerm && (
                 <div className="mt-2 text-sm text-golden-300">
                   Showing {filteredBills.length} of {bills.length} bills
-                </div>
+          </div>
               )}
             </div>
             {loading ? (
@@ -2171,8 +2171,8 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
                           <label className="block text-sm font-medium text-golden-300 mb-1">
                             Reading Date
                           </label>
-                          <input
-                            type="date"
+          <input
+            type="date"
                             value={readingDates[bill.room_number] || new Date().toISOString().slice(0, 10)}
                             onChange={(e) => {
                               setReadingDates(prev => ({
@@ -2209,8 +2209,8 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
 
                       {/* Action Buttons */}
                       <div className="flex gap-2 mt-3">
-                        <button
-                          onClick={() => {
+          <button
+            onClick={() => {
                             const joining = joiningReadings[bill.room_number] || '0';
                             const current = currentMonthReadings[bill.room_number] || '0';
                             const date = readingDates[bill.room_number] || new Date().toISOString().slice(0, 10);
@@ -2225,16 +2225,16 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
                           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors"
                         >
                           Update Reading
-                        </button>
+          </button>
                         
                         <div className="flex-1 text-right">
                           <p className="text-sm text-golden-300">Rent: ₹{bill.rent_amount || 0}</p>
                           <p className="text-xl font-bold text-golden-400">
                             Total: ₹{(bill.rent_amount || 0) + (calculateElectricityConsumption(bill.room_number) * 12)}
                           </p>
-                        </div>
-                      </div>
-                    </div>
+        </div>
+      </div>
+        </div>
                   </div>
                 ))}
               </div>
@@ -2247,7 +2247,7 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
         <div className="space-y-6">
           <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-golden-400 mb-4">Payment History</h3>
-            {loading ? (
+              {loading ? (
               <div className="text-center py-8 text-golden-400">Loading...</div>
             ) : filteredPayments.length === 0 ? (
               <div className="text-center py-8 text-golden-400/60">No payments found</div>
@@ -2255,17 +2255,17 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
               <div className="space-y-4">
                 {filteredPayments.map((payment) => (
                   <div key={payment.id} className="flex items-center justify-between p-4 bg-dark-800 rounded-lg">
-                    <div>
+                      <div>
                       <h4 className="text-golden-100 font-medium">{payment.tenant_name}</h4>
                       <p className="text-golden-300 text-sm">Room {payment.room_number} • {payment.payment_date}</p>
-                    </div>
+                      </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <p className="text-lg font-bold text-green-400">{formatCurrency(payment.amount_paid)}</p>
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
                           {getPaymentMethodIcon(payment.payment_method)}
                           <span className="text-sm text-golden-300 capitalize">{payment.payment_method.replace('_', ' ')}</span>
-                        </div>
+                      </div>
                       </div>
                     </div>
                   </div>
@@ -2282,12 +2282,12 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
           <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-golden-400">Bill Template</h3>
-              <button
+                        <button
                 onClick={() => setShowBillTemplate(false)}
                 className="text-golden-400 hover:text-golden-300"
               >
                 <XCircle className="h-6 w-6" />
-              </button>
+                        </button>
             </div>
             {(() => {
               const serialNum = getBillSerialNumber(selectedBill.id).toString();
@@ -2363,28 +2363,28 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
               <button
                 onClick={() => {
                   const message = `🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} is ready.\n\n💰 Total Amount: ₹${formatCurrency((whatsAppBill.rent_amount || 0) + (whatsAppBill.electricity_amount || 0))}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`;
-                  const encodedMessage = encodeURIComponent(message);
+                              const encodedMessage = encodeURIComponent(message);
                   window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
                 <MessageCircle className="h-4 w-4" />
                 Send WhatsApp
-              </button>
-              <button
-                onClick={() => {
+                        </button>
+                        <button
+                          onClick={() => {
                   const message = `🏠 *Shiv Shiva Residency - Bill*\n\nDear ${whatsAppBill.tenant_name},\n\nYour bill for Room ${whatsAppBill.room_number} is ready.\n\n💰 Total Amount: ₹${formatCurrency((whatsAppBill.rent_amount || 0) + (whatsAppBill.electricity_amount || 0))}\n\nPlease make the payment on time.\n\nThank you,\nShiv Shiva Residency Team`;
                   navigator.clipboard.writeText(message);
                   alert('Message copied to clipboard!');
-                }}
+                          }}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
+                        >
                 <Copy className="h-4 w-4" />
                 Copy Message
-              </button>
-            </div>
-          </div>
+                        </button>
+                      </div>
         </div>
+      </div>
       )}
 
       {/* Add debug and maintenance buttons in the UI */}
@@ -2432,4 +2432,4 @@ ${statusGroups.active.slice(0, 5).map(t => `• ${t.name} (Room ${t.room_number}
   );
 };
 
-export default Payments; 
+export default Payments;

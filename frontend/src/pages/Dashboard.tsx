@@ -208,7 +208,19 @@ interface Visitor {
 }
 
 // Animated Revenue Chart Component
-const RevenueChart = ({ data, selectedPeriod }: { data: { month: string; revenue: number }[]; selectedPeriod: string }) => {
+const RevenueChart = ({ 
+  data, 
+  selectedPeriod, 
+  selectedYear, 
+  onYearChange, 
+  yearOptions 
+}: { 
+  data: { month: string; revenue: number }[]; 
+  selectedPeriod: string;
+  selectedYear: string;
+  onYearChange: (year: string) => void;
+  yearOptions: { value: string; label: string }[];
+}) => {
   const maxRevenue = Math.max(...data.map(d => d.revenue));
   const minRevenue = Math.min(...data.map(d => d.revenue));
   const range = maxRevenue - minRevenue;
@@ -230,10 +242,16 @@ const RevenueChart = ({ data, selectedPeriod }: { data: { month: string; revenue
             </button>
           ))}
         </div>
-        <select className="bg-gray-700 text-gray-300 px-3 py-1 rounded text-sm border-none w-full sm:w-auto transition-all duration-300 hover:bg-gray-600 focus:ring-2 focus:ring-yellow-500 focus:outline-none">
-          <option>2023</option>
-          <option>2022</option>
-          <option>2021</option>
+        <select 
+          value={selectedYear}
+          onChange={(e) => onYearChange(e.target.value)}
+          className="bg-gray-700 text-gray-300 px-3 py-1 rounded text-sm border-none w-full sm:w-auto transition-all duration-300 hover:bg-gray-600 focus:ring-2 focus:ring-yellow-500 focus:outline-none"
+        >
+          {yearOptions.map((year) => (
+            <option key={year.value} value={year.value}>
+              {year.label}
+            </option>
+          ))}
         </select>
       </div>
       
@@ -565,21 +583,46 @@ const Dashboard = () => {
     }
   };
 
-  // Sample chart data
+  // Sample chart data with extended range from 2021
   const chartData = [
-    { month: 'Jan', revenue: 45000 },
-    { month: 'Feb', revenue: 52000 },
-    { month: 'Mar', revenue: 48000 },
-    { month: 'Apr', revenue: 55000 },
-    { month: 'May', revenue: 58000 },
-    { month: 'Jun', revenue: 62000 },
-    { month: 'Jul', revenue: 68000 },
-    { month: 'Aug', revenue: 72000 },
+    { month: 'Jan', revenue: 42000 },
+    { month: 'Feb', revenue: 48000 },
+    { month: 'Mar', revenue: 45000 },
+    { month: 'Apr', revenue: 52000 },
+    { month: 'May', revenue: 55000 },
+    { month: 'Jun', revenue: 58000 },
+    { month: 'Jul', revenue: 62000 },
+    { month: 'Aug', revenue: 68000 },
     { month: 'Sep', revenue: 84256 },
     { month: 'Oct', revenue: 78000 },
     { month: 'Nov', revenue: 82000 },
     { month: 'Dec', revenue: 88000 }
   ];
+
+  // Extended year options starting from 2021
+  const yearOptions = [
+    { value: '2025', label: '2025' },
+    { value: '2024', label: '2024' },
+    { value: '2023', label: '2023' },
+    { value: '2022', label: '2022' },
+    { value: '2021', label: '2021' }
+  ];
+
+  const [selectedYear, setSelectedYear] = useState('2023');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDateRange, setSelectedDateRange] = useState({
+    start: '01/08/23',
+    end: '31/08/23'
+  });
+
+  const handleDateRangeClick = () => {
+    setShowDatePicker(!showDatePicker);
+  };
+
+  const handleDateRangeSelect = (start: string, end: string) => {
+    setSelectedDateRange({ start, end });
+    setShowDatePicker(false);
+  };
 
   if (loading) {
     return (
@@ -675,7 +718,7 @@ const Dashboard = () => {
                 <User className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
               </div>
             <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Welcome BNR Hills PG</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Welcome SHIV SHIVA RESIDENCY</h1>
                 <p className="text-sm text-gray-500">Dashboard Overview</p>
             </div>
             </div>
@@ -695,8 +738,8 @@ const Dashboard = () => {
             </button>
           </div>
         </div>
-        </div>
-      </div>
+            </div>
+            </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -707,21 +750,78 @@ const Dashboard = () => {
             <div className={`bg-gray-900 rounded-xl p-4 sm:p-6 relative transition-all duration-500 ease-in-out hover-lift ${isRevenueExpanded ? 'min-h-[500px]' : ''}`}>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
                 <h2 className="text-white font-bold text-lg sm:text-xl">REVENUE</h2>
-                <div className="bg-yellow-500 text-gray-900 px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2 hover-lift transition-all duration-300">
+                <button 
+                  onClick={handleDateRangeClick}
+                  className="bg-yellow-500 text-gray-900 px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2 hover:bg-yellow-400 transition-all duration-300 hover-lift cursor-pointer"
+                >
                   <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">01/08/23 - 31/08/23</span>
-                  <span className="sm:hidden">01/08/23</span>
+                  <span className="hidden sm:inline">{selectedDateRange.start} - {selectedDateRange.end}</span>
+                  <span className="sm:hidden">{selectedDateRange.start}</span>
+                </button>
           </div>
-        </div>
 
               <div className="text-white mb-4">
                 <div className="text-2xl sm:text-3xl lg:text-4xl font-bold animate-countUp">{formatCurrency(stats.monthlyRevenue)}</div>
                 <div className="text-sm sm:text-lg opacity-80 animate-fadeIn" style={{ animationDelay: '0.3s' }}>+0.6% From last month</div>
       </div>
 
+              {/* Date Picker Modal */}
+              {showDatePicker && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeInUp">
+                  <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full animate-bounceIn">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold text-gray-900">Select Date Range</h3>
+                      <button
+                        onClick={() => setShowDatePicker(false)}
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <X className="h-6 w-6" />
+                      </button>
+                  </div>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                        <input
+                          type="date"
+                          value={selectedDateRange.start}
+                          onChange={(e) => setSelectedDateRange(prev => ({ ...prev, start: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                        />
+        </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                        <input
+                          type="date"
+                          value={selectedDateRange.end}
+                          onChange={(e) => setSelectedDateRange(prev => ({ ...prev, end: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                        />
+        </div>
+      </div>
+
+                    <div className="flex gap-3 mt-6">
+                      <button
+                        onClick={() => setShowDatePicker(false)}
+                        className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => setShowDatePicker(false)}
+                        className="flex-1 px-4 py-2 bg-yellow-500 text-gray-900 rounded-lg font-medium hover:bg-yellow-600 transition-colors"
+                      >
+                        Done
+                      </button>
+            </div>
+            </div>
+            </div>
+              )}
+
               {/* Expanded Content */}
               {isRevenueExpanded && (
-                <RevenueChart data={chartData} selectedPeriod={selectedPeriod} />
+                <RevenueChart data={chartData} selectedPeriod={selectedPeriod} selectedYear={selectedYear} onYearChange={setSelectedYear} yearOptions={yearOptions} />
               )}
               
               {/* Action Buttons */}
@@ -729,7 +829,7 @@ const Dashboard = () => {
                 <div className="mt-6 animate-slideUp">
                   <button
                     onClick={handleFullReport}
-                    className="report-button w-full bg-yellow-500 text-gray-900 py-3 sm:py-4 rounded-lg font-bold text-base sm:text-lg hover:bg-yellow-600 transition-all duration-300 hover-lift"
+                    className="report-button w-full bg-gray-900 text-white py-3 sm:py-4 rounded-lg font-bold text-base sm:text-lg hover:bg-gray-800 transition-all duration-300 hover-lift"
                   >
                     FULL REPORT
                   </button>
@@ -751,7 +851,7 @@ const Dashboard = () => {
               </button>
         </div>
 
-            {/* Quick Actions */}
+        {/* Quick Actions */}
             <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
               <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4 sm:mb-6">Quick Actions</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -762,7 +862,7 @@ const Dashboard = () => {
                 >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-all duration-300 group-hover:scale-110">
                     <UserPlus className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-                  </div>
+              </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Add Tenant</span>
                 </button>
                 
@@ -773,7 +873,7 @@ const Dashboard = () => {
                 >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-all duration-300 group-hover:scale-110">
                     <Receipt className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-                  </div>
+              </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Record Payment</span>
                 </button>
                 
@@ -784,33 +884,33 @@ const Dashboard = () => {
                 >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-all duration-300 group-hover:scale-110">
                     <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
-                  </div>
+              </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Add Room</span>
                 </button>
-                
-                <button 
+
+            <button 
                   onClick={() => setShowMaintenanceModal(true)}
                   className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
                   style={{ animationDelay: '0.4s' }}
-                >
+            >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-all duration-300 group-hover:scale-110">
                     <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
-                  </div>
+              </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Maintenance</span>
-                </button>
-                
-                <button 
+            </button>
+
+            <button 
                   onClick={() => setShowReportModal(true)}
                   className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn col-span-2 sm:col-span-1"
                   style={{ animationDelay: '0.5s' }}
-                >
+            >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-100 rounded-full flex items-center justify-center group-hover:bg-indigo-200 transition-all duration-300 group-hover:scale-110">
                     <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600" />
-                  </div>
-                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Overview</span>
-                </button>
               </div>
-            </div>
+                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Overview</span>
+            </button>
+        </div>
+      </div>
 
             {/* Quick Stats */}
             <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300 stat-card">
@@ -819,13 +919,13 @@ const Dashboard = () => {
                 <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-all duration-300 group-hover:scale-110">
                     <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-                  </div>
+    </div>
                   <div className="text-center">
                     <div className="text-xs sm:text-sm font-medium text-gray-700">Total Tenants</div>
                     <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.totalTenants}</div>
                   </div>
-                </div>
-                
+        </div>
+
                 <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-all duration-300 group-hover:scale-110">
                     <Building className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
@@ -833,29 +933,29 @@ const Dashboard = () => {
                   <div className="text-center">
                     <div className="text-xs sm:text-sm font-medium text-gray-700">Occupancy Rate</div>
                     <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.occupancyRate}%</div>
-                  </div>
-                </div>
-                
+            </div>
+          </div>
+
                 <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-all duration-300 group-hover:scale-110">
                     <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
-                  </div>
+            </div>
                   <div className="text-center">
                     <div className="text-xs sm:text-sm font-medium text-gray-700">Maintenance</div>
                     <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.activeMaintenanceRequests}</div>
-                  </div>
-                </div>
-                
+            </div>
+          </div>
+
                 <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-all duration-300 group-hover:scale-110">
                     <UserCheck className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-                  </div>
+          </div>
                   <div className="text-center">
                     <div className="text-xs sm:text-sm font-medium text-gray-700">Today's Visitors</div>
                     <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.todayVisitors}</div>
-                  </div>
-                </div>
-              </div>
+        </div>
+      </div>
+    </div>
             </div>
           </div>
 
@@ -904,9 +1004,9 @@ const Dashboard = () => {
                     <div className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 animate-countUp">{stats.vacantBeds} / {stats.totalBeds}</div>
                     <button className="bg-gray-900 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium mt-2 sm:mt-3 hover:bg-gray-800 transition-all duration-300 hover-lift">
                       VIEW
-                    </button>
-                  </div>
-                  
+          </button>
+        </div>
+
                   {/* Notice Period */}
                   <div className="text-center">
                     <div className="text-gray-600 text-xs sm:text-sm font-medium">Notice Period</div>
@@ -916,12 +1016,12 @@ const Dashboard = () => {
                       VIEW
                     </button>
                   </div>
-                </div>
-              </div>
             </div>
           </div>
-        </div>
-      </div>
+                  </div>
+          </div>
+            </div>
+          </div>
 
       {/* Modals */}
       <TenantModal 
