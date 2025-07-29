@@ -20,1009 +20,891 @@ import {
   Send,
   X,
   Calendar,
-  Settings
+  Settings,
+  Home,
+  Wifi,
+  Zap,
+  Shield,
+  MapPin,
+  Phone,
+  Mail,
+  Filter,
+  Search,
+  BarChart3,
+  PieChart,
+  Activity,
+  Target,
+  DollarSign,
+  Receipt,
+  UserCheck,
+  UserX,
+  Bed,
+  Bath,
+  Square,
+  Star,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Copy,
+  ExternalLink,
+  RefreshCw,
+  ChevronRight,
+  ChevronLeft,
+  Maximize2,
+  Minimize2,
+  Circle
 } from 'lucide-react';
-import axios from 'axios';
-import TenantDataImporter from '../components/TenantDataImporter';
-import { dashboardQueries } from '../lib/supabaseQueries';
+import { supabase } from '../lib/supabase';
 
-const apiUrl = import.meta.env.VITE_API_URL || '';
-const USE_SUPABASE = true; // Toggle to switch between backends
+// Helper functions
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0
+  }).format(amount);
+};
 
-interface DashboardData {
-  total_tenants: number;
-  active_tenants: number;
-  new_tenants_this_month: number;
-  total_rooms: number;
-  occupied_rooms: number;
-  available_rooms: number;
-  maintenance_rooms: number;
-  occupancy_rate: number;
-  total_revenue_potential: number;
-  actual_revenue_this_month: number;
-  pending_collections: number;
-  collection_rate: number;
-  recent_payments: Array<any>;
-  maintenance_alerts: number;
-  monthly_revenue_trend: Array<{ month: string; revenue: number }>;
-  occupancy_trend: Array<{ month: string; occupancy: number }>;
-  payment_method_distribution: { [key: string]: number };
-  current_month_stats: {
-    month: string;
-    total_bills: number;
-    paid_bills: number;
-    pending_bills: number;
-    collection_amount: number;
-    pending_amount: number;
-  };
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'active':
+    case 'occupied':
+    case 'completed':
+      return 'text-green-400 bg-green-400/10 border-green-400/30';
+    case 'inactive':
+    case 'vacant':
+      return 'text-gray-400 bg-gray-400/10 border-gray-400/30';
+    case 'maintenance':
+    case 'pending':
+      return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
+    case 'high':
+      return 'text-red-400 bg-red-400/10 border-red-400/30';
+    case 'medium':
+      return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30';
+    case 'low':
+      return 'text-blue-400 bg-blue-400/10 border-blue-400/30';
+    default:
+      return 'text-golden-400 bg-golden-400/10 border-golden-400/30';
+  }
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case 'active':
+    case 'occupied':
+    case 'completed':
+      return <CheckCircle className="h-4 w-4" />;
+    case 'inactive':
+    case 'vacant':
+      return <UserX className="h-4 w-4" />;
+    case 'maintenance':
+    case 'pending':
+      return <Clock className="h-4 w-4" />;
+    case 'high':
+      return <AlertTriangle className="h-4 w-4" />;
+    case 'medium':
+      return <Clock className="h-4 w-4" />;
+    case 'low':
+      return <CheckCircle className="h-4 w-4" />;
+    default:
+      return <Circle className="h-4 w-4" />;
+  }
+};
+
+interface DashboardStats {
+  totalTenants: number;
+  activeTenants: number;
+  newTenantsThisMonth: number;
+  totalRooms: number;
+  occupiedRooms: number;
+  availableRooms: number;
+  maintenanceRooms: number;
+  occupancyRate: number;
+  monthlyRevenue: number;
+  pendingCollections: number;
+  activeMaintenanceRequests: number;
+  todayVisitors: number;
+  collectionRate: number;
 }
 
-interface Alert {
+interface Room {
   id: string;
+  room_number: string;
+  floor: string;
   type: string;
-  priority: 'high' | 'medium' | 'low';
-  title: string;
-  message: string;
-  count: number;
-  action: string;
-  link: string;
+  status: 'occupied' | 'vacant' | 'maintenance';
+  tenant_name?: string;
+  monthly_rent: number;
+  amenities: string[];
+  last_updated: string;
 }
 
-interface Activity {
+interface Tenant {
   id: string;
-  type: string;
-  title: string;
-  description: string;
-  amount?: number;
+  name: string;
+  room_number: string;
+  mobile: string;
+  email?: string;
+  status: 'active' | 'inactive';
+  joining_date: string;
+  monthly_rent: number;
+  security_deposit: number;
+  documents: string[];
+  emergency_contact?: string;
+}
+
+interface Payment {
+  id: string;
+  tenant_name: string;
+  room_number: string;
+  amount: number;
+  method: 'cash' | 'upi' | 'bank_transfer' | 'card';
   date: string;
-  icon: string;
-  color: string;
+  status: 'completed' | 'pending';
+  transaction_id?: string;
+}
+
+interface MaintenanceRequest {
+  id: string;
+  room_number: string;
+  tenant_name: string;
+  issue: string;
+  priority: 'high' | 'medium' | 'low';
+  status: 'open' | 'in_progress' | 'resolved';
+  created_date: string;
+  assigned_to?: string;
+}
+
+interface Visitor {
+  id: string;
+  name: string;
+  visiting_tenant: string;
+  room_number: string;
+  purpose: string;
+  entry_time: string;
+  exit_time?: string;
+  phone?: string;
 }
 
 const Dashboard = () => {
-  console.log('Dashboard component rendering');
-  
-  const [dashboardData, setDashboardData] = useState<DashboardData>({
-    total_tenants: 0,
-    active_tenants: 0,
-    new_tenants_this_month: 0,
-    total_rooms: 0,
-    occupied_rooms: 0,
-    available_rooms: 0,
-    maintenance_rooms: 0,
-    occupancy_rate: 0,
-    total_revenue_potential: 0,
-    actual_revenue_this_month: 0,
-    pending_collections: 0,
-    collection_rate: 0,
-    recent_payments: [],
-    maintenance_alerts: 0,
-    monthly_revenue_trend: [],
-    occupancy_trend: [],
-    payment_method_distribution: {},
-    current_month_stats: {
-      month: '',
-      total_bills: 0,
-      paid_bills: 0,
-      pending_bills: 0,
-      collection_amount: 0,
-      pending_amount: 0
-    }
+  const [stats, setStats] = useState<DashboardStats>({
+    totalTenants: 0,
+    activeTenants: 0,
+    newTenantsThisMonth: 0,
+    totalRooms: 0,
+    occupiedRooms: 0,
+    availableRooms: 0,
+    maintenanceRooms: 0,
+    occupancyRate: 0,
+    monthlyRevenue: 0,
+    pendingCollections: 0,
+    activeMaintenanceRequests: 0,
+    todayVisitors: 0,
+    collectionRate: 0
   });
 
-  const [activities, setActivities] = useState<Activity[]>([]);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [recentPayments, setRecentPayments] = useState<Payment[]>([]);
+  const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
+  const [todayVisitors, setTodayVisitors] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
   
   // Modal states
-  const [showReportsModal, setShowReportsModal] = useState(false);
-  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [showTenantModal, setShowTenantModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
+  const [showVisitorModal, setShowVisitorModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
-    fetchRecentActivities();
-    fetchAlerts();
   }, []);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
       
-      if (USE_SUPABASE) {
-        // Use Supabase queries
-        const [overview, activities, alerts] = await Promise.all([
-          dashboardQueries.getOverview(),
-          dashboardQueries.getRecentActivities(),
-          dashboardQueries.getAlerts()
-        ]);
+      // Fetch all data in parallel
+      const [
+        tenantsData,
+        roomsData,
+        paymentsData,
+        maintenanceData,
+        visitorsData
+      ] = await Promise.all([
+        fetchTenants(),
+        fetchRooms(),
+        fetchRecentPayments(),
+        fetchMaintenanceRequests(),
+        fetchTodayVisitors()
+      ]);
 
-        setDashboardData(overview);
-        setActivities(activities);
-        setAlerts(alerts);
-      } else {
-        // Use old backend
-        const [overviewRes, activitiesRes, alertsRes] = await Promise.all([
-          axios.get(`${apiUrl}/dashboard/overview`),
-          axios.get(`${apiUrl}/dashboard/recent-activities`),
-          axios.get(`${apiUrl}/dashboard/alerts`)
-        ]);
+      // Calculate stats
+      const calculatedStats = calculateStats(tenantsData, roomsData, paymentsData);
+      setStats(calculatedStats);
+      
+      setTenants(tenantsData);
+      setRooms(roomsData);
+      setRecentPayments(paymentsData);
+      setMaintenanceRequests(maintenanceData);
+      setTodayVisitors(visitorsData);
 
-        // Ensure arrays are arrays
-        const dashData = overviewRes.data;
-        setDashboardData({
-          ...dashData,
-          monthly_revenue_trend: Array.isArray(dashData.monthly_revenue_trend) ? dashData.monthly_revenue_trend : [],
-          occupancy_trend: Array.isArray(dashData.occupancy_trend) ? dashData.occupancy_trend : [],
-          recent_payments: Array.isArray(dashData.recent_payments) ? dashData.recent_payments : [],
-          payment_method_distribution: dashData.payment_method_distribution || {}
-        });
-        
-        setActivities(Array.isArray(activitiesRes.data) ? activitiesRes.data : []);
-        setAlerts(Array.isArray(alertsRes.data) ? alertsRes.data : []);
-      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      // Set default empty arrays to prevent map errors
-      setActivities([]);
-      setAlerts([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchRecentActivities = async () => {
+  const fetchTenants = async (): Promise<Tenant[]> => {
     try {
-      const response = await axios.get(`${apiUrl}/dashboard/recent-activities`);
-      const data = response.data;
-      setActivities(Array.isArray(data) ? data : []);
+      const { data, error } = await supabase
+        .from('tenants')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
     } catch (error) {
-      console.error('Failed to fetch activities:', error);
-      setActivities([]);
+      console.error('Error fetching tenants:', error);
+      return [];
     }
   };
 
-  const fetchAlerts = async () => {
+  const fetchRooms = async (): Promise<Room[]> => {
     try {
-      const response = await axios.get(`${apiUrl}/dashboard/alerts`);
-      const data = response.data;
-      setAlerts(Array.isArray(data) ? data : []);
+      const { data, error } = await supabase
+        .from('rooms')
+        .select('*')
+        .order('room_number', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
     } catch (error) {
-      console.error('Failed to fetch alerts:', error);
-      setAlerts([]);
+      console.error('Error fetching rooms:', error);
+      return [];
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
+  const fetchRecentPayments = async (): Promise<Payment[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'payment':
-        return <CreditCard className="h-4 w-4" />;
-      case 'tenant':
-        return <Users className="h-4 w-4" />;
-      case 'maintenance':
-        return <AlertTriangle className="h-4 w-4" />;
-      case 'room':
-        return <Building className="h-4 w-4" />;
-      default:
-        return <Bell className="h-4 w-4" />;
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching payments:', error);
+      return [];
     }
   };
 
-  const getActivityColor = (color: string) => {
-    switch (color) {
-      case 'green':
-        return 'text-green-400 bg-green-400/10';
-      case 'blue':
-        return 'text-blue-400 bg-blue-400/10';
-      case 'orange':
-        return 'text-orange-400 bg-orange-400/10';
-      case 'purple':
-        return 'text-purple-400 bg-purple-400/10';
-      case 'red':
-        return 'text-red-400 bg-red-400/10';
-      default:
-        return 'text-golden-400 bg-golden-400/10';
+  const fetchMaintenanceRequests = async (): Promise<MaintenanceRequest[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('maintenance_requests')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching maintenance requests:', error);
+      return [];
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'border-l-red-500 bg-red-500/5';
-      case 'medium':
-        return 'border-l-orange-500 bg-orange-500/5';
-      case 'low':
-        return 'border-l-blue-500 bg-blue-500/5';
-      default:
-        return 'border-l-golden-500 bg-golden-500/5';
+  const fetchTodayVisitors = async (): Promise<Visitor[]> => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('visitors')
+        .select('*')
+        .gte('entry_time', today)
+        .order('entry_time', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error fetching visitors:', error);
+      return [];
     }
+  };
+
+  const calculateStats = (tenants: Tenant[], rooms: Room[], payments: Payment[]): DashboardStats => {
+    const totalTenants = tenants.length;
+    const activeTenants = tenants.filter(t => t.status === 'active').length;
+    const totalRooms = rooms.length;
+    const occupiedRooms = rooms.filter(r => r.status === 'occupied').length;
+    const availableRooms = rooms.filter(r => r.status === 'vacant').length;
+    const maintenanceRooms = rooms.filter(r => r.status === 'maintenance').length;
+    const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+    
+    const monthlyRevenue = payments
+      .filter(p => p.status === 'completed')
+      .reduce((sum, p) => sum + p.amount, 0);
+    
+    const pendingCollections = payments
+      .filter(p => p.status === 'pending')
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    const thisMonth = new Date().getMonth();
+    const thisYear = new Date().getFullYear();
+    const newTenantsThisMonth = tenants.filter(t => {
+      const joinDate = new Date(t.joining_date);
+      return joinDate.getMonth() === thisMonth && joinDate.getFullYear() === thisYear;
+    }).length;
+
+    return {
+      totalTenants,
+      activeTenants,
+      newTenantsThisMonth,
+      totalRooms,
+      occupiedRooms,
+      availableRooms,
+      maintenanceRooms,
+      occupancyRate,
+      monthlyRevenue,
+      pendingCollections,
+      activeMaintenanceRequests: maintenanceRequests.length,
+      todayVisitors: todayVisitors.length,
+      collectionRate: monthlyRevenue > 0 ? Math.round((monthlyRevenue / (monthlyRevenue + pendingCollections)) * 100) : 0
+    };
   };
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-golden-500"></div>
+      <div className="min-h-screen bg-dark-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-golden-500 mx-auto mb-4"></div>
+          <p className="text-golden-400 text-lg">Loading Dashboard...</p>
         </div>
       </div>
     );
   }
 
-  if (!dashboardData) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-golden-400">Failed to load dashboard data</div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-dark-950">
       {/* Header */}
-      <div className="mb-8">
+      <div className="bg-dark-900 border-b border-golden-600/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-golden-400 mb-2">Dashboard</h1>
             <p className="text-golden-300">Welcome to Shiv Shiva Residency Management System</p>
           </div>
-          <div className="mt-4 lg:mt-0 flex gap-3">
-            <Link
-              to="/tenants"
+            <div className="mt-4 lg:mt-0 flex flex-wrap gap-3">
+              <button
+                onClick={() => setShowTenantModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <UserPlus className="h-4 w-4" />
               Add Tenant
-            </Link>
-            <Link
-              to="/payments"
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-golden-500 to-golden-600 text-dark-900 rounded-lg hover:from-golden-600 hover:to-golden-700 transition-all duration-200 font-medium"
-            >
-              <Plus className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
               Record Payment
-            </Link>
+              </button>
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <FileText className="h-4 w-4" />
+                Generate Report
+              </button>
+              </div>
           </div>
         </div>
       </div>
 
-      {/* Alerts */}
-      {alerts.length > 0 && (
-        <div className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {alerts.map((alert) => (
-              <div key={alert.id} className={`border-l-4 rounded-lg p-4 ${getPriorityColor(alert.priority)}`}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-golden-100">{alert.title}</h3>
-                    <p className="text-golden-300 text-sm mt-1">{alert.message}</p>
-                  </div>
-                  <div className="text-2xl font-bold text-golden-400">{alert.count}</div>
-                </div>
-                <Link
-                  to={alert.link}
-                  className="inline-flex items-center gap-1 mt-3 text-sm text-golden-400 hover:text-golden-300 transition-colors"
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <OverviewCard
+            title="Total Tenants"
+            value={stats.totalTenants}
+            change={`+${stats.newTenantsThisMonth} this month`}
+            icon={<Users className="h-6 w-6" />}
+            color="blue"
+            link="/tenants"
+          />
+          <OverviewCard
+            title="Occupancy Rate"
+            value={`${stats.occupancyRate}%`}
+            change={`${stats.occupiedRooms}/${stats.totalRooms} rooms`}
+            icon={<Building className="h-6 w-6" />}
+            color="purple"
+            link="/rooms"
+          />
+          <OverviewCard
+            title="Monthly Revenue"
+            value={formatCurrency(stats.monthlyRevenue)}
+            change={`${stats.collectionRate}% collected`}
+            icon={<IndianRupee className="h-6 w-6" />}
+            color="green"
+            link="/payments"
+          />
+          <OverviewCard
+            title="Pending Collections"
+            value={formatCurrency(stats.pendingCollections)}
+            change="Requires attention"
+            icon={<Clock className="h-6 w-6" />}
+            color="orange"
+            link="/payments"
+          />
+            </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <QuickStatCard
+            title="Maintenance Requests"
+            value={stats.activeMaintenanceRequests}
+            icon={<AlertTriangle className="h-5 w-5" />}
+            color="red"
+            link="/maintenance"
+          />
+          <QuickStatCard
+            title="Today's Visitors"
+            value={stats.todayVisitors}
+            icon={<Users className="h-5 w-5" />}
+            color="purple"
+            link="/visitors"
+          />
+          <QuickStatCard
+            title="Available Rooms"
+            value={stats.availableRooms}
+            icon={<Home className="h-5 w-5" />}
+            color="blue"
+            link="/rooms"
+          />
+            </div>
+
+        {/* Main Content Tabs */}
+        <div className="bg-dark-900 border border-golden-600/20 rounded-lg overflow-hidden">
+          <div className="border-b border-golden-600/20">
+            <nav className="flex space-x-8 px-6">
+              {[
+                { id: 'overview', name: 'Overview', icon: <BarChart3 className="h-4 w-4" /> },
+                { id: 'rooms', name: 'Room Management', icon: <Building className="h-4 w-4" /> },
+                { id: 'tenants', name: 'Tenant Management', icon: <Users className="h-4 w-4" /> },
+                { id: 'payments', name: 'Payment Tracking', icon: <CreditCard className="h-4 w-4" /> },
+                { id: 'maintenance', name: 'Maintenance', icon: <AlertTriangle className="h-4 w-4" /> },
+                { id: 'visitors', name: 'Visitors', icon: <UserCheck className="h-4 w-4" /> }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                    activeTab === tab.id
+                      ? 'border-golden-500 text-golden-400'
+                      : 'border-transparent text-golden-300 hover:text-golden-400'
+                  }`}
                 >
-                  {alert.action}
-                  <ArrowUpRight className="h-3 w-3" />
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+                  {tab.icon}
+                  {tab.name}
+                </button>
+              ))}
+            </nav>
+            </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="p-6">
+            {activeTab === 'overview' && <OverviewTab stats={stats} recentPayments={recentPayments} />}
+            {activeTab === 'rooms' && <RoomsTab rooms={rooms} onAddRoom={() => setShowRoomModal(true)} />}
+            {activeTab === 'tenants' && <TenantsTab tenants={tenants} onAddTenant={() => setShowTenantModal(true)} />}
+            {activeTab === 'payments' && <PaymentsTab payments={recentPayments} onAddPayment={() => setShowPaymentModal(true)} />}
+            {activeTab === 'maintenance' && <MaintenanceTab requests={maintenanceRequests} onAddRequest={() => setShowMaintenanceModal(true)} />}
+            {activeTab === 'visitors' && <VisitorsTab visitors={todayVisitors} onAddVisitor={() => setShowVisitorModal(true)} />}
+            </div>
+            </div>
+          </div>
+
+      {/* Modals */}
+      {/* Add your modal components here */}
+            </div>
+  );
+};
+
+// Overview Card Component
+interface OverviewCardProps {
+  title: string;
+  value: string | number;
+  change: string;
+  icon: React.ReactNode;
+  color: string;
+  link: string;
+}
+
+const OverviewCard = ({ title, value, change, icon, color, link }: OverviewCardProps) => {
+  const colorClasses = {
+    blue: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
+    purple: 'text-purple-400 bg-purple-400/10 border-purple-400/30',
+    green: 'text-green-400 bg-green-400/10 border-green-400/30',
+    orange: 'text-orange-400 bg-orange-400/10 border-orange-400/30',
+    red: 'text-red-400 bg-red-400/10 border-red-400/30'
+  };
+
+  return (
         <Link 
-          to="/tenants" 
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
-          onClick={() => console.log('Clicked Total Tenants card')}
+      to={link}
+      className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 group"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-golden-300 text-sm font-medium">Total Tenants</p>
-              <p className="text-2xl font-bold text-golden-100">{dashboardData.total_tenants}</p>
-              <p className="text-green-400 text-sm">+{dashboardData.new_tenants_this_month} this month</p>
+          <p className="text-golden-300 text-sm font-medium">{title}</p>
+          <p className="text-2xl font-bold text-golden-100 mt-1">{value}</p>
+          <p className="text-golden-300 text-sm mt-1">{change}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-8 w-8 text-golden-400 group-hover:text-golden-300 transition-colors" />
-              <ArrowUpRight className="h-4 w-4 text-golden-400/60 group-hover:text-golden-300 transition-colors" />
+        <div className={`p-3 rounded-full ${colorClasses[color as keyof typeof colorClasses]} group-hover:scale-110 transition-transform`}>
+          {icon}
             </div>
           </div>
         </Link>
+  );
+};
 
+// Quick Stat Card Component
+interface QuickStatCardProps {
+  title: string;
+  value: number;
+  icon: React.ReactNode;
+  color: string;
+  link: string;
+}
+
+const QuickStatCard = ({ title, value, icon, color, link }: QuickStatCardProps) => {
+  const colorClasses = {
+    blue: 'text-blue-400 bg-blue-400/10',
+    purple: 'text-purple-400 bg-purple-400/10',
+    green: 'text-green-400 bg-green-400/10',
+    orange: 'text-orange-400 bg-orange-400/10',
+    red: 'text-red-400 bg-red-400/10'
+  };
+
+  return (
         <Link 
-          to="/rooms" 
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
-          onClick={() => console.log('Clicked Occupancy Rate card')}
+      to={link}
+      className="bg-dark-900 border border-golden-600/20 rounded-lg p-4 hover:bg-dark-800 transition-colors"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-golden-300 text-sm font-medium">Occupancy Rate</p>
-              <p className="text-2xl font-bold text-golden-100">{dashboardData.occupancy_rate}%</p>
-              <p className="text-golden-300 text-sm">{dashboardData.occupied_rooms}/{dashboardData.total_rooms} rooms</p>
+          <p className="text-golden-300 text-sm">{title}</p>
+          <p className="text-xl font-bold text-golden-100">{value}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Building className="h-8 w-8 text-golden-400 group-hover:text-golden-300 transition-colors" />
-              <ArrowUpRight className="h-4 w-4 text-golden-400/60 group-hover:text-golden-300 transition-colors" />
+        <div className={`p-2 rounded-full ${colorClasses[color as keyof typeof colorClasses]}`}>
+          {icon}
             </div>
           </div>
         </Link>
+  );
+};
 
-        <Link 
-          to="/payments" 
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
-          onClick={() => console.log('Clicked Monthly Revenue card')}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm font-medium">Monthly Revenue</p>
-              <p className="text-2xl font-bold text-green-400">{formatCurrency(dashboardData.actual_revenue_this_month)}</p>
-              <p className="text-golden-300 text-sm">{dashboardData.collection_rate}% collected</p>
+// Tab Components
+const OverviewTab = ({ stats, recentPayments }: { stats: DashboardStats; recentPayments: Payment[] }) => (
+  <div className="space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="bg-dark-800 border border-golden-600/20 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-golden-400 mb-4">Revenue Trend</h3>
+        <div className="h-64 flex items-center justify-center text-golden-300">
+          Chart placeholder - Revenue trend over 6 months
             </div>
-            <div className="flex items-center gap-2">
-              <IndianRupee className="h-8 w-8 text-green-400 group-hover:text-green-300 transition-colors" />
-              <ArrowUpRight className="h-4 w-4 text-green-400/60 group-hover:text-green-300 transition-colors" />
             </div>
+      <div className="bg-dark-800 border border-golden-600/20 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-golden-400 mb-4">Occupancy Trend</h3>
+        <div className="h-64 flex items-center justify-center text-golden-300">
+          Chart placeholder - Occupancy trend over 6 months
           </div>
-        </Link>
-
-        <Link 
-          to="/payments" 
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
-          onClick={() => console.log('Clicked Pending Collections card')}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm font-medium">Pending Collections</p>
-              <p className="text-2xl font-bold text-orange-400">{formatCurrency(dashboardData.pending_collections)}</p>
-              <p className="text-golden-300 text-sm">{dashboardData.current_month_stats.pending_bills} bills pending</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="h-8 w-8 text-orange-400 group-hover:text-orange-300 transition-colors" />
-              <ArrowUpRight className="h-4 w-4 text-orange-400/60 group-hover:text-orange-300 transition-colors" />
-            </div>
-          </div>
-        </Link>
-      </div>
-
-      {/* Additional Navigation Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Link 
-          to="/maintenance" 
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
-          onClick={() => console.log('Clicked Maintenance card')}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm font-medium">Maintenance</p>
-              <p className="text-2xl font-bold text-blue-400">{dashboardData.maintenance_alerts}</p>
-              <p className="text-golden-300 text-sm">Active requests</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-8 w-8 text-blue-400 group-hover:text-blue-300 transition-colors" />
-              <ArrowUpRight className="h-4 w-4 text-blue-400/60 group-hover:text-blue-300 transition-colors" />
-            </div>
-          </div>
-        </Link>
-
-        <Link 
-          to="/visitors" 
-          className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 cursor-pointer group"
-          onClick={() => console.log('Clicked Visitors card')}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm font-medium">Visitors</p>
-              <p className="text-2xl font-bold text-purple-400">0</p>
-              <p className="text-golden-300 text-sm">Today's visitors</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-8 w-8 text-purple-400 group-hover:text-purple-300 transition-colors" />
-              <ArrowUpRight className="h-4 w-4 text-purple-400/60 group-hover:text-purple-300 transition-colors" />
-            </div>
-          </div>
-        </Link>
-
-        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-golden-300 text-sm font-medium">Quick Actions</p>
-              <p className="text-2xl font-bold text-golden-400">2</p>
-              <p className="text-golden-300 text-sm">Available actions</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Settings className="h-8 w-8 text-golden-400" />
-            </div>
-          </div>
-          <div className="mt-4 flex gap-2">
-            <button
-              onClick={() => setShowReportsModal(true)}
-              className="flex-1 px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
-            >
-              Generate Report
-            </button>
-            <button
-              onClick={() => setShowNotificationsModal(true)}
-              className="flex-1 px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
-            >
-              Send Notification
-            </button>
           </div>
         </div>
 
-        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
-          <div className="flex items-center justify-between">
+    <div className="bg-dark-800 border border-golden-600/20 rounded-lg p-6">
+      <h3 className="text-lg font-semibold text-golden-400 mb-4">Recent Payments</h3>
+      <div className="space-y-3">
+        {recentPayments.slice(0, 5).map((payment) => (
+          <div key={payment.id} className="flex items-center justify-between p-3 bg-dark-900 rounded-lg">
             <div>
-              <p className="text-golden-300 text-sm font-medium">System Status</p>
-              <p className="text-2xl font-bold text-green-400">Online</p>
-              <p className="text-golden-300 text-sm">All systems operational</p>
+              <p className="text-golden-100 font-medium">{payment.tenant_name}</p>
+              <p className="text-golden-300 text-sm">Room {payment.room_number}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-8 w-8 text-green-400" />
+            <div className="text-right">
+              <p className="text-green-400 font-semibold">{formatCurrency(payment.amount)}</p>
+              <p className="text-golden-300 text-sm capitalize">{payment.method}</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Charts and Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Revenue Trend */}
-        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Revenue Trend (Last 6 Months)
-          </h3>
-          <div className="space-y-3">
-            {dashboardData.monthly_revenue_trend && dashboardData.monthly_revenue_trend.length > 0 ? dashboardData.monthly_revenue_trend.slice(-6).map((data, index) => {
-              const maxRevenue = Math.max(...dashboardData.monthly_revenue_trend.map(d => d.revenue));
-              const percentage = (data.revenue / maxRevenue) * 100;
-              
-              return (
-                <div key={data.month} className="flex items-center gap-4">
-                  <div className="w-16 text-sm text-golden-300">
-                    {new Date(data.month + '-01').toLocaleDateString('en-US', { month: 'short' })}
-                  </div>
-                  <div className="flex-1">
-                    <div className="bg-dark-800 rounded-full h-6 relative overflow-hidden">
-                      <div 
-                        className="bg-gradient-to-r from-golden-500 to-golden-600 h-full rounded-full transition-all duration-1000"
-                        style={{ width: `${percentage}%` }}
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xs font-medium text-white">
-                          {formatCurrency(data.revenue)}
-                        </span>
-                      </div>
+        ))}
                     </div>
                   </div>
                 </div>
               );
-            }) : <div className="text-golden-400/60 text-center py-4">No revenue data available</div>}
-          </div>
-        </div>
 
-        {/* Occupancy Trend */}
-        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Occupancy Trend (Last 6 Months)
-          </h3>
-          <div className="space-y-3">
-            {dashboardData.occupancy_trend.slice(-6).map((data, index) => (
-              <div key={data.month} className="flex items-center gap-4">
-                <div className="w-16 text-sm text-golden-300">
-                  {new Date(data.month + '-01').toLocaleDateString('en-US', { month: 'short' })}
+const RoomsTab = ({ rooms, onAddRoom }: { rooms: Room[]; onAddRoom: () => void }) => (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <h3 className="text-lg font-semibold text-golden-400">Room Management</h3>
+      <button
+        onClick={onAddRoom}
+        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        <Plus className="h-4 w-4" />
+        Add Room
+      </button>
                 </div>
-                <div className="flex-1">
-                  <div className="bg-dark-800 rounded-full h-6 relative overflow-hidden">
-                    <div 
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 h-full rounded-full transition-all duration-1000"
-                      style={{ width: `${data.occupancy}%` }}
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs font-medium text-white">
-                        {data.occupancy}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {rooms.map((room) => (
+        <RoomCard key={room.id} room={room} />
             ))}
           </div>
         </div>
-      </div>
+);
 
-      {/* Current Month Stats and Payment Methods */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Current Month Performance */}
-        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            This Month Performance
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-400">{dashboardData.current_month_stats.paid_bills}</div>
-              <div className="text-sm text-golden-300">Bills Paid</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-400">{dashboardData.current_month_stats.pending_bills}</div>
-              <div className="text-sm text-golden-300">Bills Pending</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-golden-100">{formatCurrency(dashboardData.current_month_stats.collection_amount)}</div>
-              <div className="text-sm text-golden-300">Collected</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-red-400">{formatCurrency(dashboardData.current_month_stats.pending_amount)}</div>
-              <div className="text-sm text-golden-300">Pending</div>
-            </div>
-          </div>
+const TenantsTab = ({ tenants, onAddTenant }: { tenants: Tenant[]; onAddTenant: () => void }) => (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <h3 className="text-lg font-semibold text-golden-400">Tenant Management</h3>
+      <button
+        onClick={onAddTenant}
+        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+      >
+        <Plus className="h-4 w-4" />
+        Add Tenant
+      </button>
         </div>
 
-        {/* Payment Methods */}
-        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Payment Methods
-          </h3>
-          <div className="space-y-3">
-            {Object.entries(dashboardData.payment_method_distribution).map(([method, count]) => {
-              const total = Object.values(dashboardData.payment_method_distribution).reduce((sum, val) => sum + val, 0);
-              const percentage = total > 0 ? (count / total) * 100 : 0;
-              
-              return (
-                <div key={method} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-golden-500" />
-                    <span className="text-golden-300 capitalize">{method.replace('_', ' ')}</span>
+    <div className="bg-dark-800 border border-golden-600/20 rounded-lg overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-dark-900">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Tenant</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Room</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Contact</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Rent</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-golden-600/20">
+            {tenants.map((tenant) => (
+              <tr key={tenant.id} className="hover:bg-dark-900">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div>
+                    <div className="text-sm font-medium text-golden-100">{tenant.name}</div>
+                    <div className="text-sm text-golden-300">Joined {formatDate(tenant.joining_date)}</div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 bg-dark-800 rounded-full h-2">
-                      <div 
-                        className="bg-golden-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${percentage}%` }}
-                      />
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-golden-300">Room {tenant.room_number}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-golden-300">{tenant.mobile}</div>
+                  {tenant.email && <div className="text-sm text-golden-400">{tenant.email}</div>}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(tenant.status)}`}>
+                    {getStatusIcon(tenant.status)}
+                    <span className="ml-1 capitalize">{tenant.status}</span>
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-golden-300">{formatCurrency(tenant.monthly_rent)}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button className="text-golden-400 hover:text-golden-300 mr-3">Edit</button>
+                  <button className="text-red-400 hover:text-red-300">Delete</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
                     </div>
-                    <span className="text-golden-100 text-sm font-medium w-8">{count}</span>
                   </div>
                 </div>
               );
-            })}
-          </div>
-        </div>
-      </div>
 
-      {/* Recent Activities and Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Activities */}
-        <div className="lg:col-span-2 bg-dark-900 border border-golden-600/20 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Recent Activities
-          </h3>
-          <div className="space-y-4">
-            {activities.map((activity) => (
-              <div key={activity.id} className="flex items-center gap-4 p-3 bg-dark-800 rounded-lg">
-                <div className={`p-2 rounded-full ${getActivityColor(activity.color)}`}>
-                  {getActivityIcon(activity.type)}
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium text-golden-100">{activity.title}</h4>
-                  <p className="text-golden-300 text-sm">{activity.description}</p>
-                  <p className="text-golden-400 text-xs">{new Date(activity.date).toLocaleDateString()}</p>
-                </div>
-                {activity.amount && (
-                  <div className="text-golden-400 font-semibold">
-                    {formatCurrency(activity.amount)}
-                  </div>
-                )}
+const PaymentsTab = ({ payments, onAddPayment }: { payments: Payment[]; onAddPayment: () => void }) => (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <h3 className="text-lg font-semibold text-golden-400">Payment Tracking</h3>
+      <button
+        onClick={onAddPayment}
+        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+      >
+        <Plus className="h-4 w-4" />
+        Record Payment
+      </button>
               </div>
+    
+    <div className="bg-dark-800 border border-golden-600/20 rounded-lg overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-dark-900">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Tenant</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Room</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Amount</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Method</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Status</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-golden-600/20">
+            {payments.map((payment) => (
+              <tr key={payment.id} className="hover:bg-dark-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-golden-100">{payment.tenant_name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-golden-300">Room {payment.room_number}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-400 font-semibold">{formatCurrency(payment.amount)}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-golden-300 capitalize">{payment.method}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-golden-300">{formatDate(payment.date)}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
+                    {getStatusIcon(payment.status)}
+                    <span className="ml-1 capitalize">{payment.status}</span>
+                  </span>
+                </td>
+              </tr>
             ))}
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="bg-dark-900 border border-golden-600/20 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-golden-400 mb-4 flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Quick Actions
-          </h3>
-          <div className="space-y-3">
-            <Link
-              to="/tenants"
-              className="flex items-center justify-between p-3 bg-dark-800 rounded-lg hover:bg-dark-700 transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <Users className="h-4 w-4 text-blue-400" />
-                <span className="text-golden-100">Manage Tenants</span>
+          </tbody>
+        </table>
               </div>
-              <ArrowUpRight className="h-4 w-4 text-golden-400 group-hover:text-golden-100" />
-            </Link>
-
-            <Link
-              to="/rooms"
-              className="flex items-center justify-between p-3 bg-dark-800 rounded-lg hover:bg-dark-700 transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <Building className="h-4 w-4 text-purple-400" />
-                <span className="text-golden-100">Room Management</span>
               </div>
-              <ArrowUpRight className="h-4 w-4 text-golden-400 group-hover:text-golden-100" />
-            </Link>
-
-            <Link
-              to="/payments"
-              className="flex items-center justify-between p-3 bg-dark-800 rounded-lg hover:bg-dark-700 transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <CreditCard className="h-4 w-4 text-green-400" />
-                <span className="text-golden-100">Payment Tracking</span>
               </div>
-              <ArrowUpRight className="h-4 w-4 text-golden-400 group-hover:text-golden-100" />
-            </Link>
+);
 
+const MaintenanceTab = ({ requests, onAddRequest }: { requests: MaintenanceRequest[]; onAddRequest: () => void }) => (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <h3 className="text-lg font-semibold text-golden-400">Maintenance Requests</h3>
             <button 
-              onClick={() => setShowReportsModal(true)}
-              className="w-full flex items-center justify-between p-3 bg-dark-800 rounded-lg hover:bg-dark-700 transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <FileText className="h-4 w-4 text-orange-400" />
-                <span className="text-golden-100">Generate Reports</span>
-              </div>
-              <ArrowUpRight className="h-4 w-4 text-golden-400 group-hover:text-golden-100" />
+        onClick={onAddRequest}
+        className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+      >
+        <Plus className="h-4 w-4" />
+        Add Request
             </button>
-
-            <button 
-              onClick={() => setShowNotificationsModal(true)}
-              className="w-full flex items-center justify-between p-3 bg-dark-800 rounded-lg hover:bg-dark-700 transition-colors group"
-            >
-              <div className="flex items-center gap-3">
-                <Bell className="h-4 w-4 text-red-400" />
-                <span className="text-golden-100">Send Notifications</span>
-              </div>
-              <ArrowUpRight className="h-4 w-4 text-golden-400 group-hover:text-golden-100" />
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* Reports Modal */}
-      {showReportsModal && (
-        <ReportsModal 
-          isOpen={showReportsModal}
-          onClose={() => setShowReportsModal(false)}
-        />
-      )}
-
-      {/* Notifications Modal */}
-      {showNotificationsModal && (
-        <NotificationsModal 
-          isOpen={showNotificationsModal}
-          onClose={() => setShowNotificationsModal(false)}
-        />
-      )}
-    </div>
-  );
-};
-
-// Reports Modal Component
-interface ReportsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const ReportsModal = ({ isOpen, onClose }: ReportsModalProps) => {
-  const [selectedReport, setSelectedReport] = useState('');
-  const [dateRange, setDateRange] = useState({
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0]
-  });
-  const [generating, setGenerating] = useState(false);
-
-  const reportTypes = [
-    { id: 'tenant-summary', name: 'Tenant Summary Report', description: 'Complete list of all tenants with details' },
-    { id: 'payment-report', name: 'Payment Report', description: 'Payment history and pending collections' },
-    { id: 'occupancy-report', name: 'Occupancy Report', description: 'Room occupancy and availability trends' },
-    { id: 'maintenance-report', name: 'Maintenance Report', description: 'Maintenance requests and completion status' },
-    { id: 'financial-summary', name: 'Financial Summary', description: 'Revenue, expenses, and profit analysis' },
-    { id: 'visitor-report', name: 'Visitor Report', description: 'Visitor logs and statistics' }
-  ];
-
-  const generateReport = async () => {
-    if (!selectedReport) {
-      alert('Please select a report type');
-      return;
-    }
-
-    setGenerating(true);
-    try {
-      // Simulate report generation
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // In a real implementation, this would call the backend API
-      console.log('Generating report:', selectedReport, dateRange);
-      
-      // For demo, we'll show a success message
-      alert(`${reportTypes.find(r => r.id === selectedReport)?.name} has been generated successfully!`);
-      
-      onClose();
-    } catch (error) {
-      console.error('Error generating report:', error);
-      alert('Failed to generate report. Please try again.');
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-900 border border-golden-600/20 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-golden-600/20">
-          <h2 className="text-xl font-semibold text-golden-400">Generate Reports</h2>
-          <button onClick={onClose} className="text-golden-300 hover:text-golden-100">
-            <X className="h-6 w-6" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6">
-          {/* Report Type Selection */}
+    <div className="space-y-4">
+      {requests.map((request) => (
+        <div key={request.id} className="bg-dark-800 border border-golden-600/20 rounded-lg p-4">
+          <div className="flex items-center justify-between">
           <div>
-            <label className="block text-sm font-medium text-golden-300 mb-3">Select Report Type</label>
-            <div className="space-y-2">
-              {reportTypes.map((report) => (
-                <label key={report.id} className="flex items-start gap-3 p-3 border border-golden-600/30 rounded-lg hover:bg-dark-800 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="reportType"
-                    value={report.id}
-                    checked={selectedReport === report.id}
-                    onChange={(e) => setSelectedReport(e.target.value)}
-                    className="mt-1 text-golden-500 focus:ring-golden-500"
-                  />
-                  <div>
-                    <div className="font-medium text-golden-100">{report.name}</div>
-                    <div className="text-golden-300 text-sm">{report.description}</div>
+              <h4 className="text-golden-100 font-medium">{request.issue}</h4>
+              <p className="text-golden-300 text-sm">Room {request.room_number} - {request.tenant_name}</p>
+              <p className="text-golden-400 text-sm">Created {formatDate(request.created_date)}</p>
                   </div>
-                </label>
-              ))}
+            <div className="flex items-center gap-3">
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.priority)}`}>
+                {getStatusIcon(request.priority)}
+                <span className="ml-1 capitalize">{request.priority}</span>
+              </span>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                {getStatusIcon(request.status)}
+                <span className="ml-1 capitalize">{request.status}</span>
+              </span>
             </div>
           </div>
+            </div>
+      ))}
+            </div>
+          </div>
+);
 
-          {/* Date Range */}
-          <div className="grid grid-cols-2 gap-4">
+const VisitorsTab = ({ visitors, onAddVisitor }: { visitors: Visitor[]; onAddVisitor: () => void }) => (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <h3 className="text-lg font-semibold text-golden-400">Today's Visitors</h3>
+            <button
+        onClick={onAddVisitor}
+        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+        <Plus className="h-4 w-4" />
+        Add Visitor
+            </button>
+    </div>
+    
+    <div className="space-y-4">
+      {visitors.map((visitor) => (
+        <div key={visitor.id} className="bg-dark-800 border border-golden-600/20 rounded-lg p-4">
+          <div className="flex items-center justify-between">
             <div>
-              <label className="block text-sm font-medium text-golden-300 mb-2">Start Date</label>
-              <input
-                type="date"
-                value={dateRange.startDate}
-                onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-                className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
-              />
+              <h4 className="text-golden-100 font-medium">{visitor.name}</h4>
+              <p className="text-golden-300 text-sm">Visiting {visitor.visiting_tenant} (Room {visitor.room_number})</p>
+              <p className="text-golden-400 text-sm">Purpose: {visitor.purpose}</p>
+              <p className="text-golden-400 text-sm">Entry: {new Date(visitor.entry_time).toLocaleTimeString()}</p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-golden-300 mb-2">End Date</label>
-              <input
-                type="date"
-                value={dateRange.endDate}
-                onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-                className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
-              />
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-golden-600/20">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-golden-600/30 text-golden-300 rounded-lg hover:bg-golden-600/10 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={generateReport}
-              disabled={generating || !selectedReport}
-              className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-golden-500 to-golden-600 text-dark-900 rounded-lg hover:from-golden-600 hover:to-golden-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {generating ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-dark-900/30 border-t-dark-900 rounded-full animate-spin"></div>
-                  Generating...
-                </>
+            <div className="text-right">
+              {visitor.exit_time ? (
+                <span className="text-green-400 text-sm">Exited: {new Date(visitor.exit_time).toLocaleTimeString()}</span>
               ) : (
-                <>
-                  <Download className="h-4 w-4" />
-                  Generate Report
-                </>
+                <span className="text-orange-400 text-sm">Currently Inside</span>
               )}
-            </button>
           </div>
         </div>
+        </div>
+      ))}
       </div>
     </div>
   );
-};
 
-// Notifications Modal Component
-interface NotificationsModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-const NotificationsModal = ({ isOpen, onClose }: NotificationsModalProps) => {
-  const [notificationType, setNotificationType] = useState('');
-  const [recipients, setRecipients] = useState('all');
-  const [message, setMessage] = useState('');
-  const [subject, setSubject] = useState('');
-  const [sending, setSending] = useState(false);
-
-  const notificationTypes = [
-    { id: 'payment-reminder', name: 'Payment Reminder', description: 'Remind tenants about pending payments' },
-    { id: 'maintenance-update', name: 'Maintenance Update', description: 'Updates about maintenance activities' },
-    { id: 'general-announcement', name: 'General Announcement', description: 'General announcements to residents' },
-    { id: 'emergency-alert', name: 'Emergency Alert', description: 'Urgent notifications for emergencies' }
-  ];
-
-  const recipientOptions = [
-    { id: 'all', name: 'All Tenants', description: 'Send to all active tenants' },
-    { id: 'overdue', name: 'Overdue Payments', description: 'Only tenants with pending payments' },
-    { id: 'specific', name: 'Specific Tenants', description: 'Select specific tenants' }
-  ];
-
-  const sendNotification = async () => {
-    if (!notificationType || !message || !subject) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    setSending(true);
-    try {
-      // Simulate sending notification
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // In a real implementation, this would call the backend API
-      console.log('Sending notification:', { notificationType, recipients, subject, message });
-      
-      // For demo, we'll show a success message
-      alert('Notification sent successfully!');
-      
-      onClose();
-      setNotificationType('');
-      setRecipients('all');
-      setMessage('');
-      setSubject('');
-    } catch (error) {
-      console.error('Error sending notification:', error);
-      alert('Failed to send notification. Please try again.');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-dark-900 border border-golden-600/20 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-golden-600/20">
-          <h2 className="text-xl font-semibold text-golden-400">Send Notifications</h2>
-          <button onClick={onClose} className="text-golden-300 hover:text-golden-100">
-            <X className="h-6 w-6" />
-          </button>
+// Room Card Component
+const RoomCard = ({ room }: { room: Room }) => (
+  <div className="bg-dark-800 border border-golden-600/20 rounded-lg p-4 hover:bg-dark-900 transition-colors">
+    <div className="flex items-center justify-between mb-3">
+      <h4 className="text-golden-100 font-medium">Room {room.room_number}</h4>
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(room.status)}`}>
+        {getStatusIcon(room.status)}
+        <span className="ml-1 capitalize">{room.status}</span>
+      </span>
         </div>
 
-        <div className="p-6 space-y-6">
-          {/* Notification Type */}
-          <div>
-            <label className="block text-sm font-medium text-golden-300 mb-3">Notification Type</label>
-            <div className="space-y-2">
-              {notificationTypes.map((type) => (
-                <label key={type.id} className="flex items-start gap-3 p-3 border border-golden-600/30 rounded-lg hover:bg-dark-800 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="notificationType"
-                    value={type.id}
-                    checked={notificationType === type.id}
-                    onChange={(e) => setNotificationType(e.target.value)}
-                    className="mt-1 text-golden-500 focus:ring-golden-500"
-                  />
-                  <div>
-                    <div className="font-medium text-golden-100">{type.name}</div>
-                    <div className="text-golden-300 text-sm">{type.description}</div>
+    <div className="space-y-2 text-sm">
+      <div className="flex justify-between">
+        <span className="text-golden-300">Floor:</span>
+        <span className="text-golden-100">{room.floor}</span>
                   </div>
-                </label>
-              ))}
+      <div className="flex justify-between">
+        <span className="text-golden-300">Type:</span>
+        <span className="text-golden-100">{room.type}</span>
             </div>
+      <div className="flex justify-between">
+        <span className="text-golden-300">Rent:</span>
+        <span className="text-golden-100">{formatCurrency(room.monthly_rent)}</span>
           </div>
-
-          {/* Recipients */}
-          <div>
-            <label className="block text-sm font-medium text-golden-300 mb-3">Recipients</label>
-            <div className="space-y-2">
-              {recipientOptions.map((option) => (
-                <label key={option.id} className="flex items-start gap-3 p-3 border border-golden-600/30 rounded-lg hover:bg-dark-800 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="recipients"
-                    value={option.id}
-                    checked={recipients === option.id}
-                    onChange={(e) => setRecipients(e.target.value)}
-                    className="mt-1 text-golden-500 focus:ring-golden-500"
-                  />
-                  <div>
-                    <div className="font-medium text-golden-100">{option.name}</div>
-                    <div className="text-golden-300 text-sm">{option.description}</div>
+      {room.tenant_name && (
+        <div className="flex justify-between">
+          <span className="text-golden-300">Tenant:</span>
+          <span className="text-golden-100">{room.tenant_name}</span>
                   </div>
-                </label>
-              ))}
-            </div>
+      )}
           </div>
 
-          {/* Subject */}
-          <div>
-            <label className="block text-sm font-medium text-golden-300 mb-2">Subject *</label>
-            <input
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="Enter notification subject"
-              className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 placeholder-golden-400/50 focus:outline-none focus:border-golden-500"
-            />
-          </div>
-
-          {/* Message */}
-          <div>
-            <label className="block text-sm font-medium text-golden-300 mb-2">Message *</label>
-            <textarea
-              rows={4}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Enter your message here..."
-              className="w-full px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 placeholder-golden-400/50 focus:outline-none focus:border-golden-500"
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-golden-600/20">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-golden-600/30 text-golden-300 rounded-lg hover:bg-golden-600/10 transition-colors"
-            >
-              Cancel
+    <div className="mt-4 flex gap-2">
+      <button className="flex-1 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors">
+        Edit
             </button>
-            <button
-              onClick={sendNotification}
-              disabled={sending || !notificationType || !message || !subject}
-              className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-golden-500 to-golden-600 text-dark-900 rounded-lg hover:from-golden-600 hover:to-golden-700 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {sending ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-dark-900/30 border-t-dark-900 rounded-full animate-spin"></div>
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  Send Notification
-                </>
-              )}
+      <button className="flex-1 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors">
+        Delete
             </button>
-          </div>
-        </div>
       </div>
     </div>
   );
-};
 
 export default Dashboard; 
