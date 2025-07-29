@@ -80,6 +80,15 @@ const formatDate = (dateString: string) => {
   });
 };
 
+const formatDisplayDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit'
+  });
+};
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'active':
@@ -611,8 +620,8 @@ const Dashboard = () => {
   const [selectedYear, setSelectedYear] = useState('2023');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDateRange, setSelectedDateRange] = useState({
-    start: '01/08/23',
-    end: '31/08/23'
+    start: '2023-08-01',
+    end: '2023-08-31'
   });
 
   const handleDateRangeClick = () => {
@@ -744,8 +753,8 @@ const Dashboard = () => {
                   className="bg-yellow-500 text-gray-900 px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2 hover:bg-yellow-400 transition-all duration-300 hover-lift cursor-pointer"
                 >
                   <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">{selectedDateRange.start} - {selectedDateRange.end}</span>
-                  <span className="sm:hidden">{selectedDateRange.start}</span>
+                  <span className="hidden sm:inline">{formatDisplayDate(selectedDateRange.start)} - {formatDisplayDate(selectedDateRange.end)}</span>
+                  <span className="sm:hidden">{formatDisplayDate(selectedDateRange.start)}</span>
                 </button>
               </div>
 
