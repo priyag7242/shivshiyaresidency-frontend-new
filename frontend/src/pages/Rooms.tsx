@@ -329,185 +329,375 @@ const Rooms = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Custom CSS for scrollbar hide */}
+    <div className="min-h-screen bg-white">
+      {/* Custom CSS for animations */}
       <style>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
+        
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes bounceIn {
+          0% { opacity: 0; transform: scale(0.3); }
+          50% { opacity: 1; transform: scale(1.05); }
+          70% { transform: scale(0.9); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        
+        @keyframes countUp {
+          from { opacity: 0; transform: scale(0.5); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.6s ease-out forwards;
+        }
+        
+        .animate-slideUp {
+          animation: slideUp 0.8s ease-out forwards;
+        }
+        
+        .animate-bounceIn {
+          animation: bounceIn 0.8s ease-out forwards;
+        }
+        
+        .animate-countUp {
+          animation: countUp 0.8s ease-out forwards;
+        }
+        
+        .hover-lift {
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .hover-lift:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
         }
       `}</style>
 
-      {/* Mobile Header with Search */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search Room 101"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-              />
-            </div>
-            <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-              <MoreVertical className="h-5 w-5" />
-            </button>
+      {/* Top Navigation Bar */}
+      <div className="bg-gray-900 text-yellow-500 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="text-sm sm:text-base font-medium">
+            Welcome back, Administrator
           </div>
-        </div>
-
-        {/* Room Type Carousel */}
-        <div className="px-4 pb-3">
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-            <button 
-              onClick={() => {
-                setStatusFilter('');
-                setTypeFilter('');
-              }}
-              className="flex flex-col items-center gap-1 px-4 py-2 bg-black text-white rounded-full text-sm font-medium whitespace-nowrap"
-            >
-              <span>All</span>
-              <span className="text-xs">{stats.total}</span>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <button className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-500 rounded-full flex items-center justify-center hover:bg-yellow-400 transition-all duration-300">
+              <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900" />
             </button>
-            <button 
-              onClick={() => {
-                setStatusFilter('available');
-                setTypeFilter('');
-              }}
-              className="flex flex-col items-center gap-1 px-4 py-2 bg-white text-black border border-gray-200 rounded-full text-sm font-medium whitespace-nowrap"
-            >
-              <span>Vacant beds</span>
-              <span className="text-xs">{stats.available}</span>
-            </button>
-            <button 
-              onClick={() => {
-                setStatusFilter('');
-                setTypeFilter('single');
-              }}
-              className="flex flex-col items-center gap-1 px-4 py-2 bg-white text-black border border-gray-200 rounded-full text-sm font-medium whitespace-nowrap"
-            >
-              <span>1 Bed</span>
-              <span className="text-xs">{stats.typeStats.single?.total || 0}</span>
-            </button>
-            <button 
-              onClick={() => {
-                setStatusFilter('');
-                setTypeFilter('double');
-              }}
-              className="flex flex-col items-center gap-1 px-4 py-2 bg-white text-black border border-gray-200 rounded-full text-sm font-medium whitespace-nowrap"
-            >
-              <span>2 Bed</span>
-              <span className="text-xs">{stats.typeStats.double?.total || 0}</span>
-            </button>
-            <button 
-              onClick={() => {
-                setStatusFilter('');
-                setTypeFilter('triple');
-              }}
-              className="flex flex-col items-center gap-1 px-4 py-2 bg-white text-black border border-gray-200 rounded-full text-sm font-medium whitespace-nowrap"
-            >
-              <span>3 Bed</span>
-              <span className="text-xs">{stats.typeStats.triple?.total || 0}</span>
-            </button>
-            <button 
-              onClick={() => {
-                setStatusFilter('');
-                setTypeFilter('quad');
-              }}
-              className="flex flex-col items-center gap-1 px-4 py-2 bg-white text-black border border-gray-200 rounded-full text-sm font-medium whitespace-nowrap"
-            >
-              <span>4 Bed</span>
-              <span className="text-xs">{stats.typeStats.quad?.total || 0}</span>
-            </button>
-            <div className="flex items-center gap-1 px-2">
-              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-500 rounded-full flex items-center justify-center">
+                <User className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900" />
+              </div>
+              <span className="text-sm sm:text-base font-medium">admin</span>
+              <ChevronDown className="h-4 w-4 text-yellow-500" />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Room List */}
-      <div className="px-4 py-4">
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto"></div>
-            <p className="text-gray-600 mt-2">Loading rooms...</p>
-          </div>
-        ) : rooms.length === 0 ? (
-          <div className="text-center py-8">
-            <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">No rooms found</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {rooms.map((room) => (
-              <div key={room.id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Building className="h-4 w-4 text-gray-600" />
-                    <h3 className="font-semibold text-gray-900">Room {room.room_number}</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      room.status === 'available' 
-                        ? 'bg-yellow-100 text-yellow-800' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {room.status === 'available' ? 'Available' : 'Full'}
-                    </span>
-                    <button className="p-1 text-gray-400 hover:text-gray-600">
-                      <MoreVertical className="h-4 w-4" />
-                    </button>
-                  </div>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+          {/* Left Column - Room Overview and Quick Actions */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Room Overview Section */}
+            <div className="bg-gray-900 rounded-xl p-4 sm:p-6 relative transition-all duration-500 ease-in-out hover-lift">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
+                <h2 className="text-white font-bold text-lg sm:text-xl">ROOM OVERVIEW</h2>
+                <div className="bg-yellow-500 text-gray-900 px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2">
+                  <Building className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Total: {stats.total} Rooms</span>
+                  <span className="sm:hidden">{stats.total}</span>
                 </div>
+              </div>
 
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
-                      <span className="text-xs font-medium">🛏️</span>
-                    </div>
-                    <span>Bed: {room.capacity}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
-                      <span className="text-xs font-medium">🔔</span>
-                    </div>
-                    <span>Under Notice: {room.tenants.filter(t => t.name.includes('Notice')).length}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
-                      <span className="text-xs font-medium">💰</span>
-                    </div>
-                    <span>Rent Due: {room.tenants.length > 0 ? room.tenants.length : 0}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
-                      <span className="text-xs font-medium">🎫</span>
-                    </div>
-                    <span>Active Ticket: {room.maintenance_status === 'in_progress' ? 1 : 0}</span>
-                  </div>
+              <div className="text-white mb-4">
+                <div className="text-2xl sm:text-3xl lg:text-4xl font-bold animate-countUp">{formatCurrency(stats.totalRevenue)}</div>
+                <div className="text-sm sm:text-lg opacity-80 animate-fadeIn" style={{ animationDelay: '0.3s' }}>Monthly Revenue from Rooms</div>
+              </div>
+
+              {/* Room Stats Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6">
+                <div className="text-center p-3 bg-gray-800 rounded-lg">
+                  <div className="text-green-400 text-lg sm:text-xl font-bold animate-countUp">{stats.available}</div>
+                  <div className="text-gray-300 text-xs sm:text-sm">Available</div>
                 </div>
+                <div className="text-center p-3 bg-gray-800 rounded-lg">
+                  <div className="text-blue-400 text-lg sm:text-xl font-bold animate-countUp">{stats.occupied}</div>
+                  <div className="text-gray-300 text-xs sm:text-sm">Occupied</div>
+                </div>
+                <div className="text-center p-3 bg-gray-800 rounded-lg">
+                  <div className="text-orange-400 text-lg sm:text-xl font-bold animate-countUp">{stats.maintenance}</div>
+                  <div className="text-gray-300 text-xs sm:text-sm">Maintenance</div>
+                </div>
+                <div className="text-center p-3 bg-gray-800 rounded-lg">
+                  <div className="text-purple-400 text-lg sm:text-xl font-bold animate-countUp">{stats.reserved}</div>
+                  <div className="text-gray-300 text-xs sm:text-sm">Reserved</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4 sm:mb-6">Quick Actions</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                <button 
+                  onClick={() => {
+                    setSelectedRoom(null);
+                    setShowAddModal(true);
+                  }}
+                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
+                  style={{ animationDelay: '0.1s' }}
+                >
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-all duration-300 group-hover:scale-110">
+                    <Plus className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Add Room</span>
+                </button>
+                
+                <button 
+                  onClick={() => setShowAllocationModal(true)}
+                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
+                  style={{ animationDelay: '0.2s' }}
+                >
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-all duration-300 group-hover:scale-110">
+                    <UserPlus className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Allocate Room</span>
+                </button>
+                
+                <button 
+                  onClick={() => setShowMaintenanceModal(true)}
+                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
+                  style={{ animationDelay: '0.3s' }}
+                >
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-all duration-300 group-hover:scale-110">
+                    <Wrench className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Maintenance</span>
+                </button>
 
                 <button 
                   onClick={() => {
-                    setSelectedRoom(room);
-                    setShowAllocationModal(true);
+                    setStatusFilter('');
+                    setFloorFilter('');
+                    setTypeFilter('');
+                    setMaintenanceFilter('');
+                    setSearchTerm('');
                   }}
-                  className="w-full py-2 bg-gray-100 text-gray-800 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
+                  style={{ animationDelay: '0.4s' }}
                 >
-                  ADD TENANT
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-all duration-300 group-hover:scale-110">
+                    <Eye className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">View All</span>
                 </button>
               </div>
-            ))}
+            </div>
+
+            {/* Room List with Detailed Information */}
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <h2 className="text-gray-900 font-bold text-lg sm:text-xl">Room List</h2>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Search rooms..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-sm"
+                  />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-sm"
+                  >
+                    <option value="">All Status</option>
+                    <option value="available">Available</option>
+                    <option value="occupied">Occupied</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="reserved">Reserved</option>
+                  </select>
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto"></div>
+                  <p className="text-gray-600 mt-2">Loading rooms...</p>
+                </div>
+              ) : rooms.length === 0 ? (
+                <div className="text-center py-8">
+                  <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">No rooms found</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {rooms.slice(0, 6).map((room) => (
+                    <div key={room.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-300">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Building className="h-4 w-4 text-gray-600" />
+                          <h3 className="font-semibold text-gray-900">Room {room.room_number}</h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            room.status === 'available' 
+                              ? 'bg-yellow-100 text-yellow-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {room.status === 'available' ? 'Available' : 'Full'}
+                          </span>
+                          <button className="p-1 text-gray-400 hover:text-gray-600">
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Basic Room Info */}
+                      <div className="space-y-2 text-sm text-gray-600 mb-3">
+                        <div className="flex items-center gap-2">
+                          <Layers className="h-4 w-4" />
+                          <span>Floor {room.floor}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4" />
+                          <span>{room.current_occupancy}/{room.capacity} Occupied</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <IndianRupee className="h-4 w-4" />
+                          <span>{formatCurrency(room.monthly_rent)}/month</span>
+                        </div>
+                      </div>
+
+                      {/* Detailed Room Information */}
+                      <div className="space-y-2 mb-4 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                            <span className="text-xs font-medium">🛏️</span>
+                          </div>
+                          <span>Bed: {room.capacity}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                            <span className="text-xs font-medium">🔔</span>
+                          </div>
+                          <span>Under Notice: {room.tenants.filter(t => t.name.includes('Notice')).length}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                            <span className="text-xs font-medium">💰</span>
+                          </div>
+                          <span>Rent Due: {room.tenants.length > 0 ? room.tenants.length : 0}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                            <span className="text-xs font-medium">🎫</span>
+                          </div>
+                          <span>Active Ticket: {room.maintenance_status === 'in_progress' ? 1 : 0}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedRoom(room);
+                            setShowDetailsModal(true);
+                          }}
+                          className="flex-1 px-3 py-2 bg-yellow-500 text-gray-900 rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors"
+                        >
+                          View Details
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedRoom(room);
+                            setShowAllocationModal(true);
+                          }}
+                          className="flex-1 px-3 py-2 bg-gray-100 text-gray-800 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                        >
+                          Add Tenant
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        )}
+
+          {/* Right Column - Room Stats */}
+          <div className="space-y-6">
+            {/* Room Statistics */}
+            <div className="bg-yellow-500 rounded-xl p-4 sm:p-6 hover-lift transition-all duration-300">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Room Statistics</h2>
+              <div className="bg-white rounded-lg p-4 sm:p-6 hover-lift transition-all duration-300">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm sm:text-base">Total Capacity:</span>
+                    <span className="text-blue-600 font-bold text-lg sm:text-xl animate-countUp">{stats.totalCapacity}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm sm:text-base">Current Occupancy:</span>
+                    <span className="text-green-600 font-bold text-lg sm:text-xl animate-countUp">{stats.currentOccupancy}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm sm:text-base">Occupancy Rate:</span>
+                    <span className="text-purple-600 font-bold text-lg sm:text-xl animate-countUp">
+                      {stats.totalCapacity > 0 ? Math.round((stats.currentOccupancy / stats.totalCapacity) * 100) : 0}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Maintenance Status */}
+            <div className="bg-yellow-500 rounded-xl p-4 sm:p-6 hover-lift transition-all duration-300">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Maintenance Status</h2>
+              <div className="bg-white rounded-lg p-4 sm:p-6 hover-lift transition-all duration-300">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm sm:text-base">Scheduled:</span>
+                    <span className="text-orange-600 font-bold text-lg sm:text-xl animate-countUp">{stats.maintenanceStats.scheduled}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm sm:text-base">In Progress:</span>
+                    <span className="text-red-600 font-bold text-lg sm:text-xl animate-countUp">{stats.maintenanceStats.in_progress}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 text-sm sm:text-base">Completed:</span>
+                    <span className="text-green-600 font-bold text-lg sm:text-xl animate-countUp">{stats.maintenanceStats.completed}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Recent Activity</h2>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm text-gray-600">New room added - Room 101</span>
+                </div>
+                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-sm text-gray-600">Tenant allocated to Room 205</span>
+                </div>
+                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <span className="text-sm text-gray-600">Maintenance scheduled for Room 103</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Floating Action Button */}
