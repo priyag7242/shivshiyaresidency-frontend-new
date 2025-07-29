@@ -307,6 +307,17 @@ const Rooms = () => {
           maintenanceStats: { none: totalRooms, scheduled: 0, in_progress: 0, completed: 0 }
         };
         
+        // Debug logging
+        console.log('Room Statistics:', {
+          totalRooms,
+          occupiedRooms,
+          availableRooms,
+          totalCapacity,
+          currentOccupancy,
+          totalRevenue,
+          typeStats
+        });
+        
         setStats(stats);
       }
     } catch (error) {
@@ -409,27 +420,6 @@ const Rooms = () => {
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
         }
       `}</style>
-
-      {/* Top Navigation Bar */}
-      <div className="bg-gray-900 text-yellow-500 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="text-sm sm:text-base font-medium">
-            Welcome back, Administrator
-          </div>
-          <div className="flex items-center gap-3 sm:gap-4">
-            <button className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-500 rounded-full flex items-center justify-center hover:bg-yellow-400 transition-all duration-300">
-              <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900" />
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-500 rounded-full flex items-center justify-center">
-                <User className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900" />
-              </div>
-              <span className="text-sm sm:text-base font-medium">admin</span>
-              <ChevronDown className="h-4 w-4 text-yellow-500" />
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -730,43 +720,6 @@ const Rooms = () => {
         </div>
       </div>
 
-      {/* Floating Action Button */}
-      <button 
-        onClick={() => {
-          setSelectedRoom(null);
-          setShowAddModal(true);
-        }}
-        className="fixed bottom-20 right-4 w-14 h-14 bg-black text-white rounded-full shadow-lg hover:bg-gray-800 transition-colors flex items-center justify-center"
-      >
-        <Plus className="h-6 w-6" />
-      </button>
-
-      {/* Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2">
-        <div className="flex justify-around items-center">
-          <button className="flex flex-col items-center gap-1 py-2">
-            <div className="w-5 h-5 bg-gray-400 rounded"></div>
-            <span className="text-xs text-gray-600">Dashboard</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 py-2">
-            <div className="w-5 h-5 bg-yellow-500 rounded"></div>
-            <span className="text-xs text-yellow-500 font-medium">Rooms</span>
-            <div className="w-6 h-0.5 bg-yellow-500 rounded"></div>
-          </button>
-          <button className="flex flex-col items-center gap-1 py-2">
-            <div className="w-5 h-5 bg-gray-400 rounded"></div>
-            <span className="text-xs text-gray-600">Tenants</span>
-          </button>
-          <button className="flex flex-col items-center gap-1 py-2">
-            <div className="w-5 h-5 bg-gray-400 rounded"></div>
-            <span className="text-xs text-gray-600">Tickets</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Add some bottom padding to account for fixed navigation */}
-      <div className="h-20"></div>
-
       {/* Modals */}
       <RoomForm
         isOpen={showAddModal}
@@ -804,8 +757,7 @@ const Rooms = () => {
         }}
       />
 
-      {/* Room Details Modal */}
-      {showDetailsModal && selectedRoom && (
+      {selectedRoom && (
         <RoomDetailsModal
           isOpen={showDetailsModal}
           room={selectedRoom}
