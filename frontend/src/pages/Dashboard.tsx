@@ -709,38 +709,6 @@ const Dashboard = () => {
         .stat-card:nth-child(4) { animation-delay: 0.4s; }
       `}</style>
 
-      {/* Responsive Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200 animate-fadeIn">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500 rounded-full flex items-center justify-center hover-lift cursor-pointer transition-all duration-300">
-                <User className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
-              </div>
-          <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Welcome SHIV SHIVA RESIDENCY</h1>
-                <p className="text-sm text-gray-500">Dashboard Overview</p>
-          </div>
-            </div>
-            <div className="flex items-center gap-3 sm:gap-4">
-            <button
-                onClick={() => setShowNotificationModal(true)}
-                className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-all duration-300 hover-lift"
-            >
-                <Bell className="h-5 w-5 text-gray-600" />
-            </button>
-            <button
-                onClick={handleRefresh}
-                className={`px-3 sm:px-4 py-2 bg-yellow-500 text-gray-900 rounded-lg font-medium hover:bg-yellow-600 transition-all duration-300 text-sm sm:text-base hover-lift ${isRefreshing ? 'animate-spin' : ''}`}
-            >
-                <RefreshCw className={`h-4 w-4 inline mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Refresh</span>
-            </button>
-          </div>
-        </div>
-      </div>
-                  </div>
-
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
