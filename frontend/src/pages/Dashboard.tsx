@@ -215,7 +215,7 @@ const RevenueChart = ({ data, selectedPeriod }: { data: { month: string; revenue
   
   return (
     <div className="mt-6">
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
         <div className="flex gap-2">
           {['Weekly', 'Monthly', 'Yearly'].map((period) => (
             <button
@@ -230,14 +230,14 @@ const RevenueChart = ({ data, selectedPeriod }: { data: { month: string; revenue
             </button>
           ))}
         </div>
-        <select className="bg-gray-700 text-gray-300 px-3 py-1 rounded text-sm border-none">
+        <select className="bg-gray-700 text-gray-300 px-3 py-1 rounded text-sm border-none w-full sm:w-auto">
           <option>2023</option>
           <option>2022</option>
           <option>2021</option>
         </select>
       </div>
       
-      <div className="relative h-48 bg-gray-800 rounded-lg p-4">
+      <div className="relative h-48 sm:h-64 bg-gray-800 rounded-lg p-4">
         <div className="absolute inset-4">
           {/* Y-axis labels */}
           <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-400">
@@ -573,29 +573,29 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Desktop Header */}
+      {/* Responsive Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center">
-                <User className="h-7 w-7 text-white" />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500 rounded-full flex items-center justify-center">
+                <User className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Welcome BNR Hills PG</h1>
-                <p className="text-gray-500">Dashboard Overview</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Welcome BNR Hills PG</h1>
+                <p className="text-sm text-gray-500">Dashboard Overview</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <button 
                 onClick={() => setShowNotificationModal(true)}
                 className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
               >
                 <Bell className="h-5 w-5 text-gray-600" />
               </button>
-              <button className="px-4 py-2 bg-yellow-500 text-gray-900 rounded-lg font-medium hover:bg-yellow-600 transition-colors">
+              <button className="px-3 sm:px-4 py-2 bg-yellow-500 text-gray-900 rounded-lg font-medium hover:bg-yellow-600 transition-colors text-sm sm:text-base">
                 <RefreshCw className="h-4 w-4 inline mr-2" />
-                Refresh
+                <span className="hidden sm:inline">Refresh</span>
               </button>
             </div>
           </div>
@@ -603,23 +603,24 @@ const Dashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Left Column - Revenue and Quick Actions */}
           <div className="lg:col-span-2 space-y-6">
             {/* Revenue Section - Expandable */}
-            <div className={`bg-gray-900 rounded-xl p-6 relative transition-all duration-300 ${isRevenueExpanded ? 'min-h-[500px]' : ''}`}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-white font-bold text-xl">REVENUE</h2>
-                <div className="bg-yellow-500 text-gray-900 px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  01/08/23 - 31/08/23
+            <div className={`bg-gray-900 rounded-xl p-4 sm:p-6 relative transition-all duration-300 ${isRevenueExpanded ? 'min-h-[500px]' : ''}`}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
+                <h2 className="text-white font-bold text-lg sm:text-xl">REVENUE</h2>
+                <div className="bg-yellow-500 text-gray-900 px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2">
+                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">01/08/23 - 31/08/23</span>
+                  <span className="sm:hidden">01/08/23</span>
                 </div>
               </div>
               
               <div className="text-white mb-4">
-                <div className="text-4xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
-                <div className="text-lg opacity-80">+0.6% From last month</div>
+                <div className="text-2xl sm:text-3xl lg:text-4xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
+                <div className="text-sm sm:text-lg opacity-80">+0.6% From last month</div>
               </div>
               
               {/* Expanded Content */}
@@ -632,7 +633,7 @@ const Dashboard = () => {
                 <div className="mt-6">
                   <button
                     onClick={handleFullReport}
-                    className="w-full bg-yellow-500 text-gray-900 py-4 rounded-lg font-bold text-lg hover:bg-yellow-600 transition-colors"
+                    className="w-full bg-yellow-500 text-gray-900 py-3 sm:py-4 rounded-lg font-bold text-base sm:text-lg hover:bg-yellow-600 transition-colors"
                   >
                     FULL REPORT
                   </button>
@@ -642,70 +643,70 @@ const Dashboard = () => {
               {/* Toggle Button */}
               <button 
                 onClick={() => setIsRevenueExpanded(!isRevenueExpanded)}
-                className={`absolute bottom-6 right-6 w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center transition-all duration-300 ${
+                className={`absolute bottom-4 sm:bottom-6 right-4 sm:right-6 w-8 h-8 sm:w-10 sm:h-10 bg-yellow-500 rounded-full flex items-center justify-center transition-all duration-300 ${
                   isRevenueExpanded ? 'rotate-180' : ''
                 }`}
               >
                 {isRevenueExpanded ? (
-                  <ChevronUp className="h-5 w-5 text-gray-900" />
+                  <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900" />
                 ) : (
-                  <ChevronDown className="h-5 w-5 text-gray-900" />
+                  <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900" />
                 )}
               </button>
             </div>
 
             {/* Quick Actions */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-gray-900 font-bold text-xl mb-6">Quick Actions</h2>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4 sm:mb-6">Quick Actions</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
                 <button 
                   onClick={() => setShowTenantModal(true)}
-                  className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
                 >
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
-                    <UserPlus className="h-8 w-8 text-blue-600" />
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                    <UserPlus className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
                   </div>
-                  <span className="text-sm font-medium text-gray-700">Add Tenant</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Add Tenant</span>
                 </button>
                 
                 <button 
                   onClick={() => setShowPaymentModal(true)}
-                  className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
                 >
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-colors">
-                    <Receipt className="h-8 w-8 text-green-600" />
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                    <Receipt className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
                   </div>
-                  <span className="text-sm font-medium text-gray-700">Record Payment</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Record Payment</span>
                 </button>
                 
                 <button 
                   onClick={() => setShowRoomModal(true)}
-                  className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
                 >
-                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-colors">
-                    <Building2 className="h-8 w-8 text-purple-600" />
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                    <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
                   </div>
-                  <span className="text-sm font-medium text-gray-700">Add Room</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Add Room</span>
                 </button>
                 
                 <button 
                   onClick={() => setShowMaintenanceModal(true)}
-                  className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
                 >
-                  <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-colors">
-                    <AlertTriangle className="h-8 w-8 text-orange-600" />
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                    <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
                   </div>
-                  <span className="text-sm font-medium text-gray-700">Maintenance</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Maintenance</span>
                 </button>
                 
                 <button 
                   onClick={() => setShowReportModal(true)}
-                  className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group col-span-2 sm:col-span-1"
                 >
-                  <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center group-hover:bg-indigo-200 transition-colors">
-                    <BarChart3 className="h-8 w-8 text-indigo-600" />
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-100 rounded-full flex items-center justify-center group-hover:bg-indigo-200 transition-colors">
+                    <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600" />
                   </div>
-                  <span className="text-sm font-medium text-gray-700">Overview</span>
+                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Overview</span>
                 </button>
               </div>
             </div>
@@ -714,56 +715,57 @@ const Dashboard = () => {
           {/* Right Column - Stats Cards */}
           <div className="space-y-6">
             {/* Rent Details */}
-            <div className="bg-yellow-500 rounded-xl p-6">
-              <h2 className="text-gray-900 font-bold text-xl mb-4">Rent Details</h2>
-              <div className="bg-white rounded-lg p-6">
-                <div className="grid grid-cols-2 gap-6">
+            <div className="bg-yellow-500 rounded-xl p-4 sm:p-6">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Rent Details</h2>
+              <div className="bg-white rounded-lg p-4 sm:p-6">
+                <div className="grid grid-cols-2 gap-4 sm:gap-6">
                   {/* Paid Section */}
                   <div className="text-center">
-                    <div className="text-gray-600 text-sm font-medium">Paid</div>
-                    <div className="text-3xl font-bold text-gray-900 mt-2">{stats.paidTenants}</div>
-                    <div className="text-gray-600 text-sm">Tenants</div>
-                    <div className="text-gray-500 text-sm mt-2">On-time: {stats.onTimePayments}</div>
+                    <div className="text-gray-600 text-xs sm:text-sm font-medium">Paid</div>
+                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{stats.paidTenants}</div>
+                    <div className="text-gray-600 text-xs sm:text-sm">Tenants</div>
+                    <div className="text-gray-500 text-xs mt-1 sm:mt-2">On-time: {stats.onTimePayments}</div>
                   </div>
                   
                   {/* Not Paid Section */}
                   <div className="text-center">
-                    <div className="text-gray-600 text-sm font-medium">Not-Paid</div>
-                    <div className="text-3xl font-bold text-gray-900 mt-2">{stats.unpaidTenants}</div>
-                    <div className="text-gray-600 text-sm">Tenants</div>
-                    <button className="bg-yellow-500 text-gray-900 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 mx-auto mt-3 hover:bg-yellow-600 transition-colors">
-                      <MessageCircle className="h-4 w-4" />
-                      REMIND TO PAY
+                    <div className="text-gray-600 text-xs sm:text-sm font-medium">Not-Paid</div>
+                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2">{stats.unpaidTenants}</div>
+                    <div className="text-gray-600 text-xs sm:text-sm">Tenants</div>
+                    <button className="bg-yellow-500 text-gray-900 px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1 mx-auto mt-2 sm:mt-3 hover:bg-yellow-600 transition-colors">
+                      <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">REMIND TO PAY</span>
+                      <span className="sm:hidden">REMIND</span>
                     </button>
                   </div>
                 </div>
                 
-                <button className="w-full bg-gray-900 text-white py-3 rounded-lg mt-6 font-medium hover:bg-gray-800 transition-colors">
+                <button className="w-full bg-gray-900 text-white py-2 sm:py-3 rounded-lg mt-4 sm:mt-6 font-medium hover:bg-gray-800 transition-colors text-sm sm:text-base">
                   VIEW DETAILS
                 </button>
               </div>
             </div>
 
             {/* Other Stats */}
-            <div className="bg-yellow-500 rounded-xl p-6">
-              <h2 className="text-gray-900 font-bold text-xl mb-4">Other Stats</h2>
-              <div className="bg-white rounded-lg p-6">
-                <div className="grid grid-cols-2 gap-6">
+            <div className="bg-yellow-500 rounded-xl p-4 sm:p-6">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Other Stats</h2>
+              <div className="bg-white rounded-lg p-4 sm:p-6">
+                <div className="grid grid-cols-2 gap-4 sm:gap-6">
                   {/* Vacant Beds */}
                   <div className="text-center">
-                    <div className="text-gray-600 text-sm font-medium">Vacant Beds</div>
-                    <div className="text-2xl font-bold text-gray-900 mt-2">{stats.vacantBeds} / {stats.totalBeds}</div>
-                    <button className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium mt-3 hover:bg-gray-800 transition-colors">
+                    <div className="text-gray-600 text-xs sm:text-sm font-medium">Vacant Beds</div>
+                    <div className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2">{stats.vacantBeds} / {stats.totalBeds}</div>
+                    <button className="bg-gray-900 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium mt-2 sm:mt-3 hover:bg-gray-800 transition-colors">
                       VIEW
                     </button>
                   </div>
                   
                   {/* Notice Period */}
                   <div className="text-center">
-                    <div className="text-gray-600 text-sm font-medium">Notice Period</div>
-                    <div className="text-2xl font-bold text-gray-900 mt-2">{stats.noticePeriodTenants} / {stats.totalTenants}</div>
-                    <div className="text-gray-600 text-sm">Tenants</div>
-                    <button className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium mt-3 hover:bg-gray-800 transition-colors">
+                    <div className="text-gray-600 text-xs sm:text-sm font-medium">Notice Period</div>
+                    <div className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2">{stats.noticePeriodTenants} / {stats.totalTenants}</div>
+                    <div className="text-gray-600 text-xs sm:text-sm">Tenants</div>
+                    <button className="bg-gray-900 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium mt-2 sm:mt-3 hover:bg-gray-800 transition-colors">
                       VIEW
                     </button>
                   </div>
@@ -772,39 +774,39 @@ const Dashboard = () => {
             </div>
 
             {/* Additional Stats */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-gray-900 font-bold text-xl mb-4">Quick Stats</h2>
-              <div className="space-y-4">
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Quick Stats</h2>
+              <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <Users className="h-5 w-5 text-blue-600" />
-                    <span className="text-gray-700">Total Tenants</span>
+                    <span className="text-gray-700 text-sm sm:text-base">Total Tenants</span>
                   </div>
-                  <span className="text-lg font-bold text-gray-900">{stats.totalTenants}</span>
+                  <span className="text-base sm:text-lg font-bold text-gray-900">{stats.totalTenants}</span>
                 </div>
                 
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <Building className="h-5 w-5 text-purple-600" />
-                    <span className="text-gray-700">Occupancy Rate</span>
+                    <span className="text-gray-700 text-sm sm:text-base">Occupancy Rate</span>
                   </div>
-                  <span className="text-lg font-bold text-gray-900">{stats.occupancyRate}%</span>
+                  <span className="text-base sm:text-lg font-bold text-gray-900">{stats.occupancyRate}%</span>
                 </div>
                 
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <AlertTriangle className="h-5 w-5 text-orange-600" />
-                    <span className="text-gray-700">Maintenance</span>
+                    <span className="text-gray-700 text-sm sm:text-base">Maintenance</span>
                   </div>
-                  <span className="text-lg font-bold text-gray-900">{stats.activeMaintenanceRequests}</span>
+                  <span className="text-base sm:text-lg font-bold text-gray-900">{stats.activeMaintenanceRequests}</span>
                 </div>
                 
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <UserCheck className="h-5 w-5 text-green-600" />
-                    <span className="text-gray-700">Today's Visitors</span>
+                    <span className="text-gray-700 text-sm sm:text-base">Today's Visitors</span>
                   </div>
-                  <span className="text-lg font-bold text-gray-900">{stats.todayVisitors}</span>
+                  <span className="text-base sm:text-lg font-bold text-gray-900">{stats.todayVisitors}</span>
                 </div>
               </div>
             </div>
