@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   Eye, 
   EyeOff, 
@@ -25,23 +26,6 @@ import {
   Smartphone,
   X
 } from 'lucide-react';
-import { supabaseAuth } from '../lib/supabase';
-
-interface LoginResponse {
-  message: string;
-  token: string;
-  user: {
-    id: string;
-    username: string;
-    email: string;
-    role: 'admin' | 'manager' | 'staff' | 'security';
-    full_name: string;
-    phone?: string;
-    is_active: boolean;
-    permissions: string[];
-  };
-  expires_in: string;
-}
 
 interface PasswordStrength {
   score: number;
@@ -50,6 +34,7 @@ interface PasswordStrength {
 }
 
 const Login = () => {
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -146,11 +131,8 @@ const Login = () => {
     setSuccess('');
 
     try {
-      // Simulate API delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Use Supabase Auth for login
-      const result = await supabaseAuth.login(formData.username, formData.password);
+      // Use the AuthContext login method
+      await login(formData.username, formData.password);
       
       // Handle remember me
       if (formData.rememberMe) {
@@ -161,10 +143,6 @@ const Login = () => {
       } else {
         localStorage.removeItem('rememberedCredentials');
       }
-
-      // Store token and user data
-      localStorage.setItem('token', result.token);
-      localStorage.setItem('user', JSON.stringify(result.user));
       
       setSuccess('Login successful! Redirecting...');
       

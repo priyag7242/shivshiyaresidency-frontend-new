@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import axios from 'axios';
-
-const apiUrl = import.meta.env.VITE_API_URL || '';
+import { supabaseAuth } from '../lib/supabase';
 
 interface User {
   id: string;
@@ -17,8 +15,8 @@ interface User {
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (token: string, user: User) => void;
-  logout: () => void;
+  login: (username: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
   hasPermission: (permission: string) => boolean;
@@ -42,42 +40,34 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const initializeAuth = async () => {
     try {
-      const storedToken = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
+      console.log('Initializing authentication...');
+      
+      // Check for existing session
+      const session = await supabaseAuth.getSession();
+      const currentUser = await supabaseAuth.getCurrentUser();
+      
+      console.log('Session found:', !!session);
+      console.log('Current user:', currentUser);
 
-      console.log('Auth initialization - storedToken:', !!storedToken);
-      console.log('Auth initialization - storedUser:', !!storedUser);
+      if (session && currentUser) {
+        // Convert Supabase user to our User interface
+        const userData: User = {
+          id: currentUser.id || currentUser.username,
+          username: currentUser.username || currentUser.email?.split('@')[0] || 'user',
+          email: currentUser.email || '',
+          role: currentUser.role || 'user',
+          full_name: currentUser.full_name || currentUser.username || 'User',
+          phone: currentUser.phone,
+          is_active: currentUser.is_active !== false,
+          permissions: currentUser.permissions || []
+        };
 
-      if (storedToken && storedUser) {
-        const userData = JSON.parse(storedUser);
-        console.log('User data loaded:', userData);
-        
-        // Set axios default authorization header
-        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-        
-        // Skip token verification for now - just trust stored data
-        setToken(storedToken);
+        setToken(session.access_token);
         setUser(userData);
         
-        // Comment out verification temporarily
-        /*
-        try {
-          const response = await axios.get(`${apiUrl}/auth/verify`);
-          if (response.data.valid) {
-            setToken(storedToken);
-            setUser(response.data.user);
-          } else {
-            // Token is invalid, clear everything
-            clearAuth();
-          }
-        } catch (error) {
-          // Token verification failed, clear everything
-          console.error('Token verification failed:', error);
-          clearAuth();
-        }
-        */
+        console.log('Authentication initialized successfully:', userData);
       } else {
-        console.log('No stored auth data found');
+        console.log('No valid session found');
       }
     } catch (error) {
       console.error('Auth initialization error:', error);
@@ -87,24 +77,46 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const login = (newToken: string, newUser: User) => {
-    setToken(newToken);
-    setUser(newUser);
-    
-    // Store in localStorage
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    
-    // Set axios default authorization header
-    axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+  const login = async (username: string, password: string) => {
+    try {
+      setIsLoading(true);
+      console.log('Attempting login for:', username);
+      
+      const result = await supabaseAuth.login(username, password);
+      
+      console.log('Login successful:', result);
+      
+      // Ensure the user object matches our User interface
+      const userData: User = {
+        id: result.user.id,
+        username: result.user.username,
+        email: result.user.email || '',
+        role: result.user.role as 'admin' | 'manager' | 'staff' | 'security',
+        full_name: result.user.full_name,
+        phone: result.user.phone,
+        is_active: result.user.is_active,
+        permissions: result.user.permissions
+      };
+      
+      setToken(result.token);
+      setUser(userData);
+      
+      // Store in localStorage for persistence
+      localStorage.setItem('token', result.token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+    } catch (error: any) {
+      console.error('Login failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = async () => {
     try {
-      // Call logout endpoint if token exists
-      if (token) {
-        await axios.post(`${apiUrl}/auth/logout`);
-      }
+      console.log('Logging out...');
+      await supabaseAuth.logout();
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -113,15 +125,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const clearAuth = () => {
+    console.log('Clearing authentication...');
     setToken(null);
     setUser(null);
     
     // Clear localStorage
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    
-    // Remove axios default authorization header
-    delete axios.defaults.headers.common['Authorization'];
+    localStorage.removeItem('demoSession');
   };
 
   const hasPermission = (permission: string): boolean => {
