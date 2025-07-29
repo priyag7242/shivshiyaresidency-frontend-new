@@ -55,6 +55,7 @@ import {
   Circle
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { TenantModal, RoomModal, PaymentModal, ReportModal } from '../components/DashboardModals';
 
 // Helper functions
 const formatCurrency = (amount: number) => {
@@ -194,6 +195,49 @@ interface Visitor {
   phone?: string;
 }
 
+// Simple Chart Component
+const SimpleChart = ({ data, title, color = 'golden' }: { data: { label: string; value: number }[]; title: string; color?: string }) => {
+  const maxValue = Math.max(...data.map(d => d.value));
+  
+  return (
+    <div className="bg-dark-800 border border-golden-600/20 rounded-lg p-6">
+      <h3 className="text-lg font-semibold text-golden-400 mb-4">{title}</h3>
+      <div className="space-y-3">
+        {data.map((item, index) => {
+          const percentage = maxValue > 0 ? (item.value / maxValue) * 100 : 0;
+          const colorClasses = {
+            golden: 'bg-gradient-to-r from-golden-500 to-golden-600',
+            blue: 'bg-gradient-to-r from-blue-500 to-blue-600',
+            green: 'bg-gradient-to-r from-green-500 to-green-600',
+            purple: 'bg-gradient-to-r from-purple-500 to-purple-600'
+          };
+          
+          return (
+            <div key={index} className="flex items-center gap-4">
+              <div className="w-20 text-sm text-golden-300">
+                {item.label}
+              </div>
+              <div className="flex-1">
+                <div className="bg-dark-900 rounded-full h-6 relative overflow-hidden">
+                  <div 
+                    className={`${colorClasses[color as keyof typeof colorClasses]} h-full rounded-full transition-all duration-1000`}
+                    style={{ width: `${percentage}%` }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs font-medium text-white">
+                      {typeof item.value === 'number' && item.value > 0 ? formatCurrency(item.value) : item.value}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const [stats, setStats] = useState<DashboardStats>({
     totalTenants: 0,
@@ -220,6 +264,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   
   // Modal states
   const [showRoomModal, setShowRoomModal] = useState(false);
@@ -232,7 +277,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [selectedMonth]);
 
   const fetchDashboardData = async () => {
     try {
@@ -390,6 +435,32 @@ const Dashboard = () => {
     };
   };
 
+  // Generate sample chart data
+  const generateRevenueData = () => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    return months.map(month => ({
+      label: month,
+      value: Math.floor(Math.random() * 50000) + 20000
+    }));
+  };
+
+  const generateOccupancyData = () => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    return months.map(month => ({
+      label: month,
+      value: Math.floor(Math.random() * 30) + 60
+    }));
+  };
+
+  const generatePaymentMethodData = () => {
+    return [
+      { label: 'Cash', value: 45 },
+      { label: 'UPI', value: 30 },
+      { label: 'Bank Transfer', value: 15 },
+      { label: 'Card', value: 10 }
+    ];
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-dark-950 flex items-center justify-center">
@@ -433,10 +504,32 @@ const Dashboard = () => {
                 <FileText className="h-4 w-4" />
                 Generate Report
               </button>
-              </div>
           </div>
         </div>
       </div>
+                  </div>
+
+      {/* Month Filter */}
+      <div className="bg-dark-900 border-b border-golden-600/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center gap-4">
+            <label className="text-golden-300 text-sm font-medium">Filter by Month:</label>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
+            />
+            <button
+              onClick={fetchDashboardData}
+              className="flex items-center gap-2 px-3 py-2 bg-golden-600 text-dark-900 rounded-lg hover:bg-golden-700 transition-colors"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
+              </div>
+          </div>
+        </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -541,7 +634,28 @@ const Dashboard = () => {
           </div>
 
       {/* Modals */}
-      {/* Add your modal components here */}
+      <TenantModal 
+        isOpen={showTenantModal}
+        onClose={() => setShowTenantModal(false)}
+        onSuccess={fetchDashboardData}
+      />
+      
+      <RoomModal 
+        isOpen={showRoomModal}
+        onClose={() => setShowRoomModal(false)}
+        onSuccess={fetchDashboardData}
+      />
+      
+      <PaymentModal 
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onSuccess={fetchDashboardData}
+      />
+      
+      <ReportModal 
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+      />
             </div>
   );
 };
@@ -621,42 +735,63 @@ const QuickStatCard = ({ title, value, icon, color, link }: QuickStatCardProps) 
 };
 
 // Tab Components
-const OverviewTab = ({ stats, recentPayments }: { stats: DashboardStats; recentPayments: Payment[] }) => (
-  <div className="space-y-6">
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="bg-dark-800 border border-golden-600/20 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-golden-400 mb-4">Revenue Trend</h3>
-        <div className="h-64 flex items-center justify-center text-golden-300">
-          Chart placeholder - Revenue trend over 6 months
-            </div>
-            </div>
-      <div className="bg-dark-800 border border-golden-600/20 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-golden-400 mb-4">Occupancy Trend</h3>
-        <div className="h-64 flex items-center justify-center text-golden-300">
-          Chart placeholder - Occupancy trend over 6 months
-          </div>
-          </div>
+const OverviewTab = ({ stats, recentPayments }: { stats: DashboardStats; recentPayments: Payment[] }) => {
+  const revenueData = [
+    { label: 'Jan', value: 45000 },
+    { label: 'Feb', value: 52000 },
+    { label: 'Mar', value: 48000 },
+    { label: 'Apr', value: 55000 },
+    { label: 'May', value: 58000 },
+    { label: 'Jun', value: 62000 }
+  ];
+
+  const occupancyData = [
+    { label: 'Jan', value: 75 },
+    { label: 'Feb', value: 78 },
+    { label: 'Mar', value: 82 },
+    { label: 'Apr', value: 85 },
+    { label: 'May', value: 88 },
+    { label: 'Jun', value: 92 }
+  ];
+
+  const paymentMethodData = [
+    { label: 'Cash', value: 45 },
+    { label: 'UPI', value: 30 },
+    { label: 'Bank Transfer', value: 15 },
+    { label: 'Card', value: 10 }
+  ];
+              
+              return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SimpleChart data={revenueData} title="Revenue Trend (Last 6 Months)" color="golden" />
+        <SimpleChart data={occupancyData} title="Occupancy Trend (Last 6 Months)" color="blue" />
         </div>
 
-    <div className="bg-dark-800 border border-golden-600/20 rounded-lg p-6">
-      <h3 className="text-lg font-semibold text-golden-400 mb-4">Recent Payments</h3>
-      <div className="space-y-3">
-        {recentPayments.slice(0, 5).map((payment) => (
-          <div key={payment.id} className="flex items-center justify-between p-3 bg-dark-900 rounded-lg">
-            <div>
-              <p className="text-golden-100 font-medium">{payment.tenant_name}</p>
-              <p className="text-golden-300 text-sm">Room {payment.room_number}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-green-400 font-semibold">{formatCurrency(payment.amount)}</p>
-              <p className="text-golden-300 text-sm capitalize">{payment.method}</p>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SimpleChart data={paymentMethodData} title="Payment Methods Distribution" color="purple" />
+        
+        <div className="bg-dark-800 border border-golden-600/20 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-golden-400 mb-4">Recent Payments</h3>
+          <div className="space-y-3">
+            {recentPayments.slice(0, 5).map((payment) => (
+              <div key={payment.id} className="flex items-center justify-between p-3 bg-dark-900 rounded-lg">
+                <div>
+                  <p className="text-golden-100 font-medium">{payment.tenant_name}</p>
+                  <p className="text-golden-300 text-sm">Room {payment.room_number}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-green-400 font-semibold">{formatCurrency(payment.amount)}</p>
+                  <p className="text-golden-300 text-sm capitalize">{payment.method}</p>
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-                    </div>
+        </div>
                   </div>
                 </div>
               );
+};
 
 const RoomsTab = ({ rooms, onAddRoom }: { rooms: Room[]; onAddRoom: () => void }) => (
   <div className="space-y-6">
@@ -690,8 +825,8 @@ const TenantsTab = ({ tenants, onAddTenant }: { tenants: Tenant[]; onAddTenant: 
         <Plus className="h-4 w-4" />
         Add Tenant
       </button>
-        </div>
-
+              </div>
+    
     <div className="bg-dark-800 border border-golden-600/20 rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -712,7 +847,7 @@ const TenantsTab = ({ tenants, onAddTenant }: { tenants: Tenant[]; onAddTenant: 
                   <div>
                     <div className="text-sm font-medium text-golden-100">{tenant.name}</div>
                     <div className="text-sm text-golden-300">Joined {formatDate(tenant.joining_date)}</div>
-                  </div>
+              </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-golden-300">Room {tenant.room_number}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -734,23 +869,23 @@ const TenantsTab = ({ tenants, onAddTenant }: { tenants: Tenant[]; onAddTenant: 
             ))}
           </tbody>
         </table>
-                    </div>
-                  </div>
-                </div>
-              );
+              </div>
+              </div>
+  </div>
+);
 
 const PaymentsTab = ({ payments, onAddPayment }: { payments: Payment[]; onAddPayment: () => void }) => (
   <div className="space-y-6">
     <div className="flex justify-between items-center">
       <h3 className="text-lg font-semibold text-golden-400">Payment Tracking</h3>
-      <button
+            <button 
         onClick={onAddPayment}
         className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
       >
         <Plus className="h-4 w-4" />
         Record Payment
-      </button>
-              </div>
+            </button>
+          </div>
     
     <div className="bg-dark-800 border border-golden-600/20 rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
@@ -783,23 +918,23 @@ const PaymentsTab = ({ payments, onAddPayment }: { payments: Payment[]; onAddPay
             ))}
           </tbody>
         </table>
-              </div>
-              </div>
-              </div>
-);
+        </div>
+      </div>
+    </div>
+  );
 
 const MaintenanceTab = ({ requests, onAddRequest }: { requests: MaintenanceRequest[]; onAddRequest: () => void }) => (
   <div className="space-y-6">
     <div className="flex justify-between items-center">
       <h3 className="text-lg font-semibold text-golden-400">Maintenance Requests</h3>
-            <button 
+      <button
         onClick={onAddRequest}
         className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
       >
         <Plus className="h-4 w-4" />
         Add Request
-            </button>
-      </div>
+          </button>
+        </div>
 
     <div className="space-y-4">
       {requests.map((request) => (
