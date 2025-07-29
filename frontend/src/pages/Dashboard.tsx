@@ -353,7 +353,7 @@ const Dashboard = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [isRevenueExpanded, setIsRevenueExpanded] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('Monthly');
-  
+
   // Modal states
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showTenantModal, setShowTenantModal] = useState(false);
@@ -571,232 +571,243 @@ const Dashboard = () => {
     );
   }
 
-    return (
+  return (
     <div className="min-h-screen bg-gray-100">
-      {/* Mobile Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-md mx-auto px-4 py-3">
+      {/* Desktop Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
-                <User className="h-6 w-6 text-white" />
-        </div>
-          <div>
-                <h1 className="text-lg font-bold text-gray-900">Welcome BNR Hills PG</h1>
-                <p className="text-sm text-gray-500">Dashboard</p>
-          </div>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center">
+                <User className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Welcome BNR Hills PG</h1>
+                <p className="text-gray-500">Dashboard Overview</p>
+              </div>
             </div>
-            <button 
-              onClick={() => setShowNotificationModal(true)}
-              className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm"
-            >
-              <Bell className="h-5 w-5 text-gray-600" />
-            </button>
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setShowNotificationModal(true)}
+                className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+              >
+                <Bell className="h-5 w-5 text-gray-600" />
+              </button>
+              <button className="px-4 py-2 bg-yellow-500 text-gray-900 rounded-lg font-medium hover:bg-yellow-600 transition-colors">
+                <RefreshCw className="h-4 w-4 inline mr-2" />
+                Refresh
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-md mx-auto px-4 py-6 space-y-6">
-        {/* Revenue Section - Expandable */}
-        <div className={`bg-gray-900 rounded-lg p-6 relative transition-all duration-300 ${isRevenueExpanded ? 'min-h-[600px]' : ''}`}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-white font-bold text-lg">REVENUE</h2>
-            <div className="bg-yellow-500 text-gray-900 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
-              01/08/23 - 31/08/23
-                  </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Revenue and Quick Actions */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Revenue Section - Expandable */}
+            <div className={`bg-gray-900 rounded-xl p-6 relative transition-all duration-300 ${isRevenueExpanded ? 'min-h-[500px]' : ''}`}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-white font-bold text-xl">REVENUE</h2>
+                <div className="bg-yellow-500 text-gray-900 px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  01/08/23 - 31/08/23
                 </div>
-          
-          <div className="text-white mb-2">
-            <div className="text-3xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
-            <div className="text-sm opacity-80">+0.6% From last month</div>
               </div>
-          
-          {/* Expanded Content */}
-          {isRevenueExpanded && (
-            <RevenueChart data={chartData} selectedPeriod={selectedPeriod} />
-          )}
-          
-          {/* Action Buttons */}
-          {isRevenueExpanded && (
-            <div className="mt-6">
-              <button
-                onClick={handleFullReport}
-                className="w-full bg-yellow-500 text-gray-900 py-3 rounded-lg font-bold hover:bg-yellow-600 transition-colors"
+              
+              <div className="text-white mb-4">
+                <div className="text-4xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
+                <div className="text-lg opacity-80">+0.6% From last month</div>
+              </div>
+              
+              {/* Expanded Content */}
+              {isRevenueExpanded && (
+                <RevenueChart data={chartData} selectedPeriod={selectedPeriod} />
+              )}
+              
+              {/* Action Buttons */}
+              {isRevenueExpanded && (
+                <div className="mt-6">
+                  <button
+                    onClick={handleFullReport}
+                    className="w-full bg-yellow-500 text-gray-900 py-4 rounded-lg font-bold text-lg hover:bg-yellow-600 transition-colors"
+                  >
+                    FULL REPORT
+                  </button>
+                </div>
+              )}
+              
+              {/* Toggle Button */}
+              <button 
+                onClick={() => setIsRevenueExpanded(!isRevenueExpanded)}
+                className={`absolute bottom-6 right-6 w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  isRevenueExpanded ? 'rotate-180' : ''
+                }`}
               >
-                FULL REPORT
+                {isRevenueExpanded ? (
+                  <ChevronUp className="h-5 w-5 text-gray-900" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-gray-900" />
+                )}
               </button>
             </div>
-          )}
-          
-          {/* Toggle Button */}
-          <button 
-            onClick={() => setIsRevenueExpanded(!isRevenueExpanded)}
-            className={`absolute bottom-4 right-4 w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center transition-all duration-300 ${
-              isRevenueExpanded ? 'rotate-180' : ''
-            }`}
-          >
-            {isRevenueExpanded ? (
-              <ChevronUp className="h-4 w-4 text-gray-900" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-gray-900" />
-            )}
-          </button>
-            </div>
 
-        {/* Quick Actions */}
-        <div className="bg-white rounded-lg p-6">
-          <h2 className="text-gray-900 font-bold text-lg mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-5 gap-4">
-            <button className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <Users className="h-6 w-6 text-gray-600" />
-            </div>
-              <span className="text-xs text-gray-600">Contacts</span>
-            </button>
-            
-            <button 
-              onClick={() => setShowTenantModal(true)}
-              className="flex flex-col items-center gap-2"
-            >
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <UserPlus className="h-6 w-6 text-gray-600" />
-            </div>
-              <span className="text-xs text-gray-600">Add Tenant</span>
-            </button>
-            
-            <button className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <Megaphone className="h-6 w-6 text-gray-600" />
-            </div>
-              <span className="text-xs text-gray-600">Announce</span>
-            </button>
-            
-            <button 
-              onClick={() => setShowPaymentModal(true)}
-              className="flex flex-col items-center gap-2"
-            >
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <Receipt className="h-6 w-6 text-gray-600" />
-            </div>
-              <span className="text-xs text-gray-600">Record Payment</span>
-            </button>
-            
-            <button
-              onClick={() => setShowRoomModal(true)}
-              className="flex flex-col items-center gap-2"
-            >
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <Building2 className="h-6 w-6 text-gray-600" />
+            {/* Quick Actions */}
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <h2 className="text-gray-900 font-bold text-xl mb-6">Quick Actions</h2>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <button 
+                  onClick={() => setShowTenantModal(true)}
+                  className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                >
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                    <UserPlus className="h-8 w-8 text-blue-600" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Add Tenant</span>
+                </button>
+                
+                <button 
+                  onClick={() => setShowPaymentModal(true)}
+                  className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                >
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-colors">
+                    <Receipt className="h-8 w-8 text-green-600" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Record Payment</span>
+                </button>
+                
+                <button 
+                  onClick={() => setShowRoomModal(true)}
+                  className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                >
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                    <Building2 className="h-8 w-8 text-purple-600" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Add Room</span>
+                </button>
+                
+                <button 
+                  onClick={() => setShowMaintenanceModal(true)}
+                  className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                >
+                  <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                    <AlertTriangle className="h-8 w-8 text-orange-600" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Maintenance</span>
+                </button>
+                
+                <button 
+                  onClick={() => setShowReportModal(true)}
+                  className="flex flex-col items-center gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                >
+                  <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center group-hover:bg-indigo-200 transition-colors">
+                    <BarChart3 className="h-8 w-8 text-indigo-600" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">Overview</span>
+                </button>
               </div>
-              <span className="text-xs text-gray-600">Add Room</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Rent Details */}
-        <div className="bg-yellow-500 rounded-lg p-6">
-          <h2 className="text-gray-900 font-bold text-lg mb-4">Rent Details</h2>
-          <div className="bg-white rounded-lg p-4">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Paid Section */}
-              <div className="text-center">
-                <div className="text-gray-600 text-sm">Paid</div>
-                <div className="text-2xl font-bold text-gray-900">{stats.paidTenants}</div>
-                <div className="text-gray-600 text-sm">Tenants</div>
-                <div className="text-gray-500 text-xs mt-1">On-time: {stats.onTimePayments}</div>
-      </div>
-
-              {/* Not Paid Section */}
-              <div className="text-center">
-                <div className="text-gray-600 text-sm">Not-Paid</div>
-                <div className="text-2xl font-bold text-gray-900">{stats.unpaidTenants}</div>
-                <div className="text-gray-600 text-sm">Tenants</div>
-                <button className="bg-yellow-500 text-gray-900 px-3 py-1 rounded text-xs font-medium flex items-center gap-1 mx-auto mt-2">
-                  <MessageCircle className="h-3 w-3" />
-                  REMIND TO PAY
-                </button>
-          </div>
-        </div>
-
-            <button className="w-full bg-gray-900 text-white py-2 rounded mt-4 font-medium">
-              VIEW
-            </button>
-        </div>
-      </div>
-
-        {/* Other Stats */}
-        <div className="bg-yellow-500 rounded-lg p-6">
-          <h2 className="text-gray-900 font-bold text-lg mb-4">Other Stats</h2>
-          <div className="bg-white rounded-lg p-4">
-          <div className="grid grid-cols-2 gap-4">
-              {/* Vacant Beds */}
-            <div className="text-center">
-                <div className="text-gray-600 text-sm">Vacant Beds</div>
-                <div className="text-2xl font-bold text-gray-900">{stats.vacantBeds} / {stats.totalBeds}</div>
-                <button className="bg-gray-900 text-white px-3 py-1 rounded text-xs font-medium mt-2">
-                  VIEW
-                </button>
-            </div>
-              
-              {/* Notice Period */}
-            <div className="text-center">
-                <div className="text-gray-600 text-sm">Notice Period</div>
-                <div className="text-2xl font-bold text-gray-900">{stats.noticePeriodTenants} / {stats.totalTenants}</div>
-                <div className="text-gray-600 text-sm">Tenants</div>
-                <button className="bg-gray-900 text-white px-3 py-1 rounded text-xs font-medium mt-2">
-                  VIEW
-                </button>
-            </div>
             </div>
           </div>
-        </div>
 
-        {/* Additional Quick Actions */}
-        <div className="bg-white rounded-lg p-6">
-          <h2 className="text-gray-900 font-bold text-lg mb-4">More Actions</h2>
-          <div className="space-y-3">
-            <button className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-              <div className="flex items-center gap-3">
-                <BarChart3 className="h-5 w-5 text-gray-600" />
-                <span className="text-gray-900">Overview</span>
+          {/* Right Column - Stats Cards */}
+          <div className="space-y-6">
+            {/* Rent Details */}
+            <div className="bg-yellow-500 rounded-xl p-6">
+              <h2 className="text-gray-900 font-bold text-xl mb-4">Rent Details</h2>
+              <div className="bg-white rounded-lg p-6">
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Paid Section */}
+                  <div className="text-center">
+                    <div className="text-gray-600 text-sm font-medium">Paid</div>
+                    <div className="text-3xl font-bold text-gray-900 mt-2">{stats.paidTenants}</div>
+                    <div className="text-gray-600 text-sm">Tenants</div>
+                    <div className="text-gray-500 text-sm mt-2">On-time: {stats.onTimePayments}</div>
+                  </div>
+                  
+                  {/* Not Paid Section */}
+                  <div className="text-center">
+                    <div className="text-gray-600 text-sm font-medium">Not-Paid</div>
+                    <div className="text-3xl font-bold text-gray-900 mt-2">{stats.unpaidTenants}</div>
+                    <div className="text-gray-600 text-sm">Tenants</div>
+                    <button className="bg-yellow-500 text-gray-900 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 mx-auto mt-3 hover:bg-yellow-600 transition-colors">
+                      <MessageCircle className="h-4 w-4" />
+                      REMIND TO PAY
+                    </button>
+                  </div>
+                </div>
+                
+                <button className="w-full bg-gray-900 text-white py-3 rounded-lg mt-6 font-medium hover:bg-gray-800 transition-colors">
+                  VIEW DETAILS
+                </button>
               </div>
-              <ChevronRight className="h-4 w-4 text-gray-400" />
-            </button>
-            
-            <button 
-              onClick={() => setShowMaintenanceModal(true)}
-              className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-5 w-5 text-gray-600" />
-                <span className="text-gray-900">Maintenance</span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-gray-400" />
-            </button>
+            </div>
 
-            <button 
-              onClick={() => setShowVisitorModal(true)}
-              className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <UserCheck className="h-5 w-5 text-gray-600" />
-                <span className="text-gray-900">Visitors</span>
+            {/* Other Stats */}
+            <div className="bg-yellow-500 rounded-xl p-6">
+              <h2 className="text-gray-900 font-bold text-xl mb-4">Other Stats</h2>
+              <div className="bg-white rounded-lg p-6">
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Vacant Beds */}
+                  <div className="text-center">
+                    <div className="text-gray-600 text-sm font-medium">Vacant Beds</div>
+                    <div className="text-2xl font-bold text-gray-900 mt-2">{stats.vacantBeds} / {stats.totalBeds}</div>
+                    <button className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium mt-3 hover:bg-gray-800 transition-colors">
+                      VIEW
+                    </button>
+                  </div>
+                  
+                  {/* Notice Period */}
+                  <div className="text-center">
+                    <div className="text-gray-600 text-sm font-medium">Notice Period</div>
+                    <div className="text-2xl font-bold text-gray-900 mt-2">{stats.noticePeriodTenants} / {stats.totalTenants}</div>
+                    <div className="text-gray-600 text-sm">Tenants</div>
+                    <button className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium mt-3 hover:bg-gray-800 transition-colors">
+                      VIEW
+                    </button>
+                  </div>
+                </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-gray-400" />
-            </button>
+            </div>
 
-            <button 
-              onClick={() => setShowReportModal(true)}
-              className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <FileText className="h-5 w-5 text-gray-600" />
-                <span className="text-gray-900">Reports</span>
+            {/* Additional Stats */}
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <h2 className="text-gray-900 font-bold text-xl mb-4">Quick Stats</h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Users className="h-5 w-5 text-blue-600" />
+                    <span className="text-gray-700">Total Tenants</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-900">{stats.totalTenants}</span>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Building className="h-5 w-5 text-purple-600" />
+                    <span className="text-gray-700">Occupancy Rate</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-900">{stats.occupancyRate}%</span>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-600" />
+                    <span className="text-gray-700">Maintenance</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-900">{stats.activeMaintenanceRequests}</span>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <UserCheck className="h-5 w-5 text-green-600" />
+                    <span className="text-gray-700">Today's Visitors</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-900">{stats.todayVisitors}</span>
+                </div>
               </div>
-              <ChevronRight className="h-4 w-4 text-gray-400" />
-            </button>
+            </div>
           </div>
         </div>
       </div>
