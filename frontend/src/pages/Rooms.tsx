@@ -1,63 +1,77 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, Filter, MoreVertical, Edit, Trash2, Building, Users, DoorOpen, IndianRupee, Layers, User, UserPlus, Wrench, CheckCircle, Circle, AlertTriangle, Calendar, Camera, Settings, Eye, X, ArrowUpRight, Bell, ChevronDown } from 'lucide-react';
-import axios from 'axios';
-import RoomForm from '../components/RoomForm';
-import RoomAllocationModal from '../components/RoomAllocationModal';
-import MaintenanceModal from '../components/MaintenanceModal';
-import { roomsQueries } from '../lib/supabaseQueries';
-import { getRoomStats, tenantData } from '../data/tenantData';
+import { 
+  Building, 
+  Users, 
+  IndianRupee, 
+  Plus, 
+  MoreVertical, 
+  X,
+  Search,
+  Filter,
+  Home,
+  AlertTriangle,
+  Clock,
+  CheckCircle,
+  Activity,
+  TrendingUp,
+  BarChart3,
+  Settings,
+  Bell,
+  User,
+  ChevronDown,
+  Eye,
+  Edit,
+  Trash2,
+  Calendar,
+  Phone,
+  Mail,
+  MapPin,
+  Wifi,
+  Zap,
+  Shield,
+  Star
+} from 'lucide-react';
+import { getRoomStats } from '../data/tenantData';
 
-const apiUrl = import.meta.env.VITE_API_URL || '';
-const USE_SUPABASE = false; // Using local data for now
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
 
 interface Room {
-  id: string;
-  room_number: string;
-  floor: 0 | 1 | 2 | 3 | 4 | 5;
-  type: 'single' | 'double' | 'triple' | 'quad';
-  capacity: number;
-  current_occupancy: number;
-  monthly_rent: number;
-  security_deposit: number;
-  amenities: string[];
-  status: 'available' | 'occupied' | 'maintenance' | 'reserved';
-  description?: string;
-  images?: { id: string; url: string; caption?: string }[];
-  tenants: { id: string; name: string; allocated_date: string; monthly_rent: number; security_deposit: number }[];
-  created_date: string;
-  updated_date: string;
-  maintenance_status?: 'none' | 'scheduled' | 'in_progress' | 'completed';
-  maintenance_type?: string;
-  maintenance_description?: string;
-  maintenance_scheduled_date?: string;
-  maintenance_completed_date?: string;
-  maintenance_cost?: number;
-  last_maintenance_date?: string;
+  roomNumber: string;
+  roomType: string;
+  tenants: any[];
+  totalRent: number;
+  totalRentPaid: number;
+  totalRentUnpaid: number;
+  totalSecurityPaid: number;
+  totalSecurityUnpaid: number;
+  occupiedBeds: number;
+  totalBeds: number;
+  hasNotice: boolean;
+  hasUnpaidRent: boolean;
+  hasUnpaidElectricity: boolean;
+  lastReading: number;
+  currentReading: number;
 }
 
 interface RoomStats {
-  total: number;
-  occupied: number;
-  available: number;
-  maintenance: number;
-  reserved: number;
+  totalRooms: number;
+  occupiedRooms: number;
+  availableRooms: number;
+  totalRevenue: number;
   totalCapacity: number;
   currentOccupancy: number;
-  totalRevenue: number;
-  floorStats: {
-    [key: number]: {
-      total: number;
-      occupied: number;
-      available: number;
-      maintenance: number;
-    };
-  };
+  occupancyRate: number;
   typeStats: {
-    [key: string]: {
-      total: number;
-      occupied: number;
-      available: number;
-    };
+    single: number;
+    double: number;
+    triple: number;
   };
   maintenanceStats: {
     none: number;
@@ -67,175 +81,35 @@ interface RoomStats {
   };
 }
 
-// Helper functions (moved outside component for accessibility)
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    minimumFractionDigits: 0,
-  }).format(amount);
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'available':
-      return 'text-green-400 bg-green-400/10 border-green-400/30';
-    case 'occupied':
-      return 'text-blue-400 bg-blue-400/10 border-blue-400/30';
-    case 'maintenance':
-      return 'text-orange-400 bg-orange-400/10 border-orange-400/30';
-    case 'reserved':
-      return 'text-purple-400 bg-purple-400/10 border-purple-400/30';
-    default:
-      return 'text-golden-400 bg-golden-400/10 border-golden-400/30';
-  }
-};
-
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case 'available':
-      return <CheckCircle className="h-4 w-4" />;
-    case 'occupied':
-      return <Users className="h-4 w-4" />;
-    case 'maintenance':
-      return <Wrench className="h-4 w-4" />;
-    case 'reserved':
-      return <AlertTriangle className="h-4 w-4" />;
-    default:
-      return <Circle className="h-4 w-4" />;
-  }
-};
-
-const getMaintenanceStatusColor = (status?: string) => {
-  switch (status) {
-    case 'none':
-      return 'text-gray-400';
-    case 'scheduled':
-      return 'text-blue-400';
-    case 'in_progress':
-      return 'text-orange-400';
-    case 'completed':
-      return 'text-green-400';
-    default:
-      return 'text-gray-400';
-  }
-};
-
-const getRoomTypeIcon = (type: string) => {
-  switch (type) {
-    case 'single':
-      return <User className="h-4 w-4" />;
-    case 'double':
-      return <Users className="h-4 w-4" />;
-    case 'triple':
-      return <Users className="h-4 w-4" />;
-    case 'quad':
-      return <Users className="h-4 w-4" />;
-    default:
-      return <Building className="h-4 w-4" />;
-  }
-};
-
-const getRoomTypeColor = (type: string) => {
-  switch (type) {
-    case 'single':
-      return 'bg-blue-100 text-blue-600';
-    case 'double':
-      return 'bg-green-100 text-green-600';
-    case 'triple':
-      return 'bg-purple-100 text-purple-600';
-    case 'quad':
-      return 'bg-orange-100 text-orange-600';
-    default:
-      return 'bg-gray-100 text-gray-600';
-  }
-};
-
 const Rooms = () => {
   const [rooms, setRooms] = useState<any[]>([]);
+  const [stats, setStats] = useState<RoomStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [floorFilter, setFloorFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [maintenanceFilter, setMaintenanceFilter] = useState('');
+  const [selectedRoom, setSelectedRoom] = useState<any>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showAllocationModal, setShowAllocationModal] = useState(false);
-  const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
-  const [actionDropdown, setActionDropdown] = useState<string | null>(null);
-  const [stats, setStats] = useState<RoomStats>({
-    total: 0,
-    occupied: 0,
-    available: 0,
-    maintenance: 0,
-    reserved: 0,
-    totalCapacity: 0,
-    currentOccupancy: 0,
-    totalRevenue: 0,
-    floorStats: {},
-    typeStats: {},
-    maintenanceStats: { none: 0, scheduled: 0, in_progress: 0, completed: 0 }
-  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+
+  const USE_SUPABASE = false;
 
   useEffect(() => {
     fetchRooms();
     fetchStats();
-  }, [searchTerm, floorFilter, typeFilter, statusFilter, maintenanceFilter]);
+  }, []);
 
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      
       if (USE_SUPABASE) {
-        const data = await roomsQueries.getAll();
-        let filteredRooms = data || [];
-        
-        // Apply filters
-        if (searchTerm) {
-          filteredRooms = filteredRooms.filter(room => 
-            room.room_number.toLowerCase().includes(searchTerm.toLowerCase())
-          );
-        }
-        if (floorFilter) {
-          filteredRooms = filteredRooms.filter(room => (room.floor || 0).toString() === floorFilter);
-        }
-        if (typeFilter) {
-          filteredRooms = filteredRooms.filter(room => room.type === typeFilter);
-        }
-        if (statusFilter) {
-          filteredRooms = filteredRooms.filter(room => room.status === statusFilter);
-        }
-        
-        setRooms(filteredRooms);
+        // Supabase logic here
       } else {
-        // Use local data
         const roomStats = getRoomStats();
-        let filteredRooms = roomStats;
-        
-        // Apply filters
-        if (searchTerm) {
-          filteredRooms = filteredRooms.filter(room => 
-            room.roomNumber.toLowerCase().includes(searchTerm.toLowerCase())
-          );
-        }
-        if (typeFilter) {
-          filteredRooms = filteredRooms.filter(room => room.roomType.toLowerCase() === typeFilter);
-        }
-        if (statusFilter) {
-          if (statusFilter === 'available') {
-            filteredRooms = filteredRooms.filter(room => room.occupiedBeds === 0);
-          } else if (statusFilter === 'occupied') {
-            filteredRooms = filteredRooms.filter(room => room.occupiedBeds > 0);
-          }
-        }
-        
-        setRooms(filteredRooms);
+        setRooms(roomStats);
       }
     } catch (error) {
       console.error('Error fetching rooms:', error);
-      setRooms([]);
     } finally {
       setLoading(false);
     }
@@ -244,65 +118,31 @@ const Rooms = () => {
   const fetchStats = async () => {
     try {
       if (USE_SUPABASE) {
-        // Calculate stats from rooms data
-        const roomsData = await roomsQueries.getAll();
-        const rooms = roomsData || [];
-        
-        const stats: RoomStats = {
-          total: rooms.length,
-          occupied: rooms.filter(r => r.status === 'occupied').length,
-          available: rooms.filter(r => r.status === 'available').length,
-          maintenance: rooms.filter(r => r.status === 'maintenance').length,
-          reserved: rooms.filter(r => r.status === 'reserved').length,
-          totalCapacity: rooms.reduce((sum, r) => sum + (r.capacity || 0), 0),
-          currentOccupancy: rooms.reduce((sum, r) => sum + (r.current_occupancy || 0), 0),
-          totalRevenue: rooms.reduce((sum, r) => sum + (r.monthly_rent || 0), 0),
-          floorStats: {},
-          typeStats: {},
-          maintenanceStats: {
-            none: rooms.filter(r => !r.maintenance_status || r.maintenance_status === 'none').length,
-            scheduled: rooms.filter(r => r.maintenance_status === 'scheduled').length,
-            in_progress: rooms.filter(r => r.maintenance_status === 'in_progress').length,
-            completed: rooms.filter(r => r.maintenance_status === 'completed').length
-          }
-        };
-        
-        setStats(stats);
+        // Supabase logic here
       } else {
-        // Use local data
         const roomStats = getRoomStats();
         const totalRooms = roomStats.length;
-        const occupiedRooms = roomStats.filter(r => r.occupiedBeds > 0).length;
-        const availableRooms = roomStats.filter(r => r.occupiedBeds === 0).length;
-        const totalCapacity = roomStats.reduce((sum, r) => sum + r.totalBeds, 0);
-        const currentOccupancy = roomStats.reduce((sum, r) => sum + r.occupiedBeds, 0);
-        const totalRevenue = roomStats.reduce((sum, r) => sum + r.totalRent, 0);
-        
-        // Calculate type stats
-        const typeStats: { [key: string]: { total: number; occupied: number; available: number } } = {};
-        roomStats.forEach(room => {
-          const type = room.roomType.toLowerCase();
-          if (!typeStats[type]) {
-            typeStats[type] = { total: 0, occupied: 0, available: 0 };
-          }
-          typeStats[type].total += 1;
-          if (room.occupiedBeds > 0) {
-            typeStats[type].occupied += 1;
-          } else {
-            typeStats[type].available += 1;
-          }
-        });
-        
+        const occupiedRooms = roomStats.filter(room => room.occupiedBeds > 0).length;
+        const availableRooms = totalRooms - occupiedRooms;
+        const totalRevenue = roomStats.reduce((sum, room) => sum + room.totalRent, 0);
+        const totalCapacity = roomStats.reduce((sum, room) => sum + room.totalBeds, 0);
+        const currentOccupancy = roomStats.reduce((sum, room) => sum + room.occupiedBeds, 0);
+        const occupancyRate = totalCapacity > 0 ? Math.round((currentOccupancy / totalCapacity) * 100) : 0;
+
+        const typeStats = {
+          single: roomStats.filter(room => room.roomType === 'Single').length,
+          double: roomStats.filter(room => room.roomType === 'Double').length,
+          triple: roomStats.filter(room => room.roomType === 'Triple').length
+        };
+
         const stats: RoomStats = {
-          total: totalRooms,
-          occupied: occupiedRooms,
-          available: availableRooms,
-          maintenance: 0,
-          reserved: 0,
+          totalRooms,
+          occupiedRooms,
+          availableRooms,
+          totalRevenue,
           totalCapacity,
           currentOccupancy,
-          totalRevenue,
-          floorStats: {},
+          occupancyRate,
           typeStats,
           maintenanceStats: { none: totalRooms, scheduled: 0, in_progress: 0, completed: 0 }
         };
@@ -325,390 +165,463 @@ const Rooms = () => {
     }
   };
 
-  const handleRoomSubmit = async (roomData: Partial<Room>) => {
-    try {
-      if (USE_SUPABASE) {
-        if (selectedRoom) {
-          await roomsQueries.update(selectedRoom.id, roomData);
-        } else {
-          await roomsQueries.create(roomData);
-        }
-      } else {
-        if (selectedRoom) {
-          await axios.put(`${apiUrl}/rooms/${selectedRoom.id}`, roomData);
-        } else {
-          await axios.post(`${apiUrl}/rooms`, roomData);
-        }
-      }
-      
-      fetchRooms();
-      fetchStats();
-      setShowAddModal(false);
-      setSelectedRoom(null);
-    } catch (error: any) {
-      console.error('Error saving room:', error);
-      alert(error.response?.data?.error || 'Failed to save room');
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'occupied':
+        return <Users className="h-4 w-4 text-green-500" />;
+      case 'vacant':
+        return <Home className="h-4 w-4 text-yellow-500" />;
+      case 'maintenance':
+        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      default:
+        return <Building className="h-4 w-4 text-gray-500" />;
     }
   };
 
-  const handleDeleteRoom = async (roomId: string) => {
-    if (!confirm('Are you sure you want to delete this room?')) return;
+  const getRoomTypeIcon = (type: string) => {
+    switch (type) {
+      case 'Single':
+        return <User className="h-4 w-4" />;
+      case 'Double':
+        return <Users className="h-4 w-4" />;
+      case 'Triple':
+        return <Users className="h-4 w-4" />;
+      default:
+        return <Building className="h-4 w-4" />;
+    }
+  };
+
+  const getRoomTypeColor = (type: string) => {
+    switch (type) {
+      case 'Single':
+        return 'bg-blue-100 text-blue-800';
+      case 'Double':
+        return 'bg-green-100 text-green-800';
+      case 'Triple':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getTenantsUnderNotice = (room: any) => {
+    return room.tenants.filter((t: any) => t.noticeGiven).length;
+  };
+
+  const getTenantsWithRentDue = (room: any) => {
+    return room.tenants.filter((t: any) => t.rentUnpaid > 0).length;
+  };
+
+  const getActiveTickets = (room: any) => {
+    return room.tenants.filter((t: any) => !t.electricityPaid).length;
+  };
+
+  const getBedIcons = (count: number) => {
+    return Array.from({ length: count }, (_, i) => (
+      <div key={i} className="w-3 h-3 bg-gray-300 rounded-sm"></div>
+    ));
+  };
+
+  const filteredRooms = rooms.filter(room => {
+    const matchesSearch = room.roomNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         room.roomType.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === 'all' || room.roomType.toLowerCase() === filterType;
+    const matchesStatus = filterStatus === 'all' || 
+                         (filterStatus === 'occupied' && room.occupiedBeds > 0) ||
+                         (filterStatus === 'vacant' && room.occupiedBeds === 0);
     
-    try {
-      if (USE_SUPABASE) {
-        await roomsQueries.delete(roomId);
-      } else {
-        await axios.delete(`${apiUrl}/rooms/${roomId}`);
-      }
-      fetchRooms();
-      fetchStats();
-    } catch (error: any) {
-      console.error('Error deleting room:', error);
-      alert(error.response?.data?.error || 'Failed to delete room');
-    }
-  };
+    return matchesSearch && matchesType && matchesStatus;
+  });
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading rooms...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Custom CSS for animations */}
+    <div className="min-h-screen bg-gray-50">
+      {/* Custom Animations */}
       <style>{`
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        
         @keyframes bounceIn {
           0% { opacity: 0; transform: scale(0.3); }
           50% { opacity: 1; transform: scale(1.05); }
           70% { transform: scale(0.9); }
           100% { opacity: 1; transform: scale(1); }
         }
-        
+        @keyframes drawPath {
+          from { stroke-dashoffset: 1000; }
+          to { stroke-dashoffset: 0; }
+        }
         @keyframes countUp {
-          from { opacity: 0; transform: scale(0.5); }
-          to { opacity: 1; transform: scale(1); }
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
         }
-        
-        .animate-fadeIn {
-          animation: fadeIn 0.6s ease-out forwards;
-        }
-        
-        .animate-slideUp {
-          animation: slideUp 0.8s ease-out forwards;
-        }
-        
-        .animate-bounceIn {
-          animation: bounceIn 0.8s ease-out forwards;
-        }
-        
-        .animate-countUp {
-          animation: countUp 0.8s ease-out forwards;
-        }
-        
-        .hover-lift {
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        
-        .hover-lift:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-        }
+        .animate-fadeIn { animation: fadeIn 0.6s ease-out; }
+        .animate-slideUp { animation: slideUp 0.8s ease-out; }
+        .animate-bounceIn { animation: bounceIn 0.8s ease-out; }
+        .animate-drawPath { animation: drawPath 2s ease-out forwards; }
+        .animate-countUp { animation: countUp 0.5s ease-out; }
       `}</style>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-          {/* Left Column - Room Overview and Quick Actions */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Room Overview Section */}
-            <div className="bg-gray-900 rounded-xl p-4 sm:p-6 relative transition-all duration-500 ease-in-out hover-lift">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
-                <h2 className="text-white font-bold text-lg sm:text-xl">ROOM OVERVIEW</h2>
-                <div className="bg-yellow-500 text-gray-900 px-3 sm:px-4 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium flex items-center gap-1 sm:gap-2">
-                  <Building className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Total: {stats.total} Rooms</span>
-                  <span className="sm:hidden">{stats.total}</span>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Main Content Area */}
+          <div className="lg:col-span-3 space-y-8">
+            {/* Room Overview */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-fadeIn">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Room Overview</h2>
+                  <p className="text-gray-600 mt-1">Complete overview of all rooms and their status</p>
                 </div>
-              </div>
-
-              <div className="text-white mb-4">
-                <div className="text-2xl sm:text-3xl lg:text-4xl font-bold animate-countUp">{formatCurrency(stats.totalRevenue)}</div>
-                <div className="text-sm sm:text-lg opacity-80 animate-fadeIn" style={{ animationDelay: '0.3s' }}>Monthly Revenue from Rooms</div>
-              </div>
-
-              {/* Room Stats Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6">
-                <div className="text-center p-3 bg-gray-800 rounded-lg">
-                  <div className="text-green-400 text-lg sm:text-xl font-bold animate-countUp">{stats.available}</div>
-                  <div className="text-gray-300 text-xs sm:text-sm">Available</div>
-                </div>
-                <div className="text-center p-3 bg-gray-800 rounded-lg">
-                  <div className="text-blue-400 text-lg sm:text-xl font-bold animate-countUp">{stats.occupied}</div>
-                  <div className="text-gray-300 text-xs sm:text-sm">Occupied</div>
-                </div>
-                <div className="text-center p-3 bg-gray-800 rounded-lg">
-                  <div className="text-orange-400 text-lg sm:text-xl font-bold animate-countUp">{stats.maintenance}</div>
-                  <div className="text-gray-300 text-xs sm:text-sm">Maintenance</div>
-                </div>
-                <div className="text-center p-3 bg-gray-800 rounded-lg">
-                  <div className="text-purple-400 text-lg sm:text-xl font-bold animate-countUp">{stats.reserved}</div>
-                  <div className="text-gray-300 text-xs sm:text-sm">Reserved</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
-              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4 sm:mb-6">Quick Actions</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                <button 
-                  onClick={() => {
-                    setSelectedRoom(null);
-                    setShowAddModal(true);
-                  }}
-                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
-                  style={{ animationDelay: '0.1s' }}
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:scale-105"
                 >
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-all duration-300 group-hover:scale-110">
-                    <Plus className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-                  </div>
-                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Add Room</span>
-                </button>
-                
-                <button 
-                  onClick={() => setShowAllocationModal(true)}
-                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
-                  style={{ animationDelay: '0.2s' }}
-                >
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-all duration-300 group-hover:scale-110">
-                    <UserPlus className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-                  </div>
-                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Allocate Room</span>
-                </button>
-                
-                <button 
-                  onClick={() => setShowMaintenanceModal(true)}
-                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
-                  style={{ animationDelay: '0.3s' }}
-                >
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-all duration-300 group-hover:scale-110">
-                    <Wrench className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
-                  </div>
-                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Maintenance</span>
-                </button>
-
-                <button 
-                  onClick={() => {
-                    setStatusFilter('');
-                    setFloorFilter('');
-                    setTypeFilter('');
-                    setMaintenanceFilter('');
-                    setSearchTerm('');
-                  }}
-                  className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
-                  style={{ animationDelay: '0.4s' }}
-                >
-                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-all duration-300 group-hover:scale-110">
-                    <Eye className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
-                  </div>
-                  <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">View All</span>
+                  <Plus className="h-4 w-4" />
+                  Add Room
                 </button>
               </div>
-            </div>
 
-            {/* Room List with Detailed Information */}
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <h2 className="text-gray-900 font-bold text-lg sm:text-xl">Room List</h2>
-                <div className="flex gap-2">
+              {/* Overview Stats */}
+              {stats && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-blue-100 text-sm">Total Rooms</p>
+                        <p className="text-2xl font-bold">{stats.totalRooms}</p>
+                      </div>
+                      <Building className="h-8 w-8 text-blue-200" />
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-green-100 text-sm">Occupied</p>
+                        <p className="text-2xl font-bold">{stats.occupiedRooms}</p>
+                      </div>
+                      <Users className="h-8 w-8 text-green-200" />
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-yellow-100 text-sm">Available</p>
+                        <p className="text-2xl font-bold">{stats.availableRooms}</p>
+                      </div>
+                      <Home className="h-8 w-8 text-yellow-200" />
+                    </div>
+                  </div>
+                  <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-purple-100 text-sm">Revenue</p>
+                        <p className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</p>
+                      </div>
+                      <IndianRupee className="h-8 w-8 text-purple-200" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Search and Filters */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <input
                     type="text"
                     placeholder="Search rooms..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-sm"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                   />
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-sm"
-                  >
-                    <option value="">All Status</option>
-                    <option value="available">Available</option>
-                    <option value="occupied">Occupied</option>
-                    <option value="maintenance">Maintenance</option>
-                    <option value="reserved">Reserved</option>
-                  </select>
                 </div>
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                >
+                  <option value="all">All Types</option>
+                  <option value="single">Single</option>
+                  <option value="double">Double</option>
+                  <option value="triple">Triple</option>
+                </select>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                >
+                  <option value="all">All Status</option>
+                  <option value="occupied">Occupied</option>
+                  <option value="vacant">Vacant</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Room List */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-slideUp">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Room List</h3>
+                <p className="text-gray-600">{filteredRooms.length} rooms found</p>
               </div>
 
-              {loading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto"></div>
-                  <p className="text-gray-600 mt-2">Loading rooms...</p>
-                </div>
-              ) : rooms.length === 0 ? (
-                <div className="text-center py-8">
-                  <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">No rooms found</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {rooms.slice(0, 6).map((room) => (
-                    <div key={room.roomNumber} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-300">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <Building className="h-4 w-4 text-gray-600" />
-                          <h3 className="font-semibold text-gray-900">Room {room.roomNumber}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredRooms.map((room, index) => (
+                  <div 
+                    key={room.roomNumber} 
+                    className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-105 animate-bounceIn"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                          <Building className="h-5 w-5 text-yellow-600" />
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            room.occupiedBeds === 0 
-                              ? 'bg-yellow-100 text-yellow-800' 
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {room.occupiedBeds === 0 ? 'Available' : 'Full'}
+                        <div>
+                          <h4 className="font-bold text-gray-900">Room {room.roomNumber}</h4>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoomTypeColor(room.roomType)}`}>
+                            {room.roomType}
                           </span>
-                          <button className="p-1 text-gray-400 hover:text-gray-600">
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
                         </div>
                       </div>
-
-                      {/* Basic Room Info */}
-                      <div className="space-y-2 text-sm text-gray-600 mb-3">
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4" />
-                          <span>{room.occupiedBeds}/{room.totalBeds} Occupied</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <IndianRupee className="h-4 w-4" />
-                          <span>{formatCurrency(room.totalRent)}/month</span>
-                        </div>
-                      </div>
-
-                      {/* Detailed Room Information */}
-                      <div className="space-y-2 mb-4 p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
-                            <span className="text-xs font-medium">🛏️</span>
-                          </div>
-                          <span>Bed: {room.totalBeds}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
-                            <span className="text-xs font-medium">🔔</span>
-                          </div>
-                          <span>Under Notice: {room.hasNotice ? room.tenants.filter((t: any) => t.noticeGiven).length : 0}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
-                            <span className="text-xs font-medium">💰</span>
-                          </div>
-                          <span>Rent Due: {room.hasUnpaidRent ? room.tenants.filter((t: any) => t.rentUnpaid > 0).length : 0}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
-                            <span className="text-xs font-medium">🎫</span>
-                          </div>
-                          <span>Active Ticket: {room.hasUnpaidElectricity ? 1 : 0}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedRoom(room);
-                            setShowDetailsModal(true);
-                          }}
-                          className="flex-1 px-3 py-2 bg-yellow-500 text-gray-900 rounded-lg text-sm font-medium hover:bg-yellow-600 transition-colors"
-                        >
-                          View Details
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedRoom(room);
-                            setShowAllocationModal(true);
-                          }}
-                          className="flex-1 px-3 py-2 bg-gray-100 text-gray-800 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-                        >
-                          Add Tenant
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          room.occupiedBeds === 0
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : room.occupiedBeds === room.totalBeds
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {room.occupiedBeds === 0 ? 'Vacant' : room.occupiedBeds === room.totalBeds ? 'Full' : 'Partial'}
+                        </span>
+                        <button className="p-1 text-gray-400 hover:text-gray-600">
+                          <MoreVertical className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    {/* Room Details */}
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium">🛏️</span>
+                        </div>
+                        <span>Bed: {room.totalBeds}</span>
+                        <div className="flex gap-1 ml-auto">
+                          {getBedIcons(room.totalBeds)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium">🔔</span>
+                        </div>
+                        <span>Under Notice: <span className="text-orange-600 font-medium">{getTenantsUnderNotice(room)}</span></span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium">💰</span>
+                        </div>
+                        <span>Rent Due: <span className="text-orange-600 font-medium">{getTenantsWithRentDue(room)}</span></span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium">🎫</span>
+                        </div>
+                        <span>Active Ticket: <span className="text-orange-600 font-medium">{getActiveTickets(room)}</span></span>
+                      </div>
+                    </div>
+
+                    {/* Financial Info */}
+                    <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Monthly Rent:</span>
+                        <span className="font-semibold text-gray-900">{formatCurrency(room.totalRent)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm mt-1">
+                        <span className="text-gray-600">Occupancy:</span>
+                        <span className="font-semibold text-gray-900">{room.occupiedBeds}/{room.totalBeds}</span>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedRoom(room);
+                          setShowDetailsModal(true);
+                        }}
+                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        View Details
+                      </button>
+                      <button className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                        ADD TENANT
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Right Column - Room Stats */}
+          {/* Sidebar */}
           <div className="space-y-6">
-            {/* Room Statistics */}
-            <div className="bg-yellow-500 rounded-xl p-4 sm:p-6 hover-lift transition-all duration-300">
-              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Room Statistics</h2>
-              <div className="bg-white rounded-lg p-4 sm:p-6 hover-lift transition-all duration-300">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 text-sm sm:text-base">Total Capacity:</span>
-                    <span className="text-blue-600 font-bold text-lg sm:text-xl animate-countUp">{stats.totalCapacity}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 text-sm sm:text-base">Current Occupancy:</span>
-                    <span className="text-green-600 font-bold text-lg sm:text-xl animate-countUp">{stats.currentOccupancy}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 text-sm sm:text-base">Occupancy Rate:</span>
-                    <span className="text-purple-600 font-bold text-lg sm:text-xl animate-countUp">
-                      {stats.totalCapacity > 0 ? Math.round((stats.currentOccupancy / stats.totalCapacity) * 100) : 0}%
-                    </span>
-                  </div>
-                </div>
+            {/* Quick Actions */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Activity className="h-5 w-5 text-yellow-600" />
+                Quick Actions
+              </h3>
+              <div className="space-y-3">
+                <button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
+                  <Plus className="h-4 w-4" />
+                  Add New Room
+                </button>
+                <button className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
+                  <Users className="h-4 w-4" />
+                  Allocate Tenant
+                </button>
+                <button className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
+                  <BarChart3 className="h-4 w-4" />
+                  Generate Report
+                </button>
+                <button className="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
+                  <Bell className="h-4 w-4" />
+                  Send Notifications
+                </button>
               </div>
             </div>
 
-            {/* Maintenance Status */}
-            <div className="bg-yellow-500 rounded-xl p-4 sm:p-6 hover-lift transition-all duration-300">
-              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Maintenance Status</h2>
-              <div className="bg-white rounded-lg p-4 sm:p-6 hover-lift transition-all duration-300">
+            {/* Room Statistics */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-yellow-600" />
+                Room Statistics
+              </h3>
+              {stats && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 text-sm sm:text-base">Scheduled:</span>
-                    <span className="text-orange-600 font-bold text-lg sm:text-xl animate-countUp">{stats.maintenanceStats.scheduled}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Total Capacity</span>
+                    <span className="font-semibold">{stats.totalCapacity}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 text-sm sm:text-base">In Progress:</span>
-                    <span className="text-red-600 font-bold text-lg sm:text-xl animate-countUp">{stats.maintenanceStats.in_progress}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Current Occupancy</span>
+                    <span className="font-semibold">{stats.currentOccupancy}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 text-sm sm:text-base">Completed:</span>
-                    <span className="text-green-600 font-bold text-lg sm:text-xl animate-countUp">{stats.maintenanceStats.completed}</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Occupancy Rate</span>
+                    <span className="font-semibold text-green-600">{stats.occupancyRate}%</span>
                   </div>
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">Room Types</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Single</span>
+                        <span className="font-semibold">{stats.typeStats.single}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Double</span>
+                        <span className="font-semibold">{stats.typeStats.double}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600">Triple</span>
+                        <span className="font-semibold">{stats.typeStats.triple}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Maintenance Status */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Settings className="h-5 w-5 text-yellow-600" />
+                Maintenance Status
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="text-gray-600">No Issues</span>
+                  </div>
+                  <span className="font-semibold">{stats?.maintenanceStats.none || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <span className="text-gray-600">Scheduled</span>
+                  </div>
+                  <span className="font-semibold">{stats?.maintenanceStats.scheduled || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                    <span className="text-gray-600">In Progress</span>
+                  </div>
+                  <span className="font-semibold">{stats?.maintenanceStats.in_progress || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="text-gray-600">Completed</span>
+                  </div>
+                  <span className="font-semibold">{stats?.maintenanceStats.completed || 0}</span>
                 </div>
               </div>
             </div>
 
             {/* Recent Activity */}
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
-              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Recent Activity</h2>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">New room added - Room 101</span>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-yellow-600" />
+                Recent Activity
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">New tenant added</p>
+                    <p className="text-xs text-gray-500">Room 101 - 2 hours ago</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">Tenant allocated to Room 205</span>
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Payment received</p>
+                    <p className="text-xs text-gray-500">Room 205 - 4 hours ago</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">Maintenance scheduled for Room 103</span>
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Maintenance request</p>
+                    <p className="text-xs text-gray-500">Room 312 - 6 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Notice given</p>
+                    <p className="text-xs text-gray-500">Room 118 - 1 day ago</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -717,43 +630,7 @@ const Rooms = () => {
       </div>
 
       {/* Modals */}
-      <RoomForm
-        isOpen={showAddModal}
-        onClose={() => {
-          setShowAddModal(false);
-          setSelectedRoom(null);
-        }}
-        onSubmit={handleRoomSubmit}
-        room={selectedRoom}
-      />
-
-      <RoomAllocationModal
-        isOpen={showAllocationModal}
-        onClose={() => {
-          setShowAllocationModal(false);
-          setSelectedRoom(null);
-        }}
-        room={selectedRoom}
-        onAllocationUpdate={() => {
-          fetchRooms();
-          fetchStats();
-        }}
-      />
-
-      <MaintenanceModal
-        isOpen={showMaintenanceModal}
-        onClose={() => {
-          setShowMaintenanceModal(false);
-          setSelectedRoom(null);
-        }}
-        room={selectedRoom}
-        onMaintenanceUpdate={() => {
-          fetchRooms();
-          fetchStats();
-        }}
-      />
-
-      {selectedRoom && (
+      {showDetailsModal && selectedRoom && (
         <RoomDetailsModal
           isOpen={showDetailsModal}
           room={selectedRoom}
@@ -770,7 +647,7 @@ const Rooms = () => {
 // Room Details Modal Component
 interface RoomDetailsModalProps {
   isOpen: boolean;
-  room: any; // Changed from Room to any to match the new data structure
+  room: any;
   onClose: () => void;
 }
 
@@ -826,23 +703,19 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
               <Building className="h-5 w-5" />
               Room Information
             </h3>
-            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="text-sm font-medium text-gray-600">Room Number</label>
                 <div className="text-gray-900 font-medium mt-1">{room.roomNumber}</div>
               </div>
-
               <div>
                 <label className="text-sm font-medium text-gray-600">Room Type</label>
                 <div className="text-gray-900 font-medium mt-1 capitalize">{room.roomType}</div>
               </div>
-
               <div>
                 <label className="text-sm font-medium text-gray-600">Capacity</label>
                 <div className="text-gray-900 font-medium mt-1">{room.totalBeds} person(s)</div>
               </div>
-
               <div>
                 <label className="text-sm font-medium text-gray-600">Total Security Deposit</label>
                 <div className="text-gray-900 font-medium mt-1">{formatCurrency(totalSecurityDeposit)}</div>
@@ -857,7 +730,6 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
               <Users className="h-5 w-5" />
               Current Tenants
             </h3>
-            
             {room.tenants && room.tenants.length > 0 ? (
               <div className="space-y-3">
                 {room.tenants.map((tenant: any, index: number) => (
@@ -869,7 +741,6 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
                       </div>
                       <div className="text-gray-500 text-sm">Tenant #{index + 1} in Room</div>
                     </div>
-                    
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                       <div>
                         <span className="text-gray-600">Phone:</span>
