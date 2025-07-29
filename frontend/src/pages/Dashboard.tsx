@@ -959,82 +959,65 @@ const Dashboard = () => {
         </div>
       </div>
 
-          {/* Right Column - Other Stats */}
+          {/* Right Column - Stats Cards */}
           <div className="space-y-6">
-            {/* Vacant Beds Section */}
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
-              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Vacant Beds</h2>
-              <div className="text-center">
-                <div className="text-3xl sm:text-4xl font-bold text-blue-600 mb-2 animate-countUp">{stats.vacantBeds}</div>
-                <div className="text-gray-600 text-sm sm:text-base">Tenants</div>
-          </div>
-        </div>
-
-            {/* Not-Paid Section */}
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
-              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Not-Paid</h2>
-              <div className="text-center mb-4">
-                <div className="text-3xl sm:text-4xl font-bold text-red-600 mb-2 animate-countUp">{stats.unpaidTenants}</div>
-                <div className="text-gray-600 text-sm sm:text-base">Tenants</div>
-              </div>
-              <button className="w-full bg-red-500 text-white py-2 sm:py-3 rounded-lg font-medium hover:bg-red-600 transition-all duration-300 hover-lift">
-                REMIND TO PAY
-              </button>
-              </div>
-
-            {/* On-time Payments */}
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-gray-900 font-bold text-lg sm:text-xl">Payment Status</h2>
-                <button className="bg-blue-500 text-white px-3 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-600 transition-all duration-300 hover-lift">
-                  VIEW
+            {/* Rent Details */}
+            <div className="bg-yellow-500 rounded-xl p-4 sm:p-6 hover-lift transition-all duration-300 stat-card">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Rent Details</h2>
+              <div className="bg-white rounded-lg p-4 sm:p-6 hover-lift transition-all duration-300">
+                <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                  {/* Paid Section */}
+                  <div className="text-center">
+                    <div className="text-gray-600 text-xs sm:text-sm font-medium">Paid</div>
+                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2 animate-countUp">{stats.paidTenants}</div>
+                    <div className="text-gray-600 text-xs sm:text-sm">Tenants</div>
+                    <div className="text-gray-500 text-xs mt-1 sm:mt-2">On-time: {stats.onTimePayments}</div>
+                  </div>
+                  
+                  {/* Not Paid Section */}
+                  <div className="text-center">
+                    <div className="text-gray-600 text-xs sm:text-sm font-medium">Not-Paid</div>
+                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2 animate-countUp">{stats.unpaidTenants}</div>
+                    <div className="text-gray-600 text-xs sm:text-sm">Tenants</div>
+                    <button className="bg-yellow-500 text-gray-900 px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1 mx-auto mt-2 sm:mt-3 hover:bg-yellow-600 transition-all duration-300 hover-lift">
+                      <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="hidden sm:inline">REMIND TO PAY</span>
+                      <span className="sm:hidden">REMIND</span>
+                    </button>
+                  </div>
+                </div>
+                
+                <button className="w-full bg-gray-900 text-white py-2 sm:py-3 rounded-lg mt-4 sm:mt-6 font-medium hover:bg-gray-800 transition-all duration-300 text-sm sm:text-base hover-lift">
+                  VIEW DETAILS
                 </button>
               </div>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm sm:text-base">On-time:</span>
-                  <span className="text-green-600 font-bold text-lg sm:text-xl animate-countUp">{stats.onTimePayments}</span>
-              </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm sm:text-base">Pending:</span>
-                  <span className="text-orange-600 font-bold text-lg sm:text-xl animate-countUp">{stats.pendingCollections}</span>
-              </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm sm:text-base">Collection Rate:</span>
-                  <span className="text-blue-600 font-bold text-lg sm:text-xl animate-countUp">{stats.collectionRate}%</span>
-          </div>
-        </div>
-      </div>
+            </div>
 
-            {/* Notice Period */}
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
-              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Notice Period</h2>
-              <div className="text-center mb-4">
-                <div className="text-3xl sm:text-4xl font-bold text-yellow-600 mb-2 animate-countUp">{stats.noticePeriodTenants}</div>
-                <div className="text-gray-600 text-sm sm:text-base">Tenants</div>
-    </div>
-              <button className="w-full bg-yellow-500 text-gray-900 py-2 sm:py-3 rounded-lg font-medium hover:bg-yellow-600 transition-all duration-300 hover-lift">
-                VIEW DETAILS
-          </button>
-        </div>
-
-            {/* Recent Activity */}
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
-              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Recent Activity</h2>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">New tenant added - Room 101</span>
+            {/* Other Stats */}
+            <div className="bg-yellow-500 rounded-xl p-4 sm:p-6 hover-lift transition-all duration-300 stat-card">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Other Stats</h2>
+              <div className="bg-white rounded-lg p-4 sm:p-6 hover-lift transition-all duration-300">
+                <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                  {/* Vacant Beds */}
+                  <div className="text-center">
+                    <div className="text-gray-600 text-xs sm:text-sm font-medium">Vacant Beds</div>
+                    <div className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 animate-countUp">{stats.vacantBeds} / {stats.totalBeds}</div>
+                    <button className="bg-gray-900 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium mt-2 sm:mt-3 hover:bg-gray-800 transition-all duration-300 hover-lift">
+                      VIEW
+                    </button>
                   </div>
-                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">Payment received - ₹15,000</span>
-            </div>
-                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">Maintenance request - Room 205</span>
-          </div>
-            </div>
+                  
+                  {/* Notice Period */}
+                  <div className="text-center">
+                    <div className="text-gray-600 text-xs sm:text-sm font-medium">Notice Period</div>
+                    <div className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 animate-countUp">{stats.noticePeriodTenants} / {stats.totalTenants}</div>
+                    <div className="text-gray-600 text-xs sm:text-sm">Tenants</div>
+                    <button className="bg-gray-900 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium mt-2 sm:mt-3 hover:bg-gray-800 transition-all duration-300 hover-lift">
+                      VIEW
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           </div>
