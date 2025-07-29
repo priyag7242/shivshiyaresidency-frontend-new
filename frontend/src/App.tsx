@@ -3,6 +3,7 @@ import { AuthProvider, ProtectedRoute, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import SafeDashboard from './components/SafeDashboard';
 import Tenants from './pages/Tenants';
+import TenantManagement from './pages/TenantManagement';
 import Rooms from './pages/Rooms';
 import Payments from './pages/Payments';
 import Maintenance from './pages/Maintenance';
@@ -23,6 +24,14 @@ const ProtectedApp = () => {
           element={
             <ProtectedRoute>
               <Tenants />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/tenant-management" 
+          element={
+            <ProtectedRoute>
+              <TenantManagement />
             </ProtectedRoute>
           } 
         />

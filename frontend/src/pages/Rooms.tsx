@@ -134,7 +134,7 @@ const Rooms = () => {
           double: roomStats.filter(room => room.roomType === 'Double').length,
           triple: roomStats.filter(room => room.roomType === 'Triple').length
         };
-
+        
         const stats: RoomStats = {
           totalRooms,
           occupiedRooms,
@@ -234,7 +234,7 @@ const Rooms = () => {
   });
 
   if (loading) {
-    return (
+  return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto"></div>
@@ -285,101 +285,101 @@ const Rooms = () => {
             {/* Room Overview */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-fadeIn">
               <div className="flex items-center justify-between mb-6">
-                <div>
+          <div>
                   <h2 className="text-2xl font-bold text-gray-900">Room Overview</h2>
                   <p className="text-gray-600 mt-1">Complete overview of all rooms and their status</p>
-                </div>
-                <button
+          </div>
+            <button
                   onClick={() => setShowAddModal(true)}
                   className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:scale-105"
                 >
                   <Plus className="h-4 w-4" />
                   Add Room
-                </button>
-              </div>
+            </button>
+      </div>
 
               {/* Overview Stats */}
               {stats && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                   <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
+          <div className="flex items-center justify-between">
+            <div>
                         <p className="text-blue-100 text-sm">Total Rooms</p>
                         <p className="text-2xl font-bold">{stats.totalRooms}</p>
-                      </div>
+            </div>
                       <Building className="h-8 w-8 text-blue-200" />
-                    </div>
-                  </div>
+            </div>
+          </div>
                   <div className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
+          <div className="flex items-center justify-between">
+            <div>
                         <p className="text-green-100 text-sm">Occupied</p>
                         <p className="text-2xl font-bold">{stats.occupiedRooms}</p>
-                      </div>
+            </div>
                       <Users className="h-8 w-8 text-green-200" />
-                    </div>
-                  </div>
+            </div>
+          </div>
                   <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
+          <div className="flex items-center justify-between">
+            <div>
                         <p className="text-yellow-100 text-sm">Available</p>
                         <p className="text-2xl font-bold">{stats.availableRooms}</p>
-                      </div>
+            </div>
                       <Home className="h-8 w-8 text-yellow-200" />
-                    </div>
-                  </div>
+            </div>
+          </div>
                   <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
+          <div className="flex items-center justify-between">
+            <div>
                         <p className="text-purple-100 text-sm">Revenue</p>
                         <p className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</p>
-                      </div>
+            </div>
                       <IndianRupee className="h-8 w-8 text-purple-200" />
-                    </div>
-                  </div>
-                </div>
+            </div>
+          </div>
+        </div>
               )}
 
               {/* Search and Filters */}
               <div className="flex flex-col sm:flex-row gap-4 mb-6">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <input
-                    type="text"
-                    placeholder="Search rooms..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+            <input
+              type="text"
+              placeholder="Search rooms..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                  />
-                </div>
-                <select
+            />
+          </div>
+            <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                 >
                   <option value="all">All Types</option>
-                  <option value="single">Single</option>
-                  <option value="double">Double</option>
-                  <option value="triple">Triple</option>
-                </select>
-                <select
+              <option value="single">Single</option>
+              <option value="double">Double</option>
+              <option value="triple">Triple</option>
+            </select>
+            <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                 >
                   <option value="all">All Status</option>
-                  <option value="occupied">Occupied</option>
+              <option value="occupied">Occupied</option>
                   <option value="vacant">Vacant</option>
-                </select>
-              </div>
-            </div>
+            </select>
+          </div>
+        </div>
 
             {/* Room List */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-slideUp">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-semibold text-gray-900">Room List</h3>
                 <p className="text-gray-600">{filteredRooms.length} rooms found</p>
-              </div>
+      </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredRooms.map((room, index) => (
@@ -390,17 +390,17 @@ const Rooms = () => {
                   >
                     {/* Header */}
                     <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
                           <Building className="h-5 w-5 text-yellow-600" />
-                        </div>
-                        <div>
+                              </div>
+                              <div>
                           <h4 className="font-bold text-gray-900">Room {room.roomNumber}</h4>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoomTypeColor(room.roomType)}`}>
                             {room.roomType}
                           </span>
-                        </div>
-                      </div>
+                              </div>
+                            </div>
                       <div className="flex items-center gap-2">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                           room.occupiedBeds === 0
@@ -422,30 +422,30 @@ const Rooms = () => {
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
                           <span className="text-xs font-medium">🛏️</span>
-                        </div>
+                                </div>
                         <span>Bed: {room.totalBeds}</span>
                         <div className="flex gap-1 ml-auto">
                           {getBedIcons(room.totalBeds)}
-                        </div>
-                      </div>
+                                    </div>
+                                </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
                           <span className="text-xs font-medium">🔔</span>
-                        </div>
+                              </div>
                         <span>Under Notice: <span className="text-orange-600 font-medium">{getTenantsUnderNotice(room)}</span></span>
-                      </div>
+                                </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
                           <span className="text-xs font-medium">💰</span>
-                        </div>
+                              </div>
                         <span>Rent Due: <span className="text-orange-600 font-medium">{getTenantsWithRentDue(room)}</span></span>
-                      </div>
+                                </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
                           <span className="text-xs font-medium">🎫</span>
-                        </div>
+                                  </div>
                         <span>Active Ticket: <span className="text-orange-600 font-medium">{getActiveTickets(room)}</span></span>
-                      </div>
+                              </div>
                     </div>
 
                     {/* Financial Info */}
@@ -462,15 +462,15 @@ const Rooms = () => {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setSelectedRoom(room);
+                                    <button
+                                      onClick={() => {
+                                        setSelectedRoom(room);
                           setShowDetailsModal(true);
-                        }}
+                                      }}
                         className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                      >
+                                    >
                         View Details
-                      </button>
+                                    </button>
                       <button className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
                         ADD TENANT
                       </button>
@@ -495,19 +495,19 @@ const Rooms = () => {
                   Add New Room
                 </button>
                 <button className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
-                  <Users className="h-4 w-4" />
+                                      <Users className="h-4 w-4" />
                   Allocate Tenant
-                </button>
+                                    </button>
                 <button className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
                   <BarChart3 className="h-4 w-4" />
                   Generate Report
-                </button>
+                                    </button>
                 <button className="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
                   <Bell className="h-4 w-4" />
                   Send Notifications
-                </button>
-              </div>
-            </div>
+                                    </button>
+                                  </div>
+                              </div>
 
             {/* Room Statistics */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -585,8 +585,8 @@ const Rooms = () => {
                   </div>
                   <span className="font-semibold">{stats?.maintenanceStats.completed || 0}</span>
                 </div>
-              </div>
-            </div>
+        </div>
+      </div>
 
             {/* Recent Activity */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -664,16 +664,16 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
         {/* Header */}
         <div className="bg-gray-900 text-white p-6 rounded-t-xl">
           <div className="flex items-center justify-between">
-            <div>
+          <div>
               <h2 className="text-2xl font-bold">Room Details</h2>
               <p className="text-gray-300 mt-1">Complete information about Room {room.roomNumber}</p>
-            </div>
-            <button
-              onClick={onClose}
+          </div>
+          <button
+            onClick={onClose}
               className="text-gray-400 hover:text-white transition-colors"
-            >
-              <X className="h-6 w-6" />
-            </button>
+          >
+            <X className="h-6 w-6" />
+          </button>
           </div>
         </div>
 
@@ -681,7 +681,7 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
           {/* Status Overview */}
           <div className="bg-gray-50 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Overview</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">{room.occupiedBeds}/{room.totalBeds}</div>
                 <div className="text-gray-600">Occupancy</div>
@@ -693,7 +693,7 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
               <div className="text-center">
                 <div className="text-2xl font-bold text-purple-600">{occupancyRate}%</div>
                 <div className="text-gray-600">Occupancy Rate</div>
-              </div>
+            </div>
             </div>
           </div>
 
@@ -721,7 +721,7 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
                 <div className="text-gray-900 font-medium mt-1">{formatCurrency(totalSecurityDeposit)}</div>
                 <div className="text-xs text-gray-500 mt-1">Auto-calculated from tenants</div>
               </div>
-            </div>
+              </div>
           </div>
 
           {/* Current Tenants */}
@@ -767,7 +767,7 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
                         <span className={`ml-2 font-medium ${tenant.rentUnpaid > 0 ? 'text-red-600' : 'text-green-600'}`}>
                           {tenant.rentUnpaid > 0 ? 'Unpaid' : 'Paid'}
                         </span>
-                      </div>
+                    </div>
                       <div>
                         <span className="text-gray-600">Electricity:</span>
                         <span className={`ml-2 font-medium ${tenant.electricityPaid ? 'text-green-600' : 'text-red-600'}`}>
@@ -777,16 +777,16 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
                     </div>
                   </div>
                 ))}
-              </div>
+                    </div>
             ) : (
               <div className="text-gray-500 text-center py-8">
                 <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                 <p>No tenants currently allocated to this room</p>
-              </div>
-            )}
-          </div>
-
-          {/* Financial Summary */}
+                      </div>
+                    )}
+                </div>
+                
+                {/* Financial Summary */}
           <div className="bg-gray-50 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Room Financial Summary</h3>
             <p className="text-gray-600 text-sm mb-4">Automatically calculated from tenant data</p>
@@ -795,18 +795,18 @@ const RoomDetailsModal = ({ isOpen, room, onClose }: RoomDetailsModalProps) => {
               <div>
                 <div className="text-2xl font-bold text-green-600">{formatCurrency(totalMonthlyRent)}</div>
                 <div className="text-gray-600">Total Monthly Rent</div>
-              </div>
-              <div>
+                </div>
+                <div>
                 <div className="text-2xl font-bold text-blue-600">{formatCurrency(totalSecurityDeposit)}</div>
                 <div className="text-gray-600">Total Security Deposit</div>
-              </div>
-            </div>
+                </div>
+                  </div>
             
             <div className="mt-4 text-sm text-gray-500">
               Based on {room.tenants?.length || 0} active tenants
-            </div>
-          </div>
-        </div>
+                  </div>
+                </div>
+                </div>
       </div>
     </div>
   );

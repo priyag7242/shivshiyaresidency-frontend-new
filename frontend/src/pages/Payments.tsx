@@ -604,7 +604,7 @@ const Payments = () => {
 
       // Refresh data
       await fetchData();
-      
+
     } catch (error) {
       console.error('❌ Error generating bills:', error);
       alert('Failed to generate bills: ' + (error as Error).message);

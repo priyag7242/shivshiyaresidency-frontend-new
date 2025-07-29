@@ -126,7 +126,6 @@ const Tenants = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [stats, setStats] = useState<TenantStats>({
     total: 0,
     active: 0,
@@ -183,10 +182,10 @@ const Tenants = () => {
       
       // Import the complete data
       const { data, error } = await supabase
-        .from('tenants')
-        .insert(completeTenantsData)
-        .select();
-      
+          .from('tenants')
+          .insert(completeTenantsData)
+          .select();
+        
       if (error) {
         console.error('❌ Error importing data:', error);
         throw error;
@@ -215,7 +214,7 @@ const Tenants = () => {
       if (categoryFilter) {
         query = query.eq('category', categoryFilter);
       }
-      
+
       const { data, error } = await query;
       if (error) throw error;
       
@@ -271,35 +270,35 @@ const Tenants = () => {
           .delete()
           .eq('id', tenantId);
         
-        if (error) throw error;
+      if (error) throw error;
         
         console.log('✅ Tenant deleted successfully');
-        fetchTenants();
-        fetchStats();
-      } catch (error) {
-        console.error('Error deleting tenant:', error);
-        alert('Failed to delete tenant');
+      fetchTenants();
+      fetchStats();
+    } catch (error) {
+      console.error('Error deleting tenant:', error);
+      alert('Failed to delete tenant');
       }
     }
   };
 
   const markTenantInactive = async (tenantId: string, tenantName: string) => {
     if (window.confirm(`Are you sure you want to mark tenant "${tenantName}" as inactive?`)) {
-      try {
-        const { error } = await supabase
-          .from('tenants')
-          .update({ 
-            status: 'inactive',
+    try {
+      const { error } = await supabase
+        .from('tenants')
+        .update({ 
+          status: 'inactive',
             departure_date: new Date().toISOString().split('T')[0]
-          })
-          .eq('id', tenantId);
-        
-        if (error) throw error;
-        
+        })
+        .eq('id', tenantId);
+      
+      if (error) throw error;
+      
         console.log('✅ Tenant marked as inactive');
-        fetchTenants();
-        fetchStats();
-      } catch (error) {
+      fetchTenants();
+      fetchStats();
+    } catch (error) {
         console.error('Error updating tenant status:', error);
         alert('Failed to update tenant status');
       }
@@ -355,42 +354,6 @@ const Tenants = () => {
     return <CheckCircle className="h-4 w-4 text-green-500" />;
   };
 
-  const isVacatingThisMonth = (tenant: Tenant) => {
-    if (!tenant.notice_given || !tenant.notice_date) return false;
-    
-    const noticeDate = new Date(tenant.notice_date);
-    const currentDate = new Date();
-    
-    return noticeDate.getMonth() === currentDate.getMonth() && 
-           noticeDate.getFullYear() === currentDate.getFullYear();
-  };
-
-  const getBedCount = (roomType: string) => {
-    switch (roomType) {
-      case 'Single': return 1;
-      case 'Double': return 2;
-      case 'Triple': return 3;
-      default: return 1;
-    }
-  };
-
-  const getCurrentTenantsCount = (roomNumber: string) => {
-    return tenants.filter(t => t.room_number === roomNumber && t.status === 'active').length;
-  };
-
-  const getRoomType = (roomNumber: string) => {
-    // Determine room type based on room number pattern or tenant data
-    const room = tenants.find(t => t.room_number === roomNumber);
-    if (room) {
-      // You might need to add room_type field to your tenant data
-      // For now, we'll estimate based on room number
-      if (roomNumber.includes('G') || roomNumber.includes('1')) return 'Triple';
-      if (roomNumber.includes('2') || roomNumber.includes('3')) return 'Double';
-      return 'Single';
-    }
-    return 'Triple'; // Default
-  };
-
   const filteredTenants = tenants.filter(tenant => {
     const matchesSearch = tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          tenant.mobile.includes(searchTerm) ||
@@ -402,7 +365,7 @@ const Tenants = () => {
   });
 
   if (loading) {
-    return (
+  return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto"></div>
@@ -453,334 +416,189 @@ const Tenants = () => {
             {/* Tenant Overview */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-fadeIn">
               <div className="flex items-center justify-between mb-6">
-                <div>
+            <div>
                   <h2 className="text-2xl font-bold text-gray-900">Tenant Overview</h2>
                   <p className="text-gray-600 mt-1">Complete overview of all tenants and their status</p>
                 </div>
-                <div className="flex items-center gap-4">
-                  {/* View Mode Toggle */}
-                  <div className="flex bg-gray-100 rounded-lg p-1">
-                    <button
-                      onClick={() => setViewMode('cards')}
-                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        viewMode === 'cards' 
-                          ? 'bg-white text-gray-900 shadow-sm' 
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      Cards
-                    </button>
-                    <button
-                      onClick={() => setViewMode('table')}
-                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        viewMode === 'table' 
-                          ? 'bg-white text-gray-900 shadow-sm' 
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      Table
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => setShowAddModal(true)}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:scale-105"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Tenant
-                  </button>
-                </div>
-              </div>
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-300 hover:scale-105"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Tenant
+                </button>
+        </div>
 
               {/* Overview Stats */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
+          <div className="flex items-center justify-between">
+            <div>
                       <p className="text-blue-100 text-sm">Total Tenants</p>
                       <p className="text-2xl font-bold">{stats.total}</p>
-                    </div>
+            </div>
                     <Users className="h-8 w-8 text-blue-200" />
-                  </div>
-                </div>
+            </div>
+          </div>
                 <div className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
+          <div className="flex items-center justify-between">
+            <div>
                       <p className="text-green-100 text-sm">Active</p>
                       <p className="text-2xl font-bold">{stats.active}</p>
-                    </div>
+            </div>
                     <UserCheck className="h-8 w-8 text-green-200" />
-                  </div>
-                </div>
+            </div>
+          </div>
                 <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
+          <div className="flex items-center justify-between">
+            <div>
                       <p className="text-yellow-100 text-sm">Monthly Revenue</p>
                       <p className="text-2xl font-bold">{formatCurrency(stats.totalRent)}</p>
-                    </div>
+            </div>
                     <IndianRupee className="h-8 w-8 text-yellow-200" />
-                  </div>
-                </div>
+            </div>
+          </div>
                 <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
+          <div className="flex items-center justify-between">
+            <div>
                       <p className="text-purple-100 text-sm">Security Deposits</p>
                       <p className="text-2xl font-bold">{formatCurrency(stats.totalDeposits)}</p>
-                    </div>
+            </div>
                     <Shield className="h-8 w-8 text-purple-200" />
-                  </div>
-                </div>
-              </div>
+          </div>
+        </div>
+      </div>
 
               {/* Search and Filters */}
               <div className="flex flex-col sm:flex-row gap-4 mb-6">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <input
-                    type="text"
+            <input
+              type="text"
                     placeholder="Search tenants..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                  />
-                </div>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+            />
+          </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                >
-                  <option value="">All Status</option>
-                  <option value="active">Active</option>
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
-                  <option value="adjust">Adjusting</option>
-                </select>
-                <select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
+              <option value="adjust">Adjusting</option>
+            </select>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                >
-                  <option value="">All Categories</option>
+            >
+              <option value="">All Categories</option>
                   <option value="new">New</option>
                   <option value="existing">Existing</option>
-                </select>
-              </div>
-            </div>
+            </select>
+          </div>
+        </div>
 
-            {/* Content Based on View Mode */}
-            {viewMode === 'cards' ? (
-              /* Tenant List Cards View */
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-slideUp">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-gray-900">Tenant List</h3>
-                  <p className="text-gray-600">{filteredTenants.length} tenants found</p>
-                </div>
+            {/* Tenant List */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-slideUp">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Tenant List</h3>
+                <p className="text-gray-600">{filteredTenants.length} tenants found</p>
+      </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredTenants.map((tenant, index) => (
-                    <div 
-                      key={tenant.id} 
-                      className={`bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-105 animate-bounceIn ${
-                        isVacatingThisMonth(tenant) ? 'border-red-500 bg-red-50' : ''
-                      }`}
-                      style={{ animationDelay: `${index * 0.1}s` }}
-                    >
-                      {/* Header */}
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                            <User className="h-5 w-5 text-yellow-600" />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-gray-900">{tenant.name}</h4>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(tenant.status)}`}>
-                              {tenant.status}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {getTenantPriorityIcon(tenant)}
-                          <button className="p-1 text-gray-400 hover:text-gray-600">
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Tenant Details */}
-                      <div className="space-y-3 mb-4">
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
-                            <span className="text-xs font-medium">🏠</span>
-                          </div>
-                          <span>Room: {tenant.room_number}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
-                            <span className="text-xs font-medium">📱</span>
-                          </div>
-                          <span>Phone: {tenant.mobile}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
-                            <span className="text-xs font-medium">💰</span>
-                          </div>
-                          <span>Rent: <span className="text-orange-600 font-medium">{formatCurrency(tenant.monthly_rent)}</span></span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
-                            <span className="text-xs font-medium">🛡️</span>
-                          </div>
-                          <span>Security: <span className="text-orange-600 font-medium">{formatCurrency(tenant.security_deposit)}</span></span>
-                        </div>
-                      </div>
-
-                      {/* Additional Info */}
-                      <div className="bg-gray-50 rounded-lg p-3 mb-4">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600">Joining Date:</span>
-                          <span className="font-semibold text-gray-900">{tenant.joining_date}</span>
-                        </div>
-                        <div className="flex items-center justify-between text-sm mt-1">
-                          <span className="text-gray-600">Category:</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(tenant.category || '')}`}>
-                            {tenant.category || 'N/A'}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredTenants.map((tenant, index) => (
+                  <div 
+                    key={tenant.id} 
+                    className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 hover:scale-105 animate-bounceIn"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                          <User className="h-5 w-5 text-yellow-600" />
+                              </div>
+                              <div>
+                          <h4 className="font-bold text-gray-900">{tenant.name}</h4>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(tenant.status)}`}>
+                            {tenant.status}
                           </span>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2">
+                        {getTenantPriorityIcon(tenant)}
+                        <button className="p-1 text-gray-400 hover:text-gray-600">
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                              </div>
+                            </div>
 
-                      {/* Action Buttons */}
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedTenant(tenant);
-                            setShowDetailsModal(true);
-                          }}
-                          className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                        >
-                          View Details
-                        </button>
-                        <button className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
-                          EDIT
-                        </button>
+                    {/* Tenant Details */}
+                    <div className="space-y-3 mb-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium">🏠</span>
+                        </div>
+                        <span>Room: {tenant.room_number}</span>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              /* Tenant Table View */
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 animate-slideUp">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-gray-900">Tenant Table View</h3>
-                  <p className="text-gray-600">{filteredTenants.length} tenants found</p>
-                </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium">📱</span>
+                        </div>
+                        <span>Phone: {tenant.mobile}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium">💰</span>
+                              </div>
+                        <span>Rent: <span className="text-orange-600 font-medium">{formatCurrency(tenant.monthly_rent)}</span></span>
+                              </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium">🛡️</span>
+                                  </div>
+                        <span>Security: <span className="text-orange-600 font-medium">{formatCurrency(tenant.security_deposit)}</span></span>
+                                    </div>
+                                </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="text-left py-3 px-4 font-semibold text-gray-900">Room No</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-900">Tenant Names</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-900">Date of Joining</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-900">Room Type</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-900">Max Occupancy</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-900">Current Tenants</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-900">Status</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-900">Current Electricity Reading</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-900">Last Reading</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-900">Vacating On</th>
-                        <th className="text-left py-3 px-4 font-semibold text-gray-900">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredTenants.map((tenant, index) => {
-                        const roomType = getRoomType(tenant.room_number);
-                        const maxOccupancy = getBedCount(roomType);
-                        const currentTenants = getCurrentTenantsCount(tenant.room_number);
-                        const isVacating = isVacatingThisMonth(tenant);
-                        
-                        return (
-                          <tr 
-                            key={tenant.id} 
-                            className={`border-b border-gray-200 hover:bg-gray-50 transition-colors ${
-                              isVacating ? 'bg-red-50 border-red-200' : ''
-                            }`}
-                          >
-                            <td className={`py-3 px-4 ${isVacating ? 'text-red-700 font-semibold' : 'text-gray-900'}`}>
-                              {tenant.room_number}
-                            </td>
-                            <td className={`py-3 px-4 ${isVacating ? 'text-red-700 font-semibold' : 'text-gray-900'}`}>
-                              {tenant.name}
-                            </td>
-                            <td className={`py-3 px-4 ${isVacating ? 'text-red-700' : 'text-gray-600'}`}>
-                              {tenant.joining_date}
-                            </td>
-                            <td className={`py-3 px-4 ${isVacating ? 'text-red-700' : 'text-gray-600'}`}>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                roomType === 'Single' ? 'bg-blue-100 text-blue-800' :
-                                roomType === 'Double' ? 'bg-green-100 text-green-800' :
-                                'bg-purple-100 text-purple-800'
-                              }`}>
-                                {roomType}
-                              </span>
-                            </td>
-                            <td className={`py-3 px-4 ${isVacating ? 'text-red-700' : 'text-gray-600'}`}>
-                              {maxOccupancy}
-                            </td>
-                            <td className={`py-3 px-4 ${isVacating ? 'text-red-700' : 'text-gray-600'}`}>
-                              {currentTenants}
-                            </td>
-                            <td className={`py-3 px-4 ${isVacating ? 'text-red-700' : 'text-gray-600'}`}>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(tenant.status)}`}>
-                                {tenant.status}
-                              </span>
-                            </td>
-                            <td className={`py-3 px-4 ${isVacating ? 'text-red-700' : 'text-gray-600'}`}>
-                              {tenant.last_electricity_reading || tenant.electricity_joining_reading || 'N/A'}
-                            </td>
-                            <td className={`py-3 px-4 ${isVacating ? 'text-red-700' : 'text-gray-600'}`}>
-                              {tenant.electricity_joining_reading || 'N/A'}
-                            </td>
-                            <td className={`py-3 px-4 ${isVacating ? 'text-red-700 font-semibold' : 'text-gray-600'}`}>
-                              {tenant.notice_given ? 'Yes' : 'No'}
-                            </td>
-                            <td className={`py-3 px-4 ${isVacating ? 'text-red-700 font-semibold' : 'text-gray-600'}`}>
-                              {tenant.notice_date || tenant.departure_date || 'N/A'}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                    {/* Additional Info */}
+                    <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Joining Date:</span>
+                        <span className="font-semibold text-gray-900">{tenant.joining_date}</span>
+                                </div>
+                      <div className="flex items-center justify-between text-sm mt-1">
+                        <span className="text-gray-600">Category:</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(tenant.category || '')}`}>
+                          {tenant.category || 'N/A'}
+                                    </span>
+                                  </div>
+                              </div>
 
-                {/* Table Summary */}
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Total Tenants:</span>
-                      <span className="font-semibold ml-2">{filteredTenants.length}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Vacating This Month:</span>
-                      <span className="font-semibold text-red-600 ml-2">
-                        {filteredTenants.filter(t => isVacatingThisMonth(t)).length}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Active Tenants:</span>
-                      <span className="font-semibold text-green-600 ml-2">
-                        {filteredTenants.filter(t => t.status === 'active').length}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Total Revenue:</span>
-                      <span className="font-semibold ml-2">
-                        {formatCurrency(filteredTenants.reduce((sum, t) => sum + (t.monthly_rent || 0), 0))}
-                      </span>
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedTenant(tenant);
+                          setShowDetailsModal(true);
+                        }}
+                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        View Details
+                      </button>
+                      <button className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                        EDIT
+                      </button>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Sidebar */}
@@ -799,16 +617,16 @@ const Tenants = () => {
                 <button className="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
                   <FileText className="h-4 w-4" />
                   Generate Report
-                </button>
+                                </button>
                 <button className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
                   <Bell className="h-4 w-4" />
                   Send Notifications
-                </button>
+                                  </button>
                 <button className="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg flex items-center gap-3 transition-all duration-300 hover:scale-105">
                   <Calendar className="h-4 w-4" />
                   Schedule Viewing
-                </button>
-              </div>
+                                </button>
+                              </div>
             </div>
 
             {/* Tenant Statistics */}

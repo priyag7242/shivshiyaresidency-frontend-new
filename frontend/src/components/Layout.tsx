@@ -34,6 +34,7 @@ const Layout = ({ children }: LayoutProps) => {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: Home, permission: null },
     { name: 'Tenants', href: '/tenants', icon: Users, permission: 'tenants:read' },
+    { name: 'Tenant Management', href: '/tenant-management', icon: Users, permission: 'tenants:read' },
     { name: 'Rooms', href: '/rooms', icon: Building, permission: 'rooms:read' },
     { name: 'Payments', href: '/payments', icon: CreditCard, permission: 'payments:read' },
     { name: 'Maintenance', href: '/maintenance', icon: Wrench, permission: 'maintenance:read' },
