@@ -5,9 +5,10 @@ import RoomForm from '../components/RoomForm';
 import RoomAllocationModal from '../components/RoomAllocationModal';
 import MaintenanceModal from '../components/MaintenanceModal';
 import { roomsQueries } from '../lib/supabaseQueries';
+import { getRoomStats, tenantData } from '../data/tenantData';
 
 const apiUrl = import.meta.env.VITE_API_URL || '';
-const USE_SUPABASE = true;
+const USE_SUPABASE = false; // Using local data for now
 
 interface Room {
   id: string;
@@ -99,14 +100,16 @@ const getStatusIcon = (status: string) => {
     case 'maintenance':
       return <Wrench className="h-4 w-4" />;
     case 'reserved':
-      return <Circle className="h-4 w-4" />;
+      return <AlertTriangle className="h-4 w-4" />;
     default:
-      return <DoorOpen className="h-4 w-4" />;
+      return <Circle className="h-4 w-4" />;
   }
 };
 
 const getMaintenanceStatusColor = (status?: string) => {
   switch (status) {
+    case 'none':
+      return 'text-gray-400';
     case 'scheduled':
       return 'text-blue-400';
     case 'in_progress':
@@ -125,31 +128,31 @@ const getRoomTypeIcon = (type: string) => {
     case 'double':
       return <Users className="h-4 w-4" />;
     case 'triple':
-      return <UserPlus className="h-4 w-4" />;
+      return <Users className="h-4 w-4" />;
     case 'quad':
       return <Users className="h-4 w-4" />;
     default:
-      return <DoorOpen className="h-4 w-4" />;
+      return <Building className="h-4 w-4" />;
   }
 };
 
 const getRoomTypeColor = (type: string) => {
   switch (type) {
     case 'single':
-      return 'text-blue-400 bg-blue-400/10';
+      return 'bg-blue-100 text-blue-600';
     case 'double':
-      return 'text-green-400 bg-green-400/10';
+      return 'bg-green-100 text-green-600';
     case 'triple':
-      return 'text-orange-400 bg-orange-400/10';
+      return 'bg-purple-100 text-purple-600';
     case 'quad':
-      return 'text-purple-400 bg-purple-400/10';
+      return 'bg-orange-100 text-orange-600';
     default:
-      return 'text-golden-400 bg-golden-400/10';
+      return 'bg-gray-100 text-gray-600';
   }
 };
 
 const Rooms = () => {
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [floorFilter, setFloorFilter] = useState('');
@@ -160,7 +163,7 @@ const Rooms = () => {
   const [showAllocationModal, setShowAllocationModal] = useState(false);
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
   const [actionDropdown, setActionDropdown] = useState<string | null>(null);
   const [stats, setStats] = useState<RoomStats>({
     total: 0,
@@ -207,15 +210,28 @@ const Rooms = () => {
         
         setRooms(filteredRooms);
       } else {
-        const params = new URLSearchParams();
-        if (searchTerm) params.append('search', searchTerm);
-        if (floorFilter) params.append('floor', floorFilter);
-        if (typeFilter) params.append('type', typeFilter);
-        if (statusFilter) params.append('status', statusFilter);
-        if (maintenanceFilter) params.append('maintenance_status', maintenanceFilter);
+        // Use local data
+        const roomStats = getRoomStats();
+        let filteredRooms = roomStats;
         
-        const response = await axios.get(`${apiUrl}/rooms?${params}`);
-        setRooms(response.data.rooms || []);
+        // Apply filters
+        if (searchTerm) {
+          filteredRooms = filteredRooms.filter(room => 
+            room.roomNumber.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+        }
+        if (typeFilter) {
+          filteredRooms = filteredRooms.filter(room => room.roomType.toLowerCase() === typeFilter);
+        }
+        if (statusFilter) {
+          if (statusFilter === 'available') {
+            filteredRooms = filteredRooms.filter(room => room.occupiedBeds === 0);
+          } else if (statusFilter === 'occupied') {
+            filteredRooms = filteredRooms.filter(room => room.occupiedBeds > 0);
+          }
+        }
+        
+        setRooms(filteredRooms);
       }
     } catch (error) {
       console.error('Error fetching rooms:', error);
@@ -240,7 +256,7 @@ const Rooms = () => {
           reserved: rooms.filter(r => r.status === 'reserved').length,
           totalCapacity: rooms.reduce((sum, r) => sum + (r.capacity || 0), 0),
           currentOccupancy: rooms.reduce((sum, r) => sum + (r.current_occupancy || 0), 0),
-          totalRevenue: rooms.reduce((sum, r) => sum + (r.monthly_rent || 0), 0), // This comes from roomsQueries.getAll() which only includes active tenants
+          totalRevenue: rooms.reduce((sum, r) => sum + (r.monthly_rent || 0), 0),
           floorStats: {},
           typeStats: {},
           maintenanceStats: {
@@ -251,33 +267,47 @@ const Rooms = () => {
           }
         };
         
-        // Calculate floor stats
-        rooms.forEach(room => {
-          const floor = room.floor || 0;
-          if (!stats.floorStats[floor]) {
-            stats.floorStats[floor] = { total: 0, occupied: 0, available: 0, maintenance: 0 };
-          }
-          stats.floorStats[floor].total++;
-          if (room.status === 'occupied') stats.floorStats[floor].occupied++;
-          else if (room.status === 'available') stats.floorStats[floor].available++;
-          else if (room.status === 'maintenance') stats.floorStats[floor].maintenance++;
-        });
-        
-        // Calculate type stats
-        rooms.forEach(room => {
-          const type = room.type || 'single';
-          if (!stats.typeStats[type]) {
-            stats.typeStats[type] = { total: 0, occupied: 0, available: 0 };
-          }
-          stats.typeStats[type].total++;
-          if (room.status === 'occupied') stats.typeStats[type].occupied++;
-          else if (room.status === 'available') stats.typeStats[type].available++;
-        });
-        
         setStats(stats);
       } else {
-        const response = await axios.get(`${apiUrl}/rooms/stats`);
-        setStats(response.data);
+        // Use local data
+        const roomStats = getRoomStats();
+        const totalRooms = roomStats.length;
+        const occupiedRooms = roomStats.filter(r => r.occupiedBeds > 0).length;
+        const availableRooms = roomStats.filter(r => r.occupiedBeds === 0).length;
+        const totalCapacity = roomStats.reduce((sum, r) => sum + r.totalBeds, 0);
+        const currentOccupancy = roomStats.reduce((sum, r) => sum + r.occupiedBeds, 0);
+        const totalRevenue = roomStats.reduce((sum, r) => sum + r.totalRent, 0);
+        
+        // Calculate type stats
+        const typeStats: { [key: string]: { total: number; occupied: number; available: number } } = {};
+        roomStats.forEach(room => {
+          const type = room.roomType.toLowerCase();
+          if (!typeStats[type]) {
+            typeStats[type] = { total: 0, occupied: 0, available: 0 };
+          }
+          typeStats[type].total += 1;
+          if (room.occupiedBeds > 0) {
+            typeStats[type].occupied += 1;
+          } else {
+            typeStats[type].available += 1;
+          }
+        });
+        
+        const stats: RoomStats = {
+          total: totalRooms,
+          occupied: occupiedRooms,
+          available: availableRooms,
+          maintenance: 0,
+          reserved: 0,
+          totalCapacity,
+          currentOccupancy,
+          totalRevenue,
+          floorStats: {},
+          typeStats,
+          maintenanceStats: { none: totalRooms, scheduled: 0, in_progress: 0, completed: 0 }
+        };
+        
+        setStats(stats);
       }
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -541,19 +571,19 @@ const Rooms = () => {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {rooms.slice(0, 6).map((room) => (
-                    <div key={room.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-300">
+                    <div key={room.roomNumber} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all duration-300">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <Building className="h-4 w-4 text-gray-600" />
-                          <h3 className="font-semibold text-gray-900">Room {room.room_number}</h3>
+                          <h3 className="font-semibold text-gray-900">Room {room.roomNumber}</h3>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            room.status === 'available' 
+                            room.occupiedBeds === 0 
                               ? 'bg-yellow-100 text-yellow-800' 
                               : 'bg-gray-100 text-gray-800'
                           }`}>
-                            {room.status === 'available' ? 'Available' : 'Full'}
+                            {room.occupiedBeds === 0 ? 'Available' : 'Full'}
                           </span>
                           <button className="p-1 text-gray-400 hover:text-gray-600">
                             <MoreVertical className="h-4 w-4" />
@@ -565,15 +595,15 @@ const Rooms = () => {
                       <div className="space-y-2 text-sm text-gray-600 mb-3">
                         <div className="flex items-center gap-2">
                           <Layers className="h-4 w-4" />
-                          <span>Floor {room.floor}</span>
+                          <span>Floor {room.roomNumber.charAt(0) === 'G' ? 'Ground' : room.roomNumber.charAt(0)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4" />
-                          <span>{room.current_occupancy}/{room.capacity} Occupied</span>
+                          <span>{room.occupiedBeds}/{room.totalBeds} Occupied</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <IndianRupee className="h-4 w-4" />
-                          <span>{formatCurrency(room.monthly_rent)}/month</span>
+                          <span>{formatCurrency(room.totalRent)}/month</span>
                         </div>
                       </div>
 
@@ -583,25 +613,25 @@ const Rooms = () => {
                           <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
                             <span className="text-xs font-medium">🛏️</span>
                           </div>
-                          <span>Bed: {room.capacity}</span>
+                          <span>Bed: {room.totalBeds}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
                             <span className="text-xs font-medium">🔔</span>
                           </div>
-                          <span>Under Notice: {room.tenants.filter(t => t.name.includes('Notice')).length}</span>
+                          <span>Under Notice: {room.hasNotice ? room.tenants.filter((t: any) => t.noticeGiven).length : 0}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
                             <span className="text-xs font-medium">💰</span>
                           </div>
-                          <span>Rent Due: {room.tenants.length > 0 ? room.tenants.length : 0}</span>
+                          <span>Rent Due: {room.hasUnpaidRent ? room.tenants.filter((t: any) => t.rentUnpaid > 0).length : 0}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <div className="w-4 h-4 bg-gray-200 rounded flex items-center justify-center">
                             <span className="text-xs font-medium">🎫</span>
                           </div>
-                          <span>Active Ticket: {room.maintenance_status === 'in_progress' ? 1 : 0}</span>
+                          <span>Active Ticket: {room.hasUnpaidElectricity ? 1 : 0}</span>
                         </div>
                       </div>
 
