@@ -636,7 +636,7 @@ const Dashboard = () => {
   }
 
     return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-white">
       {/* Custom CSS for animations */}
       <style>{`
         @keyframes fadeIn {
@@ -731,7 +731,7 @@ const Dashboard = () => {
               <div className="text-white mb-4">
                 <div className="text-2xl sm:text-3xl lg:text-4xl font-bold animate-countUp">{formatCurrency(stats.monthlyRevenue)}</div>
                 <div className="text-sm sm:text-lg opacity-80 animate-fadeIn" style={{ animationDelay: '0.3s' }}>+0.6% From last month</div>
-          </div>
+              </div>
 
               {/* Date Picker Modal */}
               {showDatePicker && (
@@ -745,10 +745,10 @@ const Dashboard = () => {
                       >
                         <X className="h-6 w-6" />
                       </button>
-            </div>
+                    </div>
                     
                     <div className="space-y-4">
-            <div>
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
                         <input
                           type="date"
@@ -756,9 +756,9 @@ const Dashboard = () => {
                           onChange={(e) => setSelectedDateRange(prev => ({ ...prev, start: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                         />
-            </div>
-
-            <div>
+                      </div>
+                      
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
                         <input
                           type="date"
@@ -766,9 +766,9 @@ const Dashboard = () => {
                           onChange={(e) => setSelectedDateRange(prev => ({ ...prev, end: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                         />
-            </div>
-            </div>
-
+                      </div>
+                    </div>
+                    
                     <div className="flex gap-3 mt-6">
                       <button
                         onClick={() => setShowDatePicker(false)}
@@ -782,9 +782,9 @@ const Dashboard = () => {
                       >
                         Done
                       </button>
-            </div>
-            </div>
-          </div>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {/* Expanded Content */}
@@ -801,7 +801,7 @@ const Dashboard = () => {
                   >
                     FULL REPORT
                   </button>
-            </div>
+                </div>
               )}
               
               {/* Toggle Button */}
@@ -819,7 +819,7 @@ const Dashboard = () => {
               </button>
             </div>
 
-        {/* Quick Actions */}
+            {/* Quick Actions */}
             <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
               <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4 sm:mb-6">Quick Actions</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -830,55 +830,55 @@ const Dashboard = () => {
                 >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-all duration-300 group-hover:scale-110">
                     <UserPlus className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-            </div>
+                  </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Add Tenant</span>
                 </button>
                 
-            <button
+                <button 
                   onClick={() => setShowPaymentModal(true)}
                   className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
                   style={{ animationDelay: '0.2s' }}
-            >
+                >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-all duration-300 group-hover:scale-110">
                     <Receipt className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-              </div>
+                  </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Record Payment</span>
-            </button>
+                </button>
                 
-            <button
+                <button 
                   onClick={() => setShowRoomModal(true)}
                   className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
                   style={{ animationDelay: '0.3s' }}
-            >
+                >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-all duration-300 group-hover:scale-110">
                     <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
-              </div>
+                  </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Add Room</span>
-            </button>
+                </button>
 
-            <button 
+                <button 
                   onClick={() => setShowMaintenanceModal(true)}
                   className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
                   style={{ animationDelay: '0.4s' }}
-            >
+                >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-all duration-300 group-hover:scale-110">
                     <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
-          </div>
+                  </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Maintenance</span>
-            </button>
+                </button>
 
-            <button 
+                <button 
                   onClick={() => setShowReportModal(true)}
                   className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn col-span-2 sm:col-span-1"
                   style={{ animationDelay: '0.5s' }}
-            >
+                >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-100 rounded-full flex items-center justify-center group-hover:bg-indigo-200 transition-all duration-300 group-hover:scale-110">
                     <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600" />
-            </div>
+                  </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Overview</span>
-            </button>
-        </div>
-      </div>
+                </button>
+              </div>
+            </div>
 
             {/* Quick Stats */}
             <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300 stat-card">
@@ -891,28 +891,28 @@ const Dashboard = () => {
                   <div className="text-center">
                     <div className="text-xs sm:text-sm font-medium text-gray-700">Total Tenants</div>
                     <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.totalTenants}</div>
-          </div>
-        </div>
+                  </div>
+                </div>
 
                 <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-all duration-300 group-hover:scale-110">
                     <Building className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
-                </div>
+                  </div>
                   <div className="text-center">
                     <div className="text-xs sm:text-sm font-medium text-gray-700">Occupancy Rate</div>
                     <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.occupancyRate}%</div>
-        </div>
-      </div>
+                  </div>
+                </div>
 
                 <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-all duration-300 group-hover:scale-110">
                     <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
-            </div>
-            <div className="text-center">
+                  </div>
+                  <div className="text-center">
                     <div className="text-xs sm:text-sm font-medium text-gray-700">Maintenance</div>
                     <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.activeMaintenanceRequests}</div>
-          </div>
-        </div>
+                  </div>
+                </div>
 
                 <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-all duration-300 group-hover:scale-110">
@@ -921,11 +921,11 @@ const Dashboard = () => {
                   <div className="text-center">
                     <div className="text-xs sm:text-sm font-medium text-gray-700">Today's Visitors</div>
                     <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.todayVisitors}</div>
-                    </div>
                   </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
           {/* Right Column - Stats Cards */}
           <div className="space-y-6">
@@ -988,8 +988,8 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-          </div>
         </div>
+      </div>
 
       {/* Modals */}
       <TenantModal 
