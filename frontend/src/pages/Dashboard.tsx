@@ -57,7 +57,8 @@ import {
   MessageCircle,
   Megaphone,
   User,
-  Building2
+  Building2,
+  ChevronUp
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { TenantModal, RoomModal, PaymentModal, ReportModal } from '../components/DashboardModals';
@@ -206,6 +207,120 @@ interface Visitor {
   phone?: string;
 }
 
+// Simple Area Chart Component
+const RevenueChart = ({ data, selectedPeriod }: { data: { month: string; revenue: number }[]; selectedPeriod: string }) => {
+  const maxRevenue = Math.max(...data.map(d => d.revenue));
+  const minRevenue = Math.min(...data.map(d => d.revenue));
+  const range = maxRevenue - minRevenue;
+  
+  return (
+    <div className="mt-6">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex gap-2">
+          {['Weekly', 'Monthly', 'Yearly'].map((period) => (
+            <button
+              key={period}
+              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                selectedPeriod === period
+                  ? 'bg-yellow-500 text-gray-900'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {period}
+            </button>
+          ))}
+        </div>
+        <select className="bg-gray-700 text-gray-300 px-3 py-1 rounded text-sm border-none">
+          <option>2023</option>
+          <option>2022</option>
+          <option>2021</option>
+        </select>
+      </div>
+      
+      <div className="relative h-48 bg-gray-800 rounded-lg p-4">
+        <div className="absolute inset-4">
+          {/* Y-axis labels */}
+          <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-gray-400">
+            <span>₹100k</span>
+            <span>₹80k</span>
+            <span>₹60k</span>
+            <span>₹40k</span>
+            <span>₹20k</span>
+            <span>₹0</span>
+          </div>
+          
+          {/* Chart area */}
+          <div className="absolute left-8 right-0 top-0 bottom-0">
+            <svg width="100%" height="100%" className="overflow-visible">
+              {/* Grid lines */}
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <line
+                  key={i}
+                  x1="0"
+                  y1={i * 20}
+                  x2="100%"
+                  y2={i * 20}
+                  stroke="#374151"
+                  strokeWidth="1"
+                  opacity="0.3"
+                />
+              ))}
+              
+              {/* Area chart */}
+              <defs>
+                <linearGradient id="revenueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.1" />
+                </linearGradient>
+              </defs>
+              
+              <path
+                d={data.map((point, index) => {
+                  const x = (index / (data.length - 1)) * 100;
+                  const y = 100 - ((point.revenue - minRevenue) / range) * 80;
+                  return `${index === 0 ? 'M' : 'L'} ${x}% ${y}%`;
+                }).join(' ')}
+                fill="url(#revenueGradient)"
+                stroke="#F59E0B"
+                strokeWidth="2"
+              />
+              
+              {/* Data points */}
+              {data.map((point, index) => {
+                const x = (index / (data.length - 1)) * 100;
+                const y = 100 - ((point.revenue - minRevenue) / range) * 80;
+                return (
+                  <circle
+                    key={index}
+                    cx={`${x}%`}
+                    cy={`${y}%`}
+                    r="3"
+                    fill="#F59E0B"
+                    className="hover:r-4 transition-all"
+                  />
+                );
+              })}
+            </svg>
+            
+            {/* X-axis labels */}
+            <div className="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400 mt-2">
+              {data.map((point, index) => (
+                <span key={index}>{point.month}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* September highlight */}
+      <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+        <div className="text-yellow-400 text-sm font-medium">September Highlight</div>
+        <div className="text-white text-lg font-bold">₹84,256</div>
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const [stats, setStats] = useState<DashboardStats>({
     totalTenants: 0,
@@ -236,6 +351,8 @@ const Dashboard = () => {
   const [todayVisitors, setTodayVisitors] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [isRevenueExpanded, setIsRevenueExpanded] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState('Monthly');
   
   // Modal states
   const [showRoomModal, setShowRoomModal] = useState(false);
@@ -422,6 +539,27 @@ const Dashboard = () => {
     };
   };
 
+  const handleFullReport = () => {
+    // Simulate downloading Excel report
+    alert('Downloading full revenue report as Excel file...');
+  };
+
+  // Sample chart data
+  const chartData = [
+    { month: 'Jan', revenue: 45000 },
+    { month: 'Feb', revenue: 52000 },
+    { month: 'Mar', revenue: 48000 },
+    { month: 'Apr', revenue: 55000 },
+    { month: 'May', revenue: 58000 },
+    { month: 'Jun', revenue: 62000 },
+    { month: 'Jul', revenue: 68000 },
+    { month: 'Aug', revenue: 72000 },
+    { month: 'Sep', revenue: 84256 },
+    { month: 'Oct', revenue: 78000 },
+    { month: 'Nov', revenue: 82000 },
+    { month: 'Dec', revenue: 88000 }
+  ];
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -433,7 +571,7 @@ const Dashboard = () => {
     );
   }
 
-  return (
+    return (
     <div className="min-h-screen bg-gray-100">
       {/* Mobile Header */}
       <div className="bg-white shadow-sm">
@@ -442,12 +580,12 @@ const Dashboard = () => {
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
                 <User className="h-6 w-6 text-white" />
-              </div>
+        </div>
           <div>
                 <h1 className="text-lg font-bold text-gray-900">Welcome BNR Hills PG</h1>
                 <p className="text-sm text-gray-500">Dashboard</p>
-              </div>
           </div>
+            </div>
             <button 
               onClick={() => setShowNotificationModal(true)}
               className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm"
@@ -460,25 +598,52 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
-        {/* Revenue Section */}
-        <div className="bg-gray-900 rounded-lg p-6 relative">
+        {/* Revenue Section - Expandable */}
+        <div className={`bg-gray-900 rounded-lg p-6 relative transition-all duration-300 ${isRevenueExpanded ? 'min-h-[600px]' : ''}`}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-white font-bold text-lg">REVENUE</h2>
             <div className="bg-yellow-500 text-gray-900 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
               <Calendar className="h-3 w-3" />
               01/08/23 - 31/08/23
-            </div>
-          </div>
+                  </div>
+                </div>
           
           <div className="text-white mb-2">
             <div className="text-3xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
             <div className="text-sm opacity-80">+0.6% From last month</div>
-          </div>
+              </div>
           
-          <button className="absolute bottom-4 right-4 w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-            <ChevronDown className="h-4 w-4 text-gray-900" />
+          {/* Expanded Content */}
+          {isRevenueExpanded && (
+            <RevenueChart data={chartData} selectedPeriod={selectedPeriod} />
+          )}
+          
+          {/* Action Buttons */}
+          {isRevenueExpanded && (
+            <div className="mt-6">
+              <button
+                onClick={handleFullReport}
+                className="w-full bg-yellow-500 text-gray-900 py-3 rounded-lg font-bold hover:bg-yellow-600 transition-colors"
+              >
+                FULL REPORT
+              </button>
+            </div>
+          )}
+          
+          {/* Toggle Button */}
+          <button 
+            onClick={() => setIsRevenueExpanded(!isRevenueExpanded)}
+            className={`absolute bottom-4 right-4 w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center transition-all duration-300 ${
+              isRevenueExpanded ? 'rotate-180' : ''
+            }`}
+          >
+            {isRevenueExpanded ? (
+              <ChevronUp className="h-4 w-4 text-gray-900" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-gray-900" />
+            )}
           </button>
-      </div>
+            </div>
 
         {/* Quick Actions */}
         <div className="bg-white rounded-lg p-6">
@@ -508,13 +673,13 @@ const Dashboard = () => {
               <span className="text-xs text-gray-600">Announce</span>
             </button>
             
-            <button
+            <button 
               onClick={() => setShowPaymentModal(true)}
               className="flex flex-col items-center gap-2"
             >
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
                 <Receipt className="h-6 w-6 text-gray-600" />
-              </div>
+            </div>
               <span className="text-xs text-gray-600">Record Payment</span>
             </button>
             
@@ -542,7 +707,7 @@ const Dashboard = () => {
                 <div className="text-gray-600 text-sm">Tenants</div>
                 <div className="text-gray-500 text-xs mt-1">On-time: {stats.onTimePayments}</div>
       </div>
-              
+
               {/* Not Paid Section */}
               <div className="text-center">
                 <div className="text-gray-600 text-sm">Not-Paid</div>
@@ -552,29 +717,29 @@ const Dashboard = () => {
                   <MessageCircle className="h-3 w-3" />
                   REMIND TO PAY
                 </button>
-                      </div>
-                    </div>
-            
+          </div>
+        </div>
+
             <button className="w-full bg-gray-900 text-white py-2 rounded mt-4 font-medium">
               VIEW
             </button>
-          </div>
         </div>
+      </div>
 
         {/* Other Stats */}
         <div className="bg-yellow-500 rounded-lg p-6">
           <h2 className="text-gray-900 font-bold text-lg mb-4">Other Stats</h2>
           <div className="bg-white rounded-lg p-4">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
               {/* Vacant Beds */}
-              <div className="text-center">
+            <div className="text-center">
                 <div className="text-gray-600 text-sm">Vacant Beds</div>
                 <div className="text-2xl font-bold text-gray-900">{stats.vacantBeds} / {stats.totalBeds}</div>
                 <button className="bg-gray-900 text-white px-3 py-1 rounded text-xs font-medium mt-2">
                   VIEW
                 </button>
-      </div>
-
+            </div>
+              
               {/* Notice Period */}
             <div className="text-center">
                 <div className="text-gray-600 text-sm">Notice Period</div>
