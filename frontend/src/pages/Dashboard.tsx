@@ -717,10 +717,10 @@ const Dashboard = () => {
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-500 rounded-full flex items-center justify-center hover-lift cursor-pointer transition-all duration-300">
                 <User className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
               </div>
-            <div>
+          <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Welcome SHIV SHIVA RESIDENCY</h1>
                 <p className="text-sm text-gray-500">Dashboard Overview</p>
-            </div>
+          </div>
             </div>
             <div className="flex items-center gap-3 sm:gap-4">
             <button
@@ -738,8 +738,8 @@ const Dashboard = () => {
             </button>
           </div>
         </div>
-            </div>
-            </div>
+      </div>
+                  </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -758,12 +758,12 @@ const Dashboard = () => {
                   <span className="hidden sm:inline">{selectedDateRange.start} - {selectedDateRange.end}</span>
                   <span className="sm:hidden">{selectedDateRange.start}</span>
                 </button>
-          </div>
+              </div>
 
               <div className="text-white mb-4">
                 <div className="text-2xl sm:text-3xl lg:text-4xl font-bold animate-countUp">{formatCurrency(stats.monthlyRevenue)}</div>
                 <div className="text-sm sm:text-lg opacity-80 animate-fadeIn" style={{ animationDelay: '0.3s' }}>+0.6% From last month</div>
-      </div>
+          </div>
 
               {/* Date Picker Modal */}
               {showDatePicker && (
@@ -777,10 +777,10 @@ const Dashboard = () => {
                       >
                         <X className="h-6 w-6" />
                       </button>
-                  </div>
+            </div>
                     
                     <div className="space-y-4">
-                      <div>
+            <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
                         <input
                           type="date"
@@ -788,9 +788,9 @@ const Dashboard = () => {
                           onChange={(e) => setSelectedDateRange(prev => ({ ...prev, start: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                         />
-        </div>
+            </div>
 
-                      <div>
+            <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
                         <input
                           type="date"
@@ -798,8 +798,8 @@ const Dashboard = () => {
                           onChange={(e) => setSelectedDateRange(prev => ({ ...prev, end: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                         />
-        </div>
-      </div>
+            </div>
+            </div>
 
                     <div className="flex gap-3 mt-6">
                       <button
@@ -816,7 +816,7 @@ const Dashboard = () => {
                       </button>
             </div>
             </div>
-            </div>
+          </div>
               )}
 
               {/* Expanded Content */}
@@ -833,7 +833,7 @@ const Dashboard = () => {
                   >
                     FULL REPORT
                   </button>
-                  </div>
+            </div>
               )}
               
               {/* Toggle Button */}
@@ -849,7 +849,7 @@ const Dashboard = () => {
                   <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-gray-900" />
                 )}
               </button>
-        </div>
+            </div>
 
         {/* Quick Actions */}
             <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
@@ -862,31 +862,31 @@ const Dashboard = () => {
                 >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-all duration-300 group-hover:scale-110">
                     <UserPlus className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-              </div>
+            </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Add Tenant</span>
                 </button>
                 
-                <button 
+            <button
                   onClick={() => setShowPaymentModal(true)}
                   className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
                   style={{ animationDelay: '0.2s' }}
-                >
+            >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-all duration-300 group-hover:scale-110">
                     <Receipt className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
               </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Record Payment</span>
-                </button>
+            </button>
                 
-                <button 
+            <button
                   onClick={() => setShowRoomModal(true)}
                   className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn"
                   style={{ animationDelay: '0.3s' }}
-                >
+            >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-all duration-300 group-hover:scale-110">
                     <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
               </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Add Room</span>
-                </button>
+            </button>
 
             <button 
                   onClick={() => setShowMaintenanceModal(true)}
@@ -895,7 +895,7 @@ const Dashboard = () => {
             >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-all duration-300 group-hover:scale-110">
                     <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
-              </div>
+          </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Maintenance</span>
             </button>
 
@@ -906,7 +906,7 @@ const Dashboard = () => {
             >
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-100 rounded-full flex items-center justify-center group-hover:bg-indigo-200 transition-all duration-300 group-hover:scale-110">
                     <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600" />
-              </div>
+            </div>
                   <span className="text-xs sm:text-sm font-medium text-gray-700 text-center">Overview</span>
             </button>
         </div>
@@ -919,109 +919,126 @@ const Dashboard = () => {
                 <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-all duration-300 group-hover:scale-110">
                     <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-    </div>
+                  </div>
                   <div className="text-center">
                     <div className="text-xs sm:text-sm font-medium text-gray-700">Total Tenants</div>
                     <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.totalTenants}</div>
-                  </div>
+          </div>
         </div>
 
                 <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition-all duration-300 group-hover:scale-110">
                     <Building className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
-                  </div>
+                </div>
                   <div className="text-center">
                     <div className="text-xs sm:text-sm font-medium text-gray-700">Occupancy Rate</div>
                     <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.occupancyRate}%</div>
-            </div>
-          </div>
+        </div>
+      </div>
 
                 <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition-all duration-300 group-hover:scale-110">
                     <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600" />
             </div>
-                  <div className="text-center">
+            <div className="text-center">
                     <div className="text-xs sm:text-sm font-medium text-gray-700">Maintenance</div>
                     <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.activeMaintenanceRequests}</div>
-            </div>
           </div>
+        </div>
 
                 <div className="flex flex-col items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-300 group hover-lift animate-fadeIn">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition-all duration-300 group-hover:scale-110">
                     <UserCheck className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-          </div>
+                  </div>
                   <div className="text-center">
                     <div className="text-xs sm:text-sm font-medium text-gray-700">Today's Visitors</div>
                     <div className="text-lg sm:text-xl font-bold text-gray-900 animate-countUp">{stats.todayVisitors}</div>
+                    </div>
+                  </div>
+          </div>
         </div>
       </div>
-    </div>
-            </div>
-          </div>
 
-          {/* Right Column - Stats Cards */}
+          {/* Right Column - Other Stats */}
           <div className="space-y-6">
-            {/* Rent Details */}
-            <div className="bg-yellow-500 rounded-xl p-4 sm:p-6 hover-lift transition-all duration-300 stat-card">
-              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Rent Details</h2>
-              <div className="bg-white rounded-lg p-4 sm:p-6 hover-lift transition-all duration-300">
-                <div className="grid grid-cols-2 gap-4 sm:gap-6">
-                  {/* Paid Section */}
-                  <div className="text-center">
-                    <div className="text-gray-600 text-xs sm:text-sm font-medium">Paid</div>
-                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2 animate-countUp">{stats.paidTenants}</div>
-                    <div className="text-gray-600 text-xs sm:text-sm">Tenants</div>
-                    <div className="text-gray-500 text-xs mt-1 sm:mt-2">On-time: {stats.onTimePayments}</div>
-                  </div>
-                  
-                  {/* Not Paid Section */}
-                  <div className="text-center">
-                    <div className="text-gray-600 text-xs sm:text-sm font-medium">Not-Paid</div>
-                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 sm:mt-2 animate-countUp">{stats.unpaidTenants}</div>
-                    <div className="text-gray-600 text-xs sm:text-sm">Tenants</div>
-                    <button className="bg-yellow-500 text-gray-900 px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1 mx-auto mt-2 sm:mt-3 hover:bg-yellow-600 transition-all duration-300 hover-lift">
-                      <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                      <span className="hidden sm:inline">REMIND TO PAY</span>
-                      <span className="sm:hidden">REMIND</span>
-                    </button>
-                  </div>
-                </div>
-                
-                <button className="w-full bg-gray-900 text-white py-2 sm:py-3 rounded-lg mt-4 sm:mt-6 font-medium hover:bg-gray-800 transition-all duration-300 text-sm sm:text-base hover-lift">
-                  VIEW DETAILS
+            {/* Vacant Beds Section */}
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Vacant Beds</h2>
+              <div className="text-center">
+                <div className="text-3xl sm:text-4xl font-bold text-blue-600 mb-2 animate-countUp">{stats.vacantBeds}</div>
+                <div className="text-gray-600 text-sm sm:text-base">Tenants</div>
+          </div>
+        </div>
+
+            {/* Not-Paid Section */}
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Not-Paid</h2>
+              <div className="text-center mb-4">
+                <div className="text-3xl sm:text-4xl font-bold text-red-600 mb-2 animate-countUp">{stats.unpaidTenants}</div>
+                <div className="text-gray-600 text-sm sm:text-base">Tenants</div>
+              </div>
+              <button className="w-full bg-red-500 text-white py-2 sm:py-3 rounded-lg font-medium hover:bg-red-600 transition-all duration-300 hover-lift">
+                REMIND TO PAY
+              </button>
+              </div>
+
+            {/* On-time Payments */}
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-gray-900 font-bold text-lg sm:text-xl">Payment Status</h2>
+                <button className="bg-blue-500 text-white px-3 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-blue-600 transition-all duration-300 hover-lift">
+                  VIEW
                 </button>
               </div>
-            </div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 text-sm sm:text-base">On-time:</span>
+                  <span className="text-green-600 font-bold text-lg sm:text-xl animate-countUp">{stats.onTimePayments}</span>
+              </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 text-sm sm:text-base">Pending:</span>
+                  <span className="text-orange-600 font-bold text-lg sm:text-xl animate-countUp">{stats.pendingCollections}</span>
+              </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 text-sm sm:text-base">Collection Rate:</span>
+                  <span className="text-blue-600 font-bold text-lg sm:text-xl animate-countUp">{stats.collectionRate}%</span>
+          </div>
+        </div>
+      </div>
 
-            {/* Other Stats */}
-            <div className="bg-yellow-500 rounded-xl p-4 sm:p-6 hover-lift transition-all duration-300 stat-card">
-              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Other Stats</h2>
-              <div className="bg-white rounded-lg p-4 sm:p-6 hover-lift transition-all duration-300">
-                <div className="grid grid-cols-2 gap-4 sm:gap-6">
-                  {/* Vacant Beds */}
-                  <div className="text-center">
-                    <div className="text-gray-600 text-xs sm:text-sm font-medium">Vacant Beds</div>
-                    <div className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 animate-countUp">{stats.vacantBeds} / {stats.totalBeds}</div>
-                    <button className="bg-gray-900 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium mt-2 sm:mt-3 hover:bg-gray-800 transition-all duration-300 hover-lift">
-                      VIEW
+            {/* Notice Period */}
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Notice Period</h2>
+              <div className="text-center mb-4">
+                <div className="text-3xl sm:text-4xl font-bold text-yellow-600 mb-2 animate-countUp">{stats.noticePeriodTenants}</div>
+                <div className="text-gray-600 text-sm sm:text-base">Tenants</div>
+    </div>
+              <button className="w-full bg-yellow-500 text-gray-900 py-2 sm:py-3 rounded-lg font-medium hover:bg-yellow-600 transition-all duration-300 hover-lift">
+                VIEW DETAILS
           </button>
         </div>
 
-                  {/* Notice Period */}
-                  <div className="text-center">
-                    <div className="text-gray-600 text-xs sm:text-sm font-medium">Notice Period</div>
-                    <div className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 sm:mt-2 animate-countUp">{stats.noticePeriodTenants} / {stats.totalTenants}</div>
-                    <div className="text-gray-600 text-xs sm:text-sm">Tenants</div>
-                    <button className="bg-gray-900 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-lg text-xs sm:text-sm font-medium mt-2 sm:mt-3 hover:bg-gray-800 transition-all duration-300 hover-lift">
-                      VIEW
-                    </button>
+            {/* Recent Activity */}
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm hover-lift transition-all duration-300">
+              <h2 className="text-gray-900 font-bold text-lg sm:text-xl mb-4">Recent Activity</h2>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm text-gray-600">New tenant added - Room 101</span>
                   </div>
+                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-sm text-gray-600">Payment received - ₹15,000</span>
+            </div>
+                <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                  <span className="text-sm text-gray-600">Maintenance request - Room 205</span>
+          </div>
+            </div>
             </div>
           </div>
-                  </div>
           </div>
-            </div>
-          </div>
+        </div>
 
       {/* Modals */}
       <TenantModal 
