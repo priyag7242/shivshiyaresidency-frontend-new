@@ -52,7 +52,12 @@ import {
   ChevronLeft,
   Maximize2,
   Minimize2,
-  Circle
+  Circle,
+  ChevronDown,
+  MessageCircle,
+  Megaphone,
+  User,
+  Building2
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { TenantModal, RoomModal, PaymentModal, ReportModal } from '../components/DashboardModals';
@@ -134,6 +139,12 @@ interface DashboardStats {
   activeMaintenanceRequests: number;
   todayVisitors: number;
   collectionRate: number;
+  paidTenants: number;
+  unpaidTenants: number;
+  onTimePayments: number;
+  vacantBeds: number;
+  totalBeds: number;
+  noticePeriodTenants: number;
 }
 
 interface Room {
@@ -195,49 +206,6 @@ interface Visitor {
   phone?: string;
 }
 
-// Simple Chart Component
-const SimpleChart = ({ data, title, color = 'golden' }: { data: { label: string; value: number }[]; title: string; color?: string }) => {
-  const maxValue = Math.max(...data.map(d => d.value));
-  
-  return (
-    <div className="bg-dark-800 border border-golden-600/20 rounded-lg p-6">
-      <h3 className="text-lg font-semibold text-golden-400 mb-4">{title}</h3>
-      <div className="space-y-3">
-        {data.map((item, index) => {
-          const percentage = maxValue > 0 ? (item.value / maxValue) * 100 : 0;
-          const colorClasses = {
-            golden: 'bg-gradient-to-r from-golden-500 to-golden-600',
-            blue: 'bg-gradient-to-r from-blue-500 to-blue-600',
-            green: 'bg-gradient-to-r from-green-500 to-green-600',
-            purple: 'bg-gradient-to-r from-purple-500 to-purple-600'
-          };
-          
-          return (
-            <div key={index} className="flex items-center gap-4">
-              <div className="w-20 text-sm text-golden-300">
-                {item.label}
-              </div>
-              <div className="flex-1">
-                <div className="bg-dark-900 rounded-full h-6 relative overflow-hidden">
-                  <div 
-                    className={`${colorClasses[color as keyof typeof colorClasses]} h-full rounded-full transition-all duration-1000`}
-                    style={{ width: `${percentage}%` }}
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs font-medium text-white">
-                      {typeof item.value === 'number' && item.value > 0 ? formatCurrency(item.value) : item.value}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
 const Dashboard = () => {
   const [stats, setStats] = useState<DashboardStats>({
     totalTenants: 0,
@@ -252,7 +220,13 @@ const Dashboard = () => {
     pendingCollections: 0,
     activeMaintenanceRequests: 0,
     todayVisitors: 0,
-    collectionRate: 0
+    collectionRate: 0,
+    paidTenants: 0,
+    unpaidTenants: 0,
+    onTimePayments: 0,
+    vacantBeds: 0,
+    totalBeds: 0,
+    noticePeriodTenants: 0
   });
 
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -261,9 +235,6 @@ const Dashboard = () => {
   const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
   const [todayVisitors, setTodayVisitors] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   
   // Modal states
@@ -418,6 +389,16 @@ const Dashboard = () => {
       return joinDate.getMonth() === thisMonth && joinDate.getFullYear() === thisYear;
     }).length;
 
+    // Calculate rent details
+    const paidTenants = Math.floor(activeTenants * 0.85); // 85% paid
+    const unpaidTenants = activeTenants - paidTenants;
+    const onTimePayments = Math.floor(paidTenants * 0.45); // 45% on time
+
+    // Calculate bed stats
+    const totalBeds = totalRooms * 2; // Assuming 2 beds per room
+    const vacantBeds = availableRooms * 2;
+    const noticePeriodTenants = Math.floor(activeTenants * 0.04); // 4% in notice period
+
     return {
       totalTenants,
       activeTenants,
@@ -431,207 +412,229 @@ const Dashboard = () => {
       pendingCollections,
       activeMaintenanceRequests: maintenanceRequests.length,
       todayVisitors: todayVisitors.length,
-      collectionRate: monthlyRevenue > 0 ? Math.round((monthlyRevenue / (monthlyRevenue + pendingCollections)) * 100) : 0
+      collectionRate: monthlyRevenue > 0 ? Math.round((monthlyRevenue / (monthlyRevenue + pendingCollections)) * 100) : 0,
+      paidTenants,
+      unpaidTenants,
+      onTimePayments,
+      vacantBeds,
+      totalBeds,
+      noticePeriodTenants
     };
-  };
-
-  // Generate sample chart data
-  const generateRevenueData = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    return months.map(month => ({
-      label: month,
-      value: Math.floor(Math.random() * 50000) + 20000
-    }));
-  };
-
-  const generateOccupancyData = () => {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    return months.map(month => ({
-      label: month,
-      value: Math.floor(Math.random() * 30) + 60
-    }));
-  };
-
-  const generatePaymentMethodData = () => {
-    return [
-      { label: 'Cash', value: 45 },
-      { label: 'UPI', value: 30 },
-      { label: 'Bank Transfer', value: 15 },
-      { label: 'Card', value: 10 }
-    ];
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-dark-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-golden-500 mx-auto mb-4"></div>
-          <p className="text-golden-400 text-lg">Loading Dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Loading Dashboard...</p>
         </div>
       </div>
     );
   }
 
-    return (
-    <div className="min-h-screen bg-dark-950">
-      {/* Header */}
-      <div className="bg-dark-900 border-b border-golden-600/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* Mobile Header */}
+      <div className="bg-white shadow-sm">
+        <div className="max-w-md mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-yellow-500 rounded-full flex items-center justify-center">
+                <User className="h-6 w-6 text-white" />
+              </div>
           <div>
-            <h1 className="text-3xl font-bold text-golden-400 mb-2">Dashboard</h1>
-            <p className="text-golden-300">Welcome to Shiv Shiva Residency Management System</p>
+                <h1 className="text-lg font-bold text-gray-900">Welcome BNR Hills PG</h1>
+                <p className="text-sm text-gray-500">Dashboard</p>
+              </div>
           </div>
-            <div className="mt-4 lg:mt-0 flex flex-wrap gap-3">
-              <button
-                onClick={() => setShowTenantModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            <button 
+              onClick={() => setShowNotificationModal(true)}
+              className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm"
             >
-              <UserPlus className="h-4 w-4" />
-              Add Tenant
-              </button>
-              <button
-                onClick={() => setShowPaymentModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-              Record Payment
-              </button>
-              <button
-                onClick={() => setShowReportModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <FileText className="h-4 w-4" />
-                Generate Report
-              </button>
+              <Bell className="h-5 w-5 text-gray-600" />
+            </button>
           </div>
         </div>
       </div>
-                  </div>
 
-      {/* Month Filter */}
-      <div className="bg-dark-900 border-b border-golden-600/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
-            <label className="text-golden-300 text-sm font-medium">Filter by Month:</label>
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-3 py-2 bg-dark-800 border border-golden-600/30 rounded-lg text-golden-100 focus:outline-none focus:border-golden-500"
-            />
-            <button
-              onClick={fetchDashboardData}
-              className="flex items-center gap-2 px-3 py-2 bg-golden-600 text-dark-900 rounded-lg hover:bg-golden-700 transition-colors"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh
+      {/* Main Content */}
+      <div className="max-w-md mx-auto px-4 py-6 space-y-6">
+        {/* Revenue Section */}
+        <div className="bg-gray-900 rounded-lg p-6 relative">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-white font-bold text-lg">REVENUE</h2>
+            <div className="bg-yellow-500 text-gray-900 px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              01/08/23 - 31/08/23
+            </div>
+          </div>
+          
+          <div className="text-white mb-2">
+            <div className="text-3xl font-bold">{formatCurrency(stats.monthlyRevenue)}</div>
+            <div className="text-sm opacity-80">+0.6% From last month</div>
+          </div>
+          
+          <button className="absolute bottom-4 right-4 w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
+            <ChevronDown className="h-4 w-4 text-gray-900" />
+          </button>
+      </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white rounded-lg p-6">
+          <h2 className="text-gray-900 font-bold text-lg mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-5 gap-4">
+            <button className="flex flex-col items-center gap-2">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                <Users className="h-6 w-6 text-gray-600" />
+            </div>
+              <span className="text-xs text-gray-600">Contacts</span>
             </button>
+            
+            <button 
+              onClick={() => setShowTenantModal(true)}
+              className="flex flex-col items-center gap-2"
+            >
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                <UserPlus className="h-6 w-6 text-gray-600" />
+            </div>
+              <span className="text-xs text-gray-600">Add Tenant</span>
+            </button>
+            
+            <button className="flex flex-col items-center gap-2">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                <Megaphone className="h-6 w-6 text-gray-600" />
+            </div>
+              <span className="text-xs text-gray-600">Announce</span>
+            </button>
+            
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              className="flex flex-col items-center gap-2"
+            >
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                <Receipt className="h-6 w-6 text-gray-600" />
               </div>
+              <span className="text-xs text-gray-600">Record Payment</span>
+            </button>
+            
+            <button
+              onClick={() => setShowRoomModal(true)}
+              className="flex flex-col items-center gap-2"
+            >
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                <Building2 className="h-6 w-6 text-gray-600" />
+              </div>
+              <span className="text-xs text-gray-600">Add Room</span>
+            </button>
           </div>
         </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <OverviewCard
-            title="Total Tenants"
-            value={stats.totalTenants}
-            change={`+${stats.newTenantsThisMonth} this month`}
-            icon={<Users className="h-6 w-6" />}
-            color="blue"
-            link="/tenants"
-          />
-          <OverviewCard
-            title="Occupancy Rate"
-            value={`${stats.occupancyRate}%`}
-            change={`${stats.occupiedRooms}/${stats.totalRooms} rooms`}
-            icon={<Building className="h-6 w-6" />}
-            color="purple"
-            link="/rooms"
-          />
-          <OverviewCard
-            title="Monthly Revenue"
-            value={formatCurrency(stats.monthlyRevenue)}
-            change={`${stats.collectionRate}% collected`}
-            icon={<IndianRupee className="h-6 w-6" />}
-            color="green"
-            link="/payments"
-          />
-          <OverviewCard
-            title="Pending Collections"
-            value={formatCurrency(stats.pendingCollections)}
-            change="Requires attention"
-            icon={<Clock className="h-6 w-6" />}
-            color="orange"
-            link="/payments"
-          />
-            </div>
-
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <QuickStatCard
-            title="Maintenance Requests"
-            value={stats.activeMaintenanceRequests}
-            icon={<AlertTriangle className="h-5 w-5" />}
-            color="red"
-            link="/maintenance"
-          />
-          <QuickStatCard
-            title="Today's Visitors"
-            value={stats.todayVisitors}
-            icon={<Users className="h-5 w-5" />}
-            color="purple"
-            link="/visitors"
-          />
-          <QuickStatCard
-            title="Available Rooms"
-            value={stats.availableRooms}
-            icon={<Home className="h-5 w-5" />}
-            color="blue"
-            link="/rooms"
-          />
-            </div>
-
-        {/* Main Content Tabs */}
-        <div className="bg-dark-900 border border-golden-600/20 rounded-lg overflow-hidden">
-          <div className="border-b border-golden-600/20">
-            <nav className="flex space-x-8 px-6">
-              {[
-                { id: 'overview', name: 'Overview', icon: <BarChart3 className="h-4 w-4" /> },
-                { id: 'rooms', name: 'Room Management', icon: <Building className="h-4 w-4" /> },
-                { id: 'tenants', name: 'Tenant Management', icon: <Users className="h-4 w-4" /> },
-                { id: 'payments', name: 'Payment Tracking', icon: <CreditCard className="h-4 w-4" /> },
-                { id: 'maintenance', name: 'Maintenance', icon: <AlertTriangle className="h-4 w-4" /> },
-                { id: 'visitors', name: 'Visitors', icon: <UserCheck className="h-4 w-4" /> }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-golden-500 text-golden-400'
-                      : 'border-transparent text-golden-300 hover:text-golden-400'
-                  }`}
-                >
-                  {tab.icon}
-                  {tab.name}
+        {/* Rent Details */}
+        <div className="bg-yellow-500 rounded-lg p-6">
+          <h2 className="text-gray-900 font-bold text-lg mb-4">Rent Details</h2>
+          <div className="bg-white rounded-lg p-4">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Paid Section */}
+              <div className="text-center">
+                <div className="text-gray-600 text-sm">Paid</div>
+                <div className="text-2xl font-bold text-gray-900">{stats.paidTenants}</div>
+                <div className="text-gray-600 text-sm">Tenants</div>
+                <div className="text-gray-500 text-xs mt-1">On-time: {stats.onTimePayments}</div>
+      </div>
+              
+              {/* Not Paid Section */}
+              <div className="text-center">
+                <div className="text-gray-600 text-sm">Not-Paid</div>
+                <div className="text-2xl font-bold text-gray-900">{stats.unpaidTenants}</div>
+                <div className="text-gray-600 text-sm">Tenants</div>
+                <button className="bg-yellow-500 text-gray-900 px-3 py-1 rounded text-xs font-medium flex items-center gap-1 mx-auto mt-2">
+                  <MessageCircle className="h-3 w-3" />
+                  REMIND TO PAY
                 </button>
-              ))}
-            </nav>
-            </div>
+                      </div>
+                    </div>
+            
+            <button className="w-full bg-gray-900 text-white py-2 rounded mt-4 font-medium">
+              VIEW
+            </button>
+          </div>
+        </div>
 
-          <div className="p-6">
-            {activeTab === 'overview' && <OverviewTab stats={stats} recentPayments={recentPayments} />}
-            {activeTab === 'rooms' && <RoomsTab rooms={rooms} onAddRoom={() => setShowRoomModal(true)} />}
-            {activeTab === 'tenants' && <TenantsTab tenants={tenants} onAddTenant={() => setShowTenantModal(true)} />}
-            {activeTab === 'payments' && <PaymentsTab payments={recentPayments} onAddPayment={() => setShowPaymentModal(true)} />}
-            {activeTab === 'maintenance' && <MaintenanceTab requests={maintenanceRequests} onAddRequest={() => setShowMaintenanceModal(true)} />}
-            {activeTab === 'visitors' && <VisitorsTab visitors={todayVisitors} onAddVisitor={() => setShowVisitorModal(true)} />}
+        {/* Other Stats */}
+        <div className="bg-yellow-500 rounded-lg p-6">
+          <h2 className="text-gray-900 font-bold text-lg mb-4">Other Stats</h2>
+          <div className="bg-white rounded-lg p-4">
+            <div className="grid grid-cols-2 gap-4">
+              {/* Vacant Beds */}
+              <div className="text-center">
+                <div className="text-gray-600 text-sm">Vacant Beds</div>
+                <div className="text-2xl font-bold text-gray-900">{stats.vacantBeds} / {stats.totalBeds}</div>
+                <button className="bg-gray-900 text-white px-3 py-1 rounded text-xs font-medium mt-2">
+                  VIEW
+                </button>
+      </div>
+
+              {/* Notice Period */}
+            <div className="text-center">
+                <div className="text-gray-600 text-sm">Notice Period</div>
+                <div className="text-2xl font-bold text-gray-900">{stats.noticePeriodTenants} / {stats.totalTenants}</div>
+                <div className="text-gray-600 text-sm">Tenants</div>
+                <button className="bg-gray-900 text-white px-3 py-1 rounded text-xs font-medium mt-2">
+                  VIEW
+                </button>
             </div>
             </div>
           </div>
+        </div>
+
+        {/* Additional Quick Actions */}
+        <div className="bg-white rounded-lg p-6">
+          <h2 className="text-gray-900 font-bold text-lg mb-4">More Actions</h2>
+          <div className="space-y-3">
+            <button className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="h-5 w-5 text-gray-600" />
+                <span className="text-gray-900">Overview</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </button>
+            
+            <button 
+              onClick={() => setShowMaintenanceModal(true)}
+              className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-gray-600" />
+                <span className="text-gray-900">Maintenance</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </button>
+
+            <button 
+              onClick={() => setShowVisitorModal(true)}
+              className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <UserCheck className="h-5 w-5 text-gray-600" />
+                <span className="text-gray-900">Visitors</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </button>
+
+            <button 
+              onClick={() => setShowReportModal(true)}
+              className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-gray-600" />
+                <span className="text-gray-900">Reports</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-400" />
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Modals */}
       <TenantModal 
@@ -656,390 +659,8 @@ const Dashboard = () => {
         isOpen={showReportModal}
         onClose={() => setShowReportModal(false)}
       />
-            </div>
-  );
-};
-
-// Overview Card Component
-interface OverviewCardProps {
-  title: string;
-  value: string | number;
-  change: string;
-  icon: React.ReactNode;
-  color: string;
-  link: string;
-}
-
-const OverviewCard = ({ title, value, change, icon, color, link }: OverviewCardProps) => {
-  const colorClasses = {
-    blue: 'text-blue-400 bg-blue-400/10 border-blue-400/30',
-    purple: 'text-purple-400 bg-purple-400/10 border-purple-400/30',
-    green: 'text-green-400 bg-green-400/10 border-green-400/30',
-    orange: 'text-orange-400 bg-orange-400/10 border-orange-400/30',
-    red: 'text-red-400 bg-red-400/10 border-red-400/30'
-  };
-
-  return (
-        <Link 
-      to={link}
-      className="bg-dark-900 border border-golden-600/20 rounded-lg p-6 hover:bg-dark-800 hover:border-golden-500 transition-all duration-200 group"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-          <p className="text-golden-300 text-sm font-medium">{title}</p>
-          <p className="text-2xl font-bold text-golden-100 mt-1">{value}</p>
-          <p className="text-golden-300 text-sm mt-1">{change}</p>
-            </div>
-        <div className={`p-3 rounded-full ${colorClasses[color as keyof typeof colorClasses]} group-hover:scale-110 transition-transform`}>
-          {icon}
-            </div>
-          </div>
-        </Link>
-  );
-};
-
-// Quick Stat Card Component
-interface QuickStatCardProps {
-  title: string;
-  value: number;
-  icon: React.ReactNode;
-  color: string;
-  link: string;
-}
-
-const QuickStatCard = ({ title, value, icon, color, link }: QuickStatCardProps) => {
-  const colorClasses = {
-    blue: 'text-blue-400 bg-blue-400/10',
-    purple: 'text-purple-400 bg-purple-400/10',
-    green: 'text-green-400 bg-green-400/10',
-    orange: 'text-orange-400 bg-orange-400/10',
-    red: 'text-red-400 bg-red-400/10'
-  };
-
-  return (
-        <Link 
-      to={link}
-      className="bg-dark-900 border border-golden-600/20 rounded-lg p-4 hover:bg-dark-800 transition-colors"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-          <p className="text-golden-300 text-sm">{title}</p>
-          <p className="text-xl font-bold text-golden-100">{value}</p>
-            </div>
-        <div className={`p-2 rounded-full ${colorClasses[color as keyof typeof colorClasses]}`}>
-          {icon}
-            </div>
-          </div>
-        </Link>
-  );
-};
-
-// Tab Components
-const OverviewTab = ({ stats, recentPayments }: { stats: DashboardStats; recentPayments: Payment[] }) => {
-  const revenueData = [
-    { label: 'Jan', value: 45000 },
-    { label: 'Feb', value: 52000 },
-    { label: 'Mar', value: 48000 },
-    { label: 'Apr', value: 55000 },
-    { label: 'May', value: 58000 },
-    { label: 'Jun', value: 62000 }
-  ];
-
-  const occupancyData = [
-    { label: 'Jan', value: 75 },
-    { label: 'Feb', value: 78 },
-    { label: 'Mar', value: 82 },
-    { label: 'Apr', value: 85 },
-    { label: 'May', value: 88 },
-    { label: 'Jun', value: 92 }
-  ];
-
-  const paymentMethodData = [
-    { label: 'Cash', value: 45 },
-    { label: 'UPI', value: 30 },
-    { label: 'Bank Transfer', value: 15 },
-    { label: 'Card', value: 10 }
-  ];
-              
-              return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SimpleChart data={revenueData} title="Revenue Trend (Last 6 Months)" color="golden" />
-        <SimpleChart data={occupancyData} title="Occupancy Trend (Last 6 Months)" color="blue" />
-        </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SimpleChart data={paymentMethodData} title="Payment Methods Distribution" color="purple" />
-        
-        <div className="bg-dark-800 border border-golden-600/20 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-golden-400 mb-4">Recent Payments</h3>
-          <div className="space-y-3">
-            {recentPayments.slice(0, 5).map((payment) => (
-              <div key={payment.id} className="flex items-center justify-between p-3 bg-dark-900 rounded-lg">
-                <div>
-                  <p className="text-golden-100 font-medium">{payment.tenant_name}</p>
-                  <p className="text-golden-300 text-sm">Room {payment.room_number}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-green-400 font-semibold">{formatCurrency(payment.amount)}</p>
-                  <p className="text-golden-300 text-sm capitalize">{payment.method}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-                  </div>
-                </div>
-              );
-};
-
-const RoomsTab = ({ rooms, onAddRoom }: { rooms: Room[]; onAddRoom: () => void }) => (
-  <div className="space-y-6">
-    <div className="flex justify-between items-center">
-      <h3 className="text-lg font-semibold text-golden-400">Room Management</h3>
-      <button
-        onClick={onAddRoom}
-        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-      >
-        <Plus className="h-4 w-4" />
-        Add Room
-      </button>
-                </div>
-    
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {rooms.map((room) => (
-        <RoomCard key={room.id} room={room} />
-            ))}
-          </div>
-        </div>
-);
-
-const TenantsTab = ({ tenants, onAddTenant }: { tenants: Tenant[]; onAddTenant: () => void }) => (
-  <div className="space-y-6">
-    <div className="flex justify-between items-center">
-      <h3 className="text-lg font-semibold text-golden-400">Tenant Management</h3>
-      <button
-        onClick={onAddTenant}
-        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-      >
-        <Plus className="h-4 w-4" />
-        Add Tenant
-      </button>
-              </div>
-    
-    <div className="bg-dark-800 border border-golden-600/20 rounded-lg overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-dark-900">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Tenant</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Room</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Contact</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Rent</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-golden-600/20">
-            {tenants.map((tenant) => (
-              <tr key={tenant.id} className="hover:bg-dark-900">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div>
-                    <div className="text-sm font-medium text-golden-100">{tenant.name}</div>
-                    <div className="text-sm text-golden-300">Joined {formatDate(tenant.joining_date)}</div>
-              </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-golden-300">Room {tenant.room_number}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-golden-300">{tenant.mobile}</div>
-                  {tenant.email && <div className="text-sm text-golden-400">{tenant.email}</div>}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(tenant.status)}`}>
-                    {getStatusIcon(tenant.status)}
-                    <span className="ml-1 capitalize">{tenant.status}</span>
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-golden-300">{formatCurrency(tenant.monthly_rent)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <button className="text-golden-400 hover:text-golden-300 mr-3">Edit</button>
-                  <button className="text-red-400 hover:text-red-300">Delete</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-              </div>
-              </div>
-  </div>
-);
-
-const PaymentsTab = ({ payments, onAddPayment }: { payments: Payment[]; onAddPayment: () => void }) => (
-  <div className="space-y-6">
-    <div className="flex justify-between items-center">
-      <h3 className="text-lg font-semibold text-golden-400">Payment Tracking</h3>
-            <button 
-        onClick={onAddPayment}
-        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-      >
-        <Plus className="h-4 w-4" />
-        Record Payment
-            </button>
-          </div>
-    
-    <div className="bg-dark-800 border border-golden-600/20 rounded-lg overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-dark-900">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Tenant</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Room</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Amount</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Method</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-golden-300 uppercase tracking-wider">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-golden-600/20">
-            {payments.map((payment) => (
-              <tr key={payment.id} className="hover:bg-dark-900">
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-golden-100">{payment.tenant_name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-golden-300">Room {payment.room_number}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-400 font-semibold">{formatCurrency(payment.amount)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-golden-300 capitalize">{payment.method}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-golden-300">{formatDate(payment.date)}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(payment.status)}`}>
-                    {getStatusIcon(payment.status)}
-                    <span className="ml-1 capitalize">{payment.status}</span>
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-      </div>
     </div>
   );
-
-const MaintenanceTab = ({ requests, onAddRequest }: { requests: MaintenanceRequest[]; onAddRequest: () => void }) => (
-  <div className="space-y-6">
-    <div className="flex justify-between items-center">
-      <h3 className="text-lg font-semibold text-golden-400">Maintenance Requests</h3>
-      <button
-        onClick={onAddRequest}
-        className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
-      >
-        <Plus className="h-4 w-4" />
-        Add Request
-          </button>
-        </div>
-
-    <div className="space-y-4">
-      {requests.map((request) => (
-        <div key={request.id} className="bg-dark-800 border border-golden-600/20 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-          <div>
-              <h4 className="text-golden-100 font-medium">{request.issue}</h4>
-              <p className="text-golden-300 text-sm">Room {request.room_number} - {request.tenant_name}</p>
-              <p className="text-golden-400 text-sm">Created {formatDate(request.created_date)}</p>
-                  </div>
-            <div className="flex items-center gap-3">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.priority)}`}>
-                {getStatusIcon(request.priority)}
-                <span className="ml-1 capitalize">{request.priority}</span>
-              </span>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
-                {getStatusIcon(request.status)}
-                <span className="ml-1 capitalize">{request.status}</span>
-              </span>
-            </div>
-          </div>
-            </div>
-      ))}
-            </div>
-          </div>
-);
-
-const VisitorsTab = ({ visitors, onAddVisitor }: { visitors: Visitor[]; onAddVisitor: () => void }) => (
-  <div className="space-y-6">
-    <div className="flex justify-between items-center">
-      <h3 className="text-lg font-semibold text-golden-400">Today's Visitors</h3>
-            <button
-        onClick={onAddVisitor}
-        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-        <Plus className="h-4 w-4" />
-        Add Visitor
-            </button>
-    </div>
-    
-    <div className="space-y-4">
-      {visitors.map((visitor) => (
-        <div key={visitor.id} className="bg-dark-800 border border-golden-600/20 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-golden-100 font-medium">{visitor.name}</h4>
-              <p className="text-golden-300 text-sm">Visiting {visitor.visiting_tenant} (Room {visitor.room_number})</p>
-              <p className="text-golden-400 text-sm">Purpose: {visitor.purpose}</p>
-              <p className="text-golden-400 text-sm">Entry: {new Date(visitor.entry_time).toLocaleTimeString()}</p>
-            </div>
-            <div className="text-right">
-              {visitor.exit_time ? (
-                <span className="text-green-400 text-sm">Exited: {new Date(visitor.exit_time).toLocaleTimeString()}</span>
-              ) : (
-                <span className="text-orange-400 text-sm">Currently Inside</span>
-              )}
-          </div>
-        </div>
-        </div>
-      ))}
-      </div>
-    </div>
-  );
-
-// Room Card Component
-const RoomCard = ({ room }: { room: Room }) => (
-  <div className="bg-dark-800 border border-golden-600/20 rounded-lg p-4 hover:bg-dark-900 transition-colors">
-    <div className="flex items-center justify-between mb-3">
-      <h4 className="text-golden-100 font-medium">Room {room.room_number}</h4>
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(room.status)}`}>
-        {getStatusIcon(room.status)}
-        <span className="ml-1 capitalize">{room.status}</span>
-      </span>
-        </div>
-
-    <div className="space-y-2 text-sm">
-      <div className="flex justify-between">
-        <span className="text-golden-300">Floor:</span>
-        <span className="text-golden-100">{room.floor}</span>
-                  </div>
-      <div className="flex justify-between">
-        <span className="text-golden-300">Type:</span>
-        <span className="text-golden-100">{room.type}</span>
-            </div>
-      <div className="flex justify-between">
-        <span className="text-golden-300">Rent:</span>
-        <span className="text-golden-100">{formatCurrency(room.monthly_rent)}</span>
-          </div>
-      {room.tenant_name && (
-        <div className="flex justify-between">
-          <span className="text-golden-300">Tenant:</span>
-          <span className="text-golden-100">{room.tenant_name}</span>
-                  </div>
-      )}
-          </div>
-
-    <div className="mt-4 flex gap-2">
-      <button className="flex-1 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors">
-        Edit
-            </button>
-      <button className="flex-1 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors">
-        Delete
-            </button>
-      </div>
-    </div>
-  );
+};
 
 export default Dashboard; 
